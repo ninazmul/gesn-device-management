@@ -62,43 +62,93 @@ export function DashboardClient({ stats }: DashboardClientProps) {
   const activePercent = total > 0 ? Math.round((stats.activeDevices / total) * 100) : 0;
   const offlinePercent = total > 0 ? Math.round((stats.offlineDevices / total) * 100) : 0;
 
+  const quickAddItems = [
+    {
+      type: "server",
+      label: "Server",
+      icon: Server,
+      className:
+        "bg-purple-600/90 hover:bg-purple-500 text-white shadow-lg shadow-purple-950/40 border border-purple-400/30",
+    },
+    {
+      type: "antenna",
+      label: "Antenna",
+      icon: Radio,
+      className:
+        "bg-sky-600/90 hover:bg-sky-500 text-white shadow-lg shadow-sky-950/40 border border-sky-400/30",
+    },
+    {
+      type: "access-point",
+      label: "Access Point",
+      icon: Wifi,
+      className:
+        "bg-cyan-600/90 hover:bg-cyan-500 text-white shadow-lg shadow-cyan-950/40 border border-cyan-400/30",
+    },
+    {
+      type: "router",
+      label: "Router",
+      icon: RouterIcon,
+      className:
+        "bg-indigo-600/90 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-950/40 border border-indigo-400/30",
+    },
+    {
+      type: "switch",
+      label: "Switch",
+      icon: Network,
+      className:
+        "bg-emerald-600/90 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-950/40 border border-emerald-400/30",
+    },
+  ];
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-8 max-w-[1600px] mx-auto">
-      {/* Top Banner / Welcome */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gradient-to-r from-slate-900 via-slate-800 to-sky-950 p-6 sm:p-8 rounded-3xl text-white shadow-xl">
-        <div className="space-y-1.5">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sky-500/20 text-sky-300 text-xs font-bold uppercase tracking-wider border border-sky-500/30">
-            <span className="w-2 h-2 rounded-full bg-sky-400 animate-pulse" />
-            Infrastructure Overview
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-            GESN Device Management
-          </h1>
-          <p className="text-slate-300 text-xs sm:text-sm max-w-xl">
-            Real-time monitoring and inventory management across all servers, antennas, access points, routers, and switches.
-          </p>
-        </div>
+      {/* Top Banner / Widget Section */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-sky-950 p-6 sm:p-8 rounded-3xl text-white shadow-2xl border border-slate-800/80">
+        {/* Background glow accents */}
+        <div className="absolute top-0 right-1/4 w-96 h-96 bg-sky-500/10 rounded-full blur-3xl pointer-events-none -translate-y-1/2" />
+        <div className="absolute bottom-0 right-0 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none translate-y-1/3" />
 
-        {/* Quick Add Actions */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <Button
-            onClick={() => openCreateFor("antenna")}
-            className="rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-semibold text-xs shadow-lg shadow-sky-900/30"
-          >
-            <Plus className="w-4 h-4 mr-1.5" /> Add Antenna
-          </Button>
-          <Button
-            onClick={() => openCreateFor("router")}
-            className="rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs shadow-lg shadow-indigo-900/30"
-          >
-            <Plus className="w-4 h-4 mr-1.5" /> Add Router
-          </Button>
-          <Button
-            onClick={() => openCreateFor("switch")}
-            className="rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs shadow-lg shadow-emerald-900/30"
-          >
-            <Plus className="w-4 h-4 mr-1.5" /> Add Switch
-          </Button>
+        <div className="relative z-10 flex flex-col xl:flex-row xl:items-center justify-between gap-6">
+          {/* Main Info */}
+          <div className="space-y-2 max-w-2xl">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sky-500/15 text-sky-300 text-xs font-bold uppercase tracking-wider border border-sky-500/30 backdrop-blur-md">
+              <span className="w-2 h-2 rounded-full bg-sky-400 animate-pulse" />
+              Infrastructure Overview & Control
+            </div>
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-100 to-slate-300">
+              GESN Device Management
+            </h1>
+            <p className="text-slate-300/90 text-xs sm:text-sm leading-relaxed">
+              Real-time monitoring and inventory management across all servers, antennas, access points, routers, and switches.
+            </p>
+          </div>
+
+          {/* Quick Add Action Widget Panel */}
+          <div className="flex flex-col gap-2.5 p-3.5 sm:p-4 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md shrink-0">
+            <div className="flex items-center justify-between gap-2 px-1">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-300/80 flex items-center gap-1.5">
+                <Plus className="w-3.5 h-3.5 text-sky-400" /> Quick Add Hardware
+              </span>
+              <span className="text-[10px] text-slate-400 font-medium">5 types</span>
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap">
+              {quickAddItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <Button
+                    key={item.type}
+                    onClick={() => openCreateFor(item.type)}
+                    size="sm"
+                    className={`rounded-xl font-semibold text-xs transition-all duration-150 active:scale-95 hover:scale-[1.03] ${item.className}`}
+                  >
+                    <Icon className="w-3.5 h-3.5 mr-1.5 shrink-0" />
+                    Add {item.label}
+                  </Button>
+                );
+              })}
+            </div>
+          </div>
         </div>
       </div>
 
