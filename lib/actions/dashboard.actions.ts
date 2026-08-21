@@ -36,6 +36,14 @@ export async function getDashboardStats(): Promise<DashboardStats> {
                 },
               },
             ],
+            typeStatusCounts: [
+              {
+                $group: {
+                  _id: { type: "$deviceType", status: "$status" },
+                  count: { $sum: 1 },
+                },
+              },
+            ],
             totalCount: [
               {
                 $count: "total",
@@ -108,25 +116,57 @@ export async function getDashboardStats(): Promise<DashboardStats> {
 
   const totalDevices = devFacet.totalCount?.[0]?.total || 0;
 
+  // Build per-type status lookup: { "antenna": { "Active": 5, "Offline": 1, ... }, ... }
+  const typeStatusMap: Record<string, Record<string, number>> = {};
+  (devFacet.typeStatusCounts || []).forEach(
+    (item: { _id: { type: string; status: string }; count: number }) => {
+      if (!item._id?.type) return;
+      const t = item._id.type.toLowerCase();
+      if (!typeStatusMap[t]) typeStatusMap[t] = {};
+      typeStatusMap[t][item._id.status] = item.count;
+    }
+  );
+
   const knownSlugs = new Set<string>();
-  const byType: Array<{ type: string; label: string; count: number }> = [];
+  const byType: Array<{
+    type: string;
+    label: string;
+    count: number;
+    active: number;
+    offline: number;
+    maintenance: number;
+    available: number;
+    inactive: number;
+  }> = [];
 
   for (const core of PRIMARY_DEVICE_TYPES) {
     knownSlugs.add(core.slug);
+    const sm = typeStatusMap[core.slug] || {};
     byType.push({
       type: core.slug,
       label: core.name,
       count: typeCountsMap[core.slug] || 0,
+      active: sm["Active"] || 0,
+      offline: sm["Offline"] || 0,
+      maintenance: sm["Maintenance"] || 0,
+      available: sm["Available"] || 0,
+      inactive: (sm["Inactive"] || 0) + (sm["Retired"] || 0),
     });
   }
 
   for (const t of allTypes) {
     if (!knownSlugs.has(t.slug)) {
       knownSlugs.add(t.slug);
+      const sm = typeStatusMap[t.slug] || {};
       byType.push({
         type: t.slug,
         label: t.name,
         count: typeCountsMap[t.slug] || 0,
+        active: sm["Active"] || 0,
+        offline: sm["Offline"] || 0,
+        maintenance: sm["Maintenance"] || 0,
+        available: sm["Available"] || 0,
+        inactive: (sm["Inactive"] || 0) + (sm["Retired"] || 0),
       });
     }
   }

@@ -138,6 +138,11 @@ export interface DashboardStats {
     type: string;
     label: string;
     count: number;
+    active: number;
+    offline: number;
+    maintenance: number;
+    available: number;
+    inactive: number;
   }>;
   recentDevices: IDevice[];
   // Customer & Billing Summary

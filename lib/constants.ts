@@ -1,9 +1,9 @@
 export const PRIMARY_DEVICE_TYPES = [
   { slug: "server", name: "Server", isProtected: true, icon: "Server" },
+  { slug: "switch", name: "Switch", isProtected: true, icon: "Network" },
   { slug: "antenna", name: "Antenna", isProtected: true, icon: "Radio" },
   { slug: "access-point", name: "Access Point", isProtected: true, icon: "Wifi" },
   { slug: "router", name: "Router", isProtected: true, icon: "Router" },
-  { slug: "switch", name: "Switch", isProtected: true, icon: "Network" },
 ] as const;
 
 export const DEVICE_STATUSES = [
