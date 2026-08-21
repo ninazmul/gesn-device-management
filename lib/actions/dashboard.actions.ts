@@ -44,6 +44,37 @@ export async function getDashboardStats(): Promise<DashboardStats> {
                 },
               },
             ],
+            mikrotikCount: [
+              {
+                $match: {
+                  $or: [
+                    { brand: { $regex: "mikrotik", $options: "i" } },
+                    { model: { $regex: "mikrotik", $options: "i" } },
+                    { deviceName: { $regex: "mikrotik", $options: "i" } },
+                  ],
+                },
+              },
+              { $count: "total" },
+            ],
+            serverLocations: [
+              {
+                $match: {
+                  deviceType: "server",
+                },
+              },
+              {
+                $group: {
+                  _id: {
+                    $cond: [
+                      { $gt: [{ $strLenCP: { $ifNull: ["$description", ""] } }, 0] },
+                      "$description",
+                      "$_id",
+                    ],
+                  },
+                },
+              },
+              { $count: "total" },
+            ],
             totalCount: [
               {
                 $count: "total",
@@ -97,6 +128,16 @@ export async function getDashboardStats(): Promise<DashboardStats> {
                 $cond: [{ $eq: ["$status", "Overdue"] }, "$dueAmount", 0],
               },
             },
+            paidCount: {
+              $sum: {
+                $cond: [{ $eq: ["$status", "Paid"] }, 1, 0],
+              },
+            },
+            dueCount: {
+              $sum: {
+                $cond: [{ $in: ["$status", ["Pending", "Partial", "Overdue"]] }, 1, 0],
+              },
+            },
           },
         },
       ]),
@@ -115,6 +156,10 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   });
 
   const totalDevices = devFacet.totalCount?.[0]?.total || 0;
+  const totalServers = typeCountsMap["server"] || 0;
+  const serverLocationsCount = devFacet.serverLocations?.[0]?.total || totalServers;
+  const mikrotikRoutersCount =
+    devFacet.mikrotikCount?.[0]?.total ?? (typeCountsMap["router"] || 0);
 
   // Build per-type status lookup: { "antenna": { "Active": 5, "Offline": 1, ... }, ... }
   const typeStatusMap: Record<string, Record<string, number>> = {};
@@ -185,7 +230,12 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     collected: 0,
     pending: 0,
     overdue: 0,
+    paidCount: 0,
+    dueCount: 0,
   };
+
+  const paidThisMonth = billSummary.paidCount ?? 0;
+  const dueCustomers = billSummary.dueCount ?? 0;
 
   return {
     totalDevices,
@@ -197,10 +247,17 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     retiredDevices: statusCountsMap["Retired"] || 0,
     byType,
     recentDevices: JSON.parse(JSON.stringify(devFacet.recent || [])),
+    serverStats: {
+      totalServers,
+      locations: serverLocationsCount,
+      mikrotikRouters: mikrotikRoutersCount,
+    },
     customerStats: {
       totalCustomers,
       activeCustomers: custStatusMap["Active"] || 0,
       suspendedCustomers: custStatusMap["Suspended"] || 0,
+      paidThisMonth,
+      dueCustomers,
     },
     billingStats: {
       currentMonth,
@@ -208,6 +265,8 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       collected: billSummary.collected || 0,
       pending: billSummary.pending || 0,
       overdue: billSummary.overdue || 0,
+      paidCount: billSummary.paidCount || 0,
+      dueCount: billSummary.dueCount || 0,
     },
   };
 }

@@ -145,11 +145,19 @@ export interface DashboardStats {
     inactive: number;
   }>;
   recentDevices: IDevice[];
+  // Server & MikroTik Summary
+  serverStats: {
+    totalServers: number;
+    locations: number;
+    mikrotikRouters: number;
+  };
   // Customer & Billing Summary
   customerStats: {
     totalCustomers: number;
     activeCustomers: number;
     suspendedCustomers: number;
+    paidThisMonth: number;
+    dueCustomers: number;
   };
   billingStats: {
     currentMonth: string;
@@ -157,6 +165,8 @@ export interface DashboardStats {
     collected: number;
     pending: number;
     overdue: number;
+    paidCount?: number;
+    dueCount?: number;
   };
 }
 
