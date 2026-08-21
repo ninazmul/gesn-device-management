@@ -482,8 +482,8 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
           </div>
         )}
 
-        {/* SECTION FOR NON-SWITCH: UpLink Switch Infrastructure */}
-        {device.deviceType !== "switch" && device.uplinkSwitch && (
+        {/* SECTION FOR DOWNLINK DEVICES: UpLink Switch Infrastructure */}
+        {["antenna", "access-point", "router"].includes(device.deviceType) && device.uplinkSwitch && (
           <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4 md:col-span-2">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2 text-slate-900 dark:text-slate-100 font-bold text-base">

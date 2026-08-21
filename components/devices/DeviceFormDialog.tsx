@@ -222,7 +222,7 @@ export function DeviceFormDialog({
         model: model.trim(),
         deviceName: deviceName.trim(),
         totalPorts: deviceType === "switch" && totalPorts ? Number(totalPorts) : undefined,
-        uplinkSwitch: deviceType !== "switch" && uplinkSwitch ? uplinkSwitch : null,
+        uplinkSwitch: ["antenna", "access-point", "router"].includes(deviceType) && uplinkSwitch ? uplinkSwitch : null,
         description,
         onlineLink,
         macAddress,
@@ -294,6 +294,12 @@ export function DeviceFormDialog({
                     setDeviceType(val);
                     setBrand("");
                     setModel("");
+                    if (val === "switch" && !totalPorts) {
+                      setTotalPorts("8");
+                    }
+                    if (!["antenna", "access-point", "router"].includes(val)) {
+                      setUplinkSwitch("");
+                    }
                   }}
                   disabled={isEditing}
                 >
@@ -448,8 +454,8 @@ export function DeviceFormDialog({
             </div>
           )}
 
-          {/* UpLink Switch Infrastructure Selection (When Non-Switch) */}
-          {deviceType !== "switch" && (
+          {/* UpLink Switch Infrastructure Selection (Only for Antenna, Access Point, Router) */}
+          {["antenna", "access-point", "router"].includes(deviceType) && (
             <div className="space-y-3 p-4 rounded-2xl bg-indigo-50/40 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/40">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
