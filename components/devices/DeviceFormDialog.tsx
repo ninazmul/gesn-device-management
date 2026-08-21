@@ -48,6 +48,7 @@ export function DeviceFormDialog({
   );
   const [brand, setBrand] = useState(deviceToEdit?.brand || "");
   const [model, setModel] = useState(deviceToEdit?.model || "");
+  const [deviceName, setDeviceName] = useState(deviceToEdit?.deviceName || "");
   const [description, setDescription] = useState(deviceToEdit?.description || "");
   const [onlineLink, setOnlineLink] = useState(deviceToEdit?.onlineLink || "");
   const [macAddress, setMacAddress] = useState(deviceToEdit?.macAddress || "");
@@ -81,6 +82,7 @@ export function DeviceFormDialog({
       setDeviceType(deviceToEdit.deviceType);
       setBrand(deviceToEdit.brand);
       setModel(deviceToEdit.model);
+      setDeviceName(deviceToEdit.deviceName || deviceToEdit.model || "");
       setDescription(deviceToEdit.description || "");
       setOnlineLink(deviceToEdit.onlineLink || "");
       setMacAddress(deviceToEdit.macAddress || "");
@@ -101,6 +103,7 @@ export function DeviceFormDialog({
       setDeviceType(defaultDeviceType);
       setBrand("");
       setModel("");
+      setDeviceName("");
       setDescription("");
       setOnlineLink("");
       setMacAddress("");
@@ -166,8 +169,12 @@ export function DeviceFormDialog({
       toast.error("Please select a brand");
       return;
     }
-    if (!model) {
+    if (!model.trim()) {
       toast.error("Please select or enter a model");
+      return;
+    }
+    if (!deviceName.trim()) {
+      toast.error("Please enter a device name");
       return;
     }
 
@@ -176,7 +183,8 @@ export function DeviceFormDialog({
       const payload = {
         deviceType,
         brand,
-        model,
+        model: model.trim(),
+        deviceName: deviceName.trim(),
         description,
         onlineLink,
         macAddress,
@@ -229,12 +237,12 @@ export function DeviceFormDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6 pt-2">
-          {/* Group 1: Hardware Classification */}
+          {/* Group 1: Hardware Classification & Identity */}
           <div className="space-y-3">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-              1. Hardware Classification
+              1. Hardware Classification & Identity
             </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               {/* Device Type */}
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
@@ -293,10 +301,19 @@ export function DeviceFormDialog({
               {/* Model (Dependent) */}
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Model / Name <span className="text-rose-500">*</span>
+                  Model <span className="text-rose-500">*</span>
                 </Label>
                 {availableModels.length > 0 ? (
-                  <Select value={model} onValueChange={setModel} disabled={loadingModels}>
+                  <Select
+                    value={model}
+                    onValueChange={(val) => {
+                      setModel(val);
+                      if (!deviceName || deviceName === model) {
+                        setDeviceName(val);
+                      }
+                    }}
+                    disabled={loadingModels}
+                  >
                     <SelectTrigger className="rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950">
                       <SelectValue
                         placeholder={loadingModels ? "Loading..." : "Select Model"}
@@ -314,20 +331,32 @@ export function DeviceFormDialog({
                   <Input
                     placeholder="e.g. Rocket Prism 5AC"
                     value={model}
-                    onChange={(e) => setModel(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setModel(val);
+                      if (!deviceName || deviceName === model) {
+                        setDeviceName(val);
+                      }
+                    }}
                     className="rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm"
                     disabled={!brand}
                   />
                 )}
               </div>
-            </div>
 
-            {model && (
-              <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
-                <span className="text-slate-500 dark:text-slate-400">Derived Device Name:</span>
-                <span className="font-bold text-slate-900 dark:text-slate-100">{model}</span>
+              {/* Device Name */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  Device Name <span className="text-rose-500">*</span>
+                </Label>
+                <Input
+                  placeholder="e.g. Tower North Sector 1 or Rocket Prism 5AC"
+                  value={deviceName}
+                  onChange={(e) => setDeviceName(e.target.value)}
+                  className="rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm"
+                />
               </div>
-            )}
+            </div>
           </div>
 
           {/* Group 2: Network Configuration */}
@@ -470,7 +499,7 @@ export function DeviceFormDialog({
             </Button>
             <Button
               type="submit"
-              disabled={submitting || !brand || !model}
+              disabled={submitting || !brand || !model.trim() || !deviceName.trim()}
               className="rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-semibold shadow-md shadow-sky-600/10"
             >
               {submitting ? (

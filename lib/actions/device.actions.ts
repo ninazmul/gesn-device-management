@@ -132,6 +132,7 @@ export async function createDevice(data: {
   deviceType: string;
   brand: string;
   model: string;
+  deviceName?: string;
   description?: string;
   onlineLink?: string;
   macAddress?: string;
@@ -154,8 +155,7 @@ export async function createDevice(data: {
     throw new Error("Invalid IPv4 Address format. Example: 192.168.1.100");
   }
 
-  // Device Name is automatically derived from Model Name
-  const deviceName = data.model.trim();
+  const deviceName = data.deviceName?.trim() || data.model.trim();
   const sl = await getNextSL();
 
   const device = await Device.create({
@@ -192,6 +192,7 @@ export async function updateDevice(
     deviceType?: string;
     brand?: string;
     model?: string;
+    deviceName?: string;
     description?: string;
     onlineLink?: string;
     macAddress?: string;
@@ -217,10 +218,8 @@ export async function updateDevice(
   const updatePayload: Record<string, unknown> = {};
 
   if (data.brand) updatePayload.brand = data.brand.trim();
-  if (data.model) {
-    updatePayload.model = data.model.trim();
-    updatePayload.deviceName = data.model.trim();
-  }
+  if (data.model) updatePayload.model = data.model.trim();
+  if (data.deviceName) updatePayload.deviceName = data.deviceName.trim();
   if (data.deviceType) updatePayload.deviceType = data.deviceType.toLowerCase().trim();
   if (data.description !== undefined) updatePayload.description = data.description.trim();
   if (data.onlineLink !== undefined) updatePayload.onlineLink = data.onlineLink.trim();
