@@ -145,11 +145,12 @@ export interface DashboardStats {
     inactive: number;
   }>;
   recentDevices: IDevice[];
-  // Server & MikroTik Summary
+  // Server & Core Infrastructure Summary
   serverStats: {
     totalServers: number;
+    activeServers: number;
     locations: number;
-    mikrotikRouters: number;
+    routersCount: number;
   };
   // Customer & Billing Summary
   customerStats: {

@@ -3,33 +3,25 @@
 import { useState } from "react";
 import Link from "next/link";
 import {
-  Radio,
   Wifi,
-  Router as RouterIcon,
   Network,
   ChevronRight,
   Search,
   Filter,
-  Server,
-  MapPin,
+  Activity,
   Users,
+  UserPlus,
   CheckCircle2,
   AlertCircle,
-  Video,
   Receipt,
   ArrowRight,
-  ExternalLink,
-  Lock,
   Boxes,
-  Activity,
-  SlidersHorizontal,
 } from "lucide-react";
 import { DeviceFormDialog } from "@/components/devices/DeviceFormDialog";
 import { CustomerFormDialog } from "@/components/customers/CustomerFormDialog";
 import { DeviceStatusBadge } from "@/components/devices/DeviceStatusBadge";
 import { GlobalSearchModal } from "@/components/shared/GlobalSearchModal";
-import { formatDateTime } from "@/lib/utils";
-import type { DashboardStats, IDevice } from "@/types";
+import type { DashboardStats } from "@/types";
 
 // ==========================================
 // CUSTOM ICONS TAILORED TO DASHBOARD THEME
@@ -126,23 +118,6 @@ function ServerStackIcon({ className }: { className?: string }) {
   );
 }
 
-function getDeviceIcon(type: string) {
-  switch (type?.toLowerCase()) {
-    case "server":
-      return Server;
-    case "antenna":
-      return Radio;
-    case "access-point":
-      return Wifi;
-    case "router":
-      return RouterIcon;
-    case "switch":
-      return Network;
-    default:
-      return Network;
-  }
-}
-
 interface DashboardClientProps {
   stats: DashboardStats;
 }
@@ -152,14 +127,13 @@ export function DashboardClient({ stats }: DashboardClientProps) {
   const [createCustomerOpen, setCreateCustomerOpen] = useState(false);
   const [createType, setCreateType] = useState("antenna");
   const [searchModalOpen, setSearchModalOpen] = useState(false);
-  const [searchFilterOpen, setSearchFilterOpen] = useState(false);
 
   const openCreateFor = (type: string) => {
     setCreateType(type);
     setCreateDialogOpen(true);
   };
 
-  // Extract type counts safely
+  // Extract actual system counts from aggregated DB stats
   const antennaStats = stats.byType.find((t) => t.type === "antenna");
   const apStats = stats.byType.find((t) => t.type === "access-point");
   const routerStats = stats.byType.find((t) => t.type === "router");
@@ -170,18 +144,18 @@ export function DashboardClient({ stats }: DashboardClientProps) {
   const routerCount = routerStats?.count ?? 0;
   const switchCount = switchStats?.count ?? 0;
 
-  // Server & MikroTik stats
+  // Server & Core Infrastructure actual DB stats
   const totalServers = stats.serverStats?.totalServers ?? 0;
-  const locationsCount = stats.serverStats?.locations ?? (totalServers || 0);
-  const mikrotikRouters = stats.serverStats?.mikrotikRouters ?? (routerCount || 0);
+  const activeServers = stats.serverStats?.activeServers ?? (totalServers || 0);
+  const routersCount = stats.serverStats?.routersCount ?? routerCount;
 
-  // Customer stats
+  // Customer & Billing actual DB stats
   const totalCustomers = stats.customerStats?.totalCustomers ?? 0;
   const paidThisMonth = stats.customerStats?.paidThisMonth ?? 0;
   const dueCustomers = stats.customerStats?.dueCustomers ?? 0;
 
   return (
-    <div className="p-3.5 sm:p-5 lg:p-6 space-y-4 sm:space-y-5 max-w-[1200px] mx-auto transition-all">
+    <div className="p-3.5 sm:p-5 lg:p-6 space-y-4 sm:space-y-5 max-w-9xl mx-auto transition-all">
 
       {/* ========================================================================= */}
       {/* SECTION 1: QUICK ADD                                                      */}
@@ -191,7 +165,7 @@ export function DashboardClient({ stats }: DashboardClientProps) {
           Quick Add
         </h2>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
+        <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
           {/* Add Antenna */}
           <button
             type="button"
@@ -200,9 +174,9 @@ export function DashboardClient({ stats }: DashboardClientProps) {
           >
             <div className="flex items-center gap-3">
               <div className="p-2.5 rounded-xl bg-[#e0f2fe] dark:bg-sky-950/60 border border-[#bae6fd] dark:border-sky-800/60 text-[#0284c7] dark:text-sky-400 shrink-0 group-hover:scale-105 transition-transform">
-                <AntennaIcon className="w-5 h-5" />
+                <AntennaIcon className="w-4 md:w-5 h-4 md:h-5" />
               </div>
-              <span className="text-sm font-bold text-[#0284c7] dark:text-sky-400">
+              <span className="text-xs md:text-sm font-bold text-[#0284c7] dark:text-sky-400">
                 Add Antenna
               </span>
             </div>
@@ -219,9 +193,9 @@ export function DashboardClient({ stats }: DashboardClientProps) {
           >
             <div className="flex items-center gap-3">
               <div className="p-2.5 rounded-xl bg-[#f3e8ff] dark:bg-purple-950/60 border border-[#e9d5ff] dark:border-purple-800/60 text-[#9333ea] dark:text-purple-400 shrink-0 group-hover:scale-105 transition-transform">
-                <AccessPointIcon className="w-5 h-5" />
+                <AccessPointIcon className="w-4 md:w-5 h-4 md:h-5" />
               </div>
-              <span className="text-sm font-bold text-[#9333ea] dark:text-purple-400">
+              <span className="text-xs md:text-sm font-bold text-[#9333ea] dark:text-purple-400">
                 Add Access Point
               </span>
             </div>
@@ -238,9 +212,9 @@ export function DashboardClient({ stats }: DashboardClientProps) {
           >
             <div className="flex items-center gap-3">
               <div className="p-2.5 rounded-xl bg-[#e0e7ff] dark:bg-indigo-950/60 border border-[#c7d2fe] dark:border-indigo-800/60 text-[#4f46e5] dark:text-indigo-400 shrink-0 group-hover:scale-105 transition-transform">
-                <CustomRouterIcon className="w-5 h-5" />
+                <CustomRouterIcon className="w-4 md:w-5 h-4 md:h-5" />
               </div>
-              <span className="text-sm font-bold text-[#4f46e5] dark:text-indigo-400">
+              <span className="text-xs md:text-sm font-bold text-[#4f46e5] dark:text-indigo-400">
                 Add Router
               </span>
             </div>
@@ -257,9 +231,9 @@ export function DashboardClient({ stats }: DashboardClientProps) {
           >
             <div className="flex items-center gap-3">
               <div className="p-2.5 rounded-xl bg-[#dcfce7] dark:bg-emerald-950/60 border border-[#bbf7d0] dark:border-emerald-800/60 text-[#16a34a] dark:text-emerald-400 shrink-0 group-hover:scale-105 transition-transform">
-                <SwitchIcon className="w-5 h-5" />
+                <SwitchIcon className="w-4 md:w-5 h-4 md:h-5" />
               </div>
-              <span className="text-sm font-bold text-[#16a34a] dark:text-emerald-400">
+              <span className="text-xs md:text-sm font-bold text-[#16a34a] dark:text-emerald-400">
                 Add Switch
               </span>
             </div>
@@ -407,33 +381,37 @@ export function DashboardClient({ stats }: DashboardClientProps) {
       </section>
 
       {/* ========================================================================= */}
-      {/* SECTION 3: SERVER & MIKROTIK (ADMIN ONLY)                                */}
+      {/* SECTION 3: SERVERS & INFRASTRUCTURE                                       */}
       {/* ========================================================================= */}
       <section className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 space-y-3.5 shadow-sm">
         <div className="flex items-center justify-between gap-2 flex-wrap">
-          <div className="flex items-center gap-2">
-            <h2 className="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-slate-100">
-              Server & MikroTik
-            </h2>
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 border border-amber-200/80 dark:border-amber-800/50">
-              <Lock className="w-3 h-3" />
-              Admin Only
-            </span>
-          </div>
+          <h2 className="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-slate-100">
+            Servers & Infrastructure
+          </h2>
         </div>
 
-        {/* Top Action: Add Server */}
-        <button
-          type="button"
-          onClick={() => openCreateFor("server")}
-          className="w-full py-2.5 px-4 rounded-2xl border border-blue-200/90 dark:border-blue-800/70 bg-blue-50/40 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 font-bold text-xs sm:text-sm hover:bg-blue-100/60 dark:hover:bg-blue-900/40 transition-all flex items-center justify-center gap-2 shadow-xs active:scale-[0.99]"
-        >
-          <ServerStackIcon className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-          <span>Add Server</span>
-        </button>
+        <div className="grid grid-cols-2 gap-2">
+          {/* Top Action: Add Server */}
+          <button
+            type="button"
+            onClick={() => openCreateFor("server")}
+            className="w-full py-2.5 px-4 rounded-2xl border border-blue-200/90 dark:border-blue-800/70 bg-blue-50/40 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 font-bold text-xs sm:text-sm hover:bg-blue-100/60 dark:hover:bg-blue-900/40 transition-all flex items-center justify-center gap-2 shadow-xs active:scale-[0.99]"
+          >
+            <ServerStackIcon className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+            <span>Add Server</span>
+          </button>
+
+          {/* Bottom Action: View Servers */}
+          <Link
+            href="/devices/server"
+            className="w-full py-2.5 px-4 rounded-2xl border border-blue-200/90 dark:border-blue-800/70 bg-blue-50/40 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 font-bold text-xs sm:text-sm hover:bg-blue-100/60 dark:hover:bg-blue-900/40 transition-all flex items-center justify-center gap-2 shadow-xs active:scale-[0.99]"
+          >
+            <ServerStackIcon className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+            <span>View Servers</span>
+          </Link></div>
 
         {/* 3-Column Metrics Row */}
-        <div className="grid grid-cols-3 gap-2 sm:gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 sm:gap-3">
           {/* Total Servers */}
           <div className="bg-white dark:bg-slate-900/90 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-2.5 sm:p-3.5 flex items-center gap-2.5">
             <div className="p-2 rounded-xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200/60 dark:border-blue-800/60 text-blue-600 dark:text-blue-400 shrink-0">
@@ -449,65 +427,58 @@ export function DashboardClient({ stats }: DashboardClientProps) {
             </div>
           </div>
 
-          {/* Locations */}
+          {/* Active Servers */}
           <div className="bg-white dark:bg-slate-900/90 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-2.5 sm:p-3.5 flex items-center gap-2.5">
             <div className="p-2 rounded-xl bg-purple-50 dark:bg-purple-950/60 border border-purple-200/60 dark:border-purple-800/60 text-purple-600 dark:text-purple-400 shrink-0">
-              <MapPin className="w-4 h-4" />
+              <Activity className="w-4 h-4" />
             </div>
             <div className="min-w-0">
               <span className="text-[10px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400 block truncate">
-                Locations
+                Active Servers
               </span>
               <div className="text-base sm:text-xl font-black text-slate-900 dark:text-slate-100 leading-tight">
-                {locationsCount.toLocaleString()}
+                {activeServers.toLocaleString()}
               </div>
             </div>
           </div>
 
-          {/* MikroTik Routers */}
+          {/* Routers */}
           <div className="bg-white dark:bg-slate-900/90 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-2.5 sm:p-3.5 flex items-center gap-2.5">
             <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200/60 dark:border-emerald-800/60 text-emerald-600 dark:text-emerald-400 shrink-0">
               <CustomRouterIcon className="w-4 h-4" />
             </div>
             <div className="min-w-0">
               <span className="text-[10px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400 block truncate">
-                MikroTik Routers
+                Routers
               </span>
               <div className="text-base sm:text-xl font-black text-slate-900 dark:text-slate-100 leading-tight">
-                {mikrotikRouters.toLocaleString()}
+                {routersCount.toLocaleString()}
               </div>
             </div>
           </div>
         </div>
 
-        {/* Bottom Action: View Servers */}
-        <Link
-          href="/devices/server"
-          className="w-full py-2.5 px-4 rounded-2xl border border-blue-200/90 dark:border-blue-800/70 bg-blue-50/40 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 font-bold text-xs sm:text-sm hover:bg-blue-100/60 dark:hover:bg-blue-900/40 transition-all flex items-center justify-center gap-2 shadow-xs active:scale-[0.99]"
-        >
-          <ServerStackIcon className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-          <span>View Servers</span>
-        </Link>
+
       </section>
 
       {/* ========================================================================= */}
-      {/* SECTION 4: CCTV INTERNET CUSTOMERS (STAFF ACCESS)                         */}
+      {/* SECTION 4: CUSTOMERS & BILLING                                            */}
       {/* ========================================================================= */}
       <section className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 space-y-3.5 shadow-sm">
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2">
             <h2 className="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-slate-100">
-              CCTV Internet Customers
+              Customers & Billing
             </h2>
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-400 border border-purple-200/80 dark:border-purple-800/50">
               <Users className="w-3 h-3" />
-              Staff Access
+              Client Accounts
             </span>
           </div>
         </div>
 
         {/* 3-Column Customer Metrics Row */}
-        <div className="grid grid-cols-3 gap-2 sm:gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 sm:gap-3">
           {/* Total Customers */}
           <div className="bg-white dark:bg-slate-900/90 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-2.5 sm:p-3.5 flex items-center gap-2.5">
             <div className="p-2 rounded-xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200/60 dark:border-blue-800/60 text-blue-600 dark:text-blue-400 shrink-0">
@@ -545,7 +516,7 @@ export function DashboardClient({ stats }: DashboardClientProps) {
             </div>
             <div className="min-w-0">
               <span className="text-[10px] sm:text-xs font-semibold text-rose-700 dark:text-rose-400 block truncate">
-                Due
+                Due / Overdue
               </span>
               <div className="text-base sm:text-xl font-black text-rose-700 dark:text-rose-400 leading-tight">
                 {dueCustomers.toLocaleString()}
@@ -555,15 +526,15 @@ export function DashboardClient({ stats }: DashboardClientProps) {
         </div>
 
         {/* 3 Action Buttons Row */}
-        <div className="grid grid-cols-3 gap-2 sm:gap-3">
-          {/* Add CCTV */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 sm:gap-3">
+          {/* Add Customer */}
           <button
             type="button"
             onClick={() => setCreateCustomerOpen(true)}
             className="py-2.5 px-2 sm:px-3 rounded-xl border border-purple-200 dark:border-purple-800/80 bg-purple-50/60 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 font-bold text-xs hover:bg-purple-100/80 dark:hover:bg-purple-900/50 transition-all flex items-center justify-center gap-1.5 active:scale-[0.98] shadow-xs truncate"
           >
-            <Video className="w-3.5 h-3.5 shrink-0" />
-            <span className="truncate">Add CCTV</span>
+            <UserPlus className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">Add Customer</span>
           </button>
 
           {/* View Customers */}
@@ -581,34 +552,35 @@ export function DashboardClient({ stats }: DashboardClientProps) {
             className="py-2.5 px-2 sm:px-3 rounded-xl border border-emerald-200 dark:border-emerald-800/80 bg-emerald-50/60 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 font-bold text-xs hover:bg-emerald-100/80 dark:hover:bg-emerald-900/50 transition-all flex items-center justify-center gap-1.5 active:scale-[0.98] shadow-xs truncate"
           >
             <Receipt className="w-3.5 h-3.5 shrink-0" />
-            <span className="truncate">Collect Payment</span>
+            <span className="truncate">Billing</span>
           </Link>
         </div>
       </section>
 
       {/* ========================================================================= */}
-      {/* SECTION 5: RECENTLY REGISTERED DEVICES & REAL-TIME ACTIVITY               */}
+      {/* SECTION 5: RECENTLY REGISTERED DEVICES                                    */}
       {/* ========================================================================= */}
-      <section className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden">
-        <div className="flex items-center justify-between px-4 sm:px-6 pt-4 sm:pt-5 pb-3 sm:pb-4 border-b border-slate-100 dark:border-slate-800">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
+      <section className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 space-y-3.5 shadow-sm">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-2">
+            <div className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
               <Boxes className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-sm font-extrabold text-slate-800 dark:text-slate-100 tracking-tight">
+              <h2 className="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-slate-100">
                 Recently Registered Devices
               </h2>
-              <p className="text-[11px] text-slate-400 mt-0.5">
-                Latest hardware added to the infrastructure
+              <p className="text-[11px] text-slate-400">
+                Latest hardware added to your network
               </p>
             </div>
           </div>
           <Link
             href="/devices"
-            className="inline-flex items-center gap-1 text-xs font-bold text-sky-600 dark:text-sky-400 hover:underline shrink-0"
+            className="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 transition-all shrink-0"
           >
-            See All <ArrowRight className="w-3.5 h-3.5" />
+            <span>See All</span>
+            <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
 
@@ -619,94 +591,78 @@ export function DashboardClient({ stats }: DashboardClientProps) {
             <p className="text-xs mt-1">Use the Quick Add buttons above to register your first device.</p>
           </div>
         ) : (
-          <>
-            {/* Desktop Table View */}
-            <div className="hidden md:block overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="text-slate-400 font-bold uppercase tracking-wider text-[11px] border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20">
-                    <th className="px-6 py-3">SL</th>
-                    <th className="px-4 py-3">Device</th>
-                    <th className="px-4 py-3">Type</th>
-                    <th className="px-4 py-3">IP Address</th>
-                    <th className="px-4 py-3">Status</th>
-                    <th className="px-4 py-3">Registered</th>
-                    <th className="px-4 py-3 text-right">View</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
-                  {stats.recentDevices.map((d) => {
-                    const Icon = getDeviceIcon(d.deviceType);
-                    return (
-                      <tr key={d._id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/30 transition-colors">
-                        <td className="px-6 py-3.5 font-mono font-bold text-sky-600 dark:text-sky-400 whitespace-nowrap">
-                          <Link href={`/devices/${d.deviceType}/${d._id}`} className="hover:underline">#{d.sl}</Link>
-                        </td>
-                        <td className="px-4 py-3.5">
-                          <div className="flex items-center gap-2.5">
-                            <div className="p-1.5 rounded-lg bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400 border border-sky-100 dark:border-sky-800 shrink-0">
-                              <Icon className="w-3.5 h-3.5" />
-                            </div>
-                            <div>
-                              <Link href={`/devices/${d.deviceType}/${d._id}`} className="font-bold text-slate-900 dark:text-slate-100 hover:text-sky-600 dark:hover:text-sky-400 block">
-                                {d.deviceName}
-                              </Link>
-                              <span className="text-[11px] text-slate-400">{d.brand} · {d.model}</span>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3.5 capitalize text-slate-500 dark:text-slate-400 text-xs">{d.deviceType}</td>
-                        <td className="px-4 py-3.5">
-                          {d.ipAddress
-                            ? <span className="font-mono bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-slate-700 dark:text-slate-300">{d.ipAddress}</span>
-                            : <span className="text-slate-300 dark:text-slate-600">—</span>}
-                        </td>
-                        <td className="px-4 py-3.5 whitespace-nowrap"><DeviceStatusBadge status={d.status} size="sm" /></td>
-                        <td className="px-4 py-3.5 text-slate-400 whitespace-nowrap text-[11px]">{formatDateTime(d.createdAt)}</td>
-                        <td className="px-4 py-3.5 text-right">
-                          <Link href={`/devices/${d.deviceType}/${d._id}`} className="inline-flex items-center gap-1 text-sky-600 dark:text-sky-400 hover:underline font-semibold">
-                            Details <ExternalLink className="w-3 h-3" />
-                          </Link>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 sm:gap-3">
+            {stats.recentDevices.map((d) => {
+              const devType = d.deviceType?.toLowerCase();
+              let IconComponent: React.ComponentType<{ className?: string }> = Network;
+              let iconTheme = "bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400";
+              let typeLabel = d.deviceType;
 
-            {/* Mobile Cards View */}
-            <div className="md:hidden divide-y divide-slate-100 dark:divide-slate-800">
-              {stats.recentDevices.map((d) => {
-                const Icon = getDeviceIcon(d.deviceType);
-                return (
-                  <Link
-                    key={d._id}
-                    href={`/devices/${d.deviceType}/${d._id}`}
-                    className="flex items-center justify-between gap-3 px-3.5 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors"
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="p-2 rounded-xl bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400 border border-sky-100 dark:border-sky-800 shrink-0">
-                        <Icon className="w-4 h-4" />
-                      </div>
-                      <div className="min-w-0">
-                        <div className="font-bold text-slate-900 dark:text-slate-100 text-xs truncate">
+              if (devType === "antenna") {
+                IconComponent = AntennaIcon;
+                iconTheme = "bg-[#e0f2fe] dark:bg-sky-950/60 border-[#bae6fd] dark:border-sky-800/60 text-[#0284c7] dark:text-sky-400";
+                typeLabel = "Antenna";
+              } else if (devType === "access-point") {
+                IconComponent = AccessPointIcon;
+                iconTheme = "bg-[#f3e8ff] dark:bg-purple-950/60 border-[#e9d5ff] dark:border-purple-800/60 text-[#9333ea] dark:text-purple-400";
+                typeLabel = "Access Point";
+              } else if (devType === "router") {
+                IconComponent = CustomRouterIcon;
+                iconTheme = "bg-[#e0e7ff] dark:bg-indigo-950/60 border-[#c7d2fe] dark:border-indigo-800/60 text-[#4f46e5] dark:text-indigo-400";
+                typeLabel = "Router";
+              } else if (devType === "switch") {
+                IconComponent = SwitchIcon;
+                iconTheme = "bg-[#dcfce7] dark:bg-emerald-950/60 border-[#bbf7d0] dark:border-emerald-800/60 text-[#16a34a] dark:text-emerald-400";
+                typeLabel = "Switch";
+              } else if (devType === "server") {
+                IconComponent = ServerStackIcon;
+                iconTheme = "bg-blue-50 dark:bg-blue-950/60 border-blue-200/60 dark:border-blue-800/60 text-blue-600 dark:text-blue-400";
+                typeLabel = "Server";
+              }
+
+              return (
+                <Link
+                  key={d._id}
+                  href={`/devices/${d.deviceType}/${d._id}`}
+                  className="group flex items-center justify-between p-3 sm:p-3.5 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 shadow-[0_1px_2px_rgba(0,0,0,0.03)] hover:shadow-md transition-all active:scale-[0.99] text-left gap-3"
+                >
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className={`p-2.5 rounded-xl border shrink-0 group-hover:scale-105 transition-transform ${iconTheme}`}>
+                      <IconComponent className="w-4 md:w-5 h-4 md:h-5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-mono text-xs font-bold text-sky-600 dark:text-sky-400">
+                          #{d.sl}
+                        </span>
+                        <span className="font-bold text-xs sm:text-sm text-slate-900 dark:text-slate-100 truncate">
                           {d.deviceName}
-                        </div>
-                        <div className="text-[10px] text-slate-400 truncate">
-                          {d.brand} · {d.model} {d.ipAddress ? `· ${d.ipAddress}` : ""}
-                        </div>
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-slate-400 truncate mt-0.5">
+                        <span className="font-medium text-slate-600 dark:text-slate-300">{typeLabel}</span>
+                        {" · "}
+                        <span>{d.brand} {d.model}</span>
+                        {d.ipAddress && (
+                          <>
+                            {" · "}
+                            <span className="font-mono">{d.ipAddress}</span>
+                          </>
+                        )}
                       </div>
                     </div>
-                    <div className="shrink-0 text-right space-y-0.5">
-                      <DeviceStatusBadge status={d.status} size="sm" />
-                      <div className="text-[10px] text-slate-400 font-mono">#{d.sl}</div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <DeviceStatusBadge status={d.status} size="sm" />
+                    <div className="w-7 h-7 rounded-full border border-slate-200/80 dark:border-slate-700/80 flex items-center justify-center text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200 group-hover:border-slate-400 transition-colors shrink-0">
+                      <ChevronRight className="w-4 h-4" />
                     </div>
-                  </Link>
-                );
-              })}
-            </div>
-          </>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
         )}
       </section>
 

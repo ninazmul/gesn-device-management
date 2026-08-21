@@ -156,10 +156,6 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   });
 
   const totalDevices = devFacet.totalCount?.[0]?.total || 0;
-  const totalServers = typeCountsMap["server"] || 0;
-  const serverLocationsCount = devFacet.serverLocations?.[0]?.total || totalServers;
-  const mikrotikRoutersCount =
-    devFacet.mikrotikCount?.[0]?.total ?? (typeCountsMap["router"] || 0);
 
   // Build per-type status lookup: { "antenna": { "Active": 5, "Offline": 1, ... }, ... }
   const typeStatusMap: Record<string, Record<string, number>> = {};
@@ -171,6 +167,11 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       typeStatusMap[t][item._id.status] = item.count;
     }
   );
+
+  const totalServers = typeCountsMap["server"] || 0;
+  const activeServers = typeStatusMap["server"]?.["Active"] || 0;
+  const serverLocationsCount = devFacet.serverLocations?.[0]?.total || totalServers;
+  const routersCount = typeCountsMap["router"] || 0;
 
   const knownSlugs = new Set<string>();
   const byType: Array<{
@@ -249,8 +250,9 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     recentDevices: JSON.parse(JSON.stringify(devFacet.recent || [])),
     serverStats: {
       totalServers,
+      activeServers,
       locations: serverLocationsCount,
-      mikrotikRouters: mikrotikRoutersCount,
+      routersCount,
     },
     customerStats: {
       totalCustomers,
