@@ -326,6 +326,217 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
             </span>
           </div>
         </div>
+
+        {/* SECTION FOR SWITCH: Port Capacity & Downlink Devices */}
+        {device.deviceType === "switch" && (
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-6 md:col-span-2">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2 text-slate-900 dark:text-slate-100 font-bold text-base">
+                <Network className="w-5 h-5 text-sky-500" />
+                <h2>Switch Port Allocation & Downlink Topology</h2>
+              </div>
+              <span className="text-xs font-bold px-3 py-1 rounded-full bg-sky-50 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800">
+                {device.totalPorts || 0} Total Physical Ports
+              </span>
+            </div>
+
+            {/* Metric Tiles */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+                <span className="text-xs font-semibold text-slate-400 block">Total Ports</span>
+                <span className="text-2xl font-extrabold text-slate-900 dark:text-slate-100 mt-1 block">
+                  {device.totalPorts || 0}
+                </span>
+                <span className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 block">Hardware port capacity</span>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+                <span className="text-xs font-semibold text-slate-400 block">Active / Connected</span>
+                <span className="text-2xl font-extrabold text-sky-600 dark:text-sky-400 mt-1 block">
+                  {device.activePortsCount || 0}
+                </span>
+                <span className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 block">Downlink devices plugged</span>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+                <span className="text-xs font-semibold text-slate-400 block">Available Ports</span>
+                <span
+                  className={`text-2xl font-extrabold mt-1 block ${
+                    (device.availablePorts || 0) > 0
+                      ? "text-emerald-600 dark:text-emerald-400"
+                      : "text-rose-600 dark:text-rose-400"
+                  }`}
+                >
+                  {device.availablePorts ?? 0}
+                </span>
+                <span className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 block">
+                  {(device.availablePorts || 0) > 0 ? "Free for uplink assignment" : "Switch capacity fully utilized"}
+                </span>
+              </div>
+            </div>
+
+            {/* Port Utilization Gauge */}
+            <div className="space-y-2 p-4 rounded-2xl bg-slate-50/70 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-800">
+              <div className="flex items-center justify-between text-xs font-semibold">
+                <span className="text-slate-600 dark:text-slate-300">Port Capacity Utilization</span>
+                <span className="text-slate-900 dark:text-slate-100 font-bold">
+                  {device.totalPorts
+                    ? Math.round(((device.activePortsCount || 0) / device.totalPorts) * 100)
+                    : 0}
+                  % Used
+                </span>
+              </div>
+              <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-3 overflow-hidden flex">
+                <div
+                  className={`h-full transition-all rounded-full ${
+                    (device.activePortsCount || 0) >= (device.totalPorts || 0)
+                      ? "bg-rose-500"
+                      : (device.activePortsCount || 0) / (device.totalPorts || 1) > 0.75
+                      ? "bg-amber-500"
+                      : "bg-emerald-500"
+                  }`}
+                  style={{
+                    width: `${Math.min(
+                      100,
+                      (device.totalPorts || 0) > 0
+                        ? ((device.activePortsCount || 0) / (device.totalPorts || 1)) * 100
+                        : 0
+                    )}%`,
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Connected Downlink Devices List */}
+            <div className="space-y-3">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                Connected Downlink Devices ({device.connectedDevices?.length || 0})
+              </h3>
+
+              {device.connectedDevices && device.connectedDevices.length > 0 ? (
+                <div className="overflow-x-auto rounded-2xl border border-slate-200/80 dark:border-slate-800">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200/80 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-semibold">
+                      <tr>
+                        <th className="py-3 px-4">SL #</th>
+                        <th className="py-3 px-4">Device Name</th>
+                        <th className="py-3 px-4">Type</th>
+                        <th className="py-3 px-4">Brand & Model</th>
+                        <th className="py-3 px-4">IP Address</th>
+                        <th className="py-3 px-4">Status</th>
+                        <th className="py-3 px-4 text-right">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                      {device.connectedDevices.map((downlink) => (
+                        <tr
+                          key={downlink._id}
+                          className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors"
+                        >
+                          <td className="py-3 px-4 font-mono font-bold text-sky-600 dark:text-sky-400">
+                            #{downlink.sl}
+                          </td>
+                          <td className="py-3 px-4 font-bold text-slate-900 dark:text-slate-100">
+                            {downlink.deviceName}
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className="capitalize font-semibold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                              {downlink.deviceType}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-slate-600 dark:text-slate-400">
+                            {downlink.brand} • {downlink.model}
+                          </td>
+                          <td className="py-3 px-4 font-mono text-slate-700 dark:text-slate-300">
+                            {downlink.ipAddress || "—"}
+                          </td>
+                          <td className="py-3 px-4">
+                            <DeviceStatusBadge status={downlink.status} size="sm" />
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            <Link
+                              href={`/devices/${downlink.deviceType}/${downlink._id}`}
+                              className="inline-flex items-center gap-1 font-semibold text-sky-600 dark:text-sky-400 hover:underline"
+                            >
+                              <span>View</span>
+                              <ExternalLink className="w-3 h-3" />
+                            </Link>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="p-8 text-center rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-dashed border-slate-200 dark:border-slate-800 space-y-2">
+                  <Network className="w-8 h-8 mx-auto text-slate-300 dark:text-slate-600" />
+                  <p className="text-xs font-semibold text-slate-600 dark:text-slate-400">
+                    No downlink devices currently connected
+                  </p>
+                  <p className="text-[11px] text-slate-400 dark:text-slate-500 max-w-sm mx-auto">
+                    When Antennas, Access Points, or Routers select this switch as their UpLink, they will appear here automatically.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* SECTION FOR NON-SWITCH: UpLink Switch Infrastructure */}
+        {device.deviceType !== "switch" && device.uplinkSwitch && (
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4 md:col-span-2">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2 text-slate-900 dark:text-slate-100 font-bold text-base">
+                <Network className="w-5 h-5 text-indigo-500" />
+                <h2>UpLink Infrastructure Connection</h2>
+              </div>
+              <span className="text-xs font-semibold text-slate-400">Upstream Parent Switch</span>
+            </div>
+
+            {typeof device.uplinkSwitch === "object" && device.uplinkSwitch ? (
+              <div className="p-4 rounded-2xl bg-indigo-50/30 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-start gap-3.5">
+                  <div className="p-3 rounded-xl bg-indigo-100 dark:bg-indigo-900/60 text-indigo-600 dark:text-indigo-400 shrink-0">
+                    <Network className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-mono text-xs font-bold text-sky-600 dark:text-sky-400">
+                        #{(device.uplinkSwitch as IDevice).sl}
+                      </span>
+                      <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                        {(device.uplinkSwitch as IDevice).deviceName}
+                      </h3>
+                      <DeviceStatusBadge
+                        status={(device.uplinkSwitch as IDevice).status}
+                        size="sm"
+                      />
+                    </div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                      {(device.uplinkSwitch as IDevice).brand} • {(device.uplinkSwitch as IDevice).model}
+                      {(device.uplinkSwitch as IDevice).ipAddress &&
+                        ` • IP: ${(device.uplinkSwitch as IDevice).ipAddress}`}
+                      {(device.uplinkSwitch as IDevice).totalPorts &&
+                        ` • ${(device.uplinkSwitch as IDevice).totalPorts} Port Switch`}
+                    </p>
+                  </div>
+                </div>
+
+                <Link
+                  href={`/devices/switch/${(device.uplinkSwitch as IDevice)._id}`}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold transition-colors shrink-0 self-start sm:self-center shadow-sm"
+                >
+                  <span>View Switch Details</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+            ) : (
+              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 text-xs text-slate-500">
+                Connected to Switch ID: {String(device.uplinkSwitch)}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Status Update Dialog */}

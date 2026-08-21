@@ -115,9 +115,21 @@ export function DeviceMobileCards({
                   >
                     {device.deviceName}
                   </Link>
-                  <p className="text-xs text-slate-400 font-medium">
-                    {device.brand} • <span className="capitalize">{device.deviceType}</span>
-                  </p>
+                  <div className="flex items-center gap-1.5 flex-wrap text-xs text-slate-400 font-medium">
+                    <span>
+                      {device.brand} • <span className="capitalize">{device.deviceType}</span>
+                    </span>
+                    {device.deviceType === "switch" && device.totalPorts !== undefined && (
+                      <span className="inline-flex items-center px-1.5 py-0.2 rounded bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 font-semibold text-[10px]">
+                        {device.activePortsCount || 0}/{device.totalPorts} Ports
+                      </span>
+                    )}
+                    {device.deviceType !== "switch" && device.uplinkSwitch && typeof device.uplinkSwitch === "object" && (
+                      <span className="inline-flex items-center px-1.5 py-0.2 rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-medium text-[10px]">
+                        UpLink: #{(device.uplinkSwitch as IDevice).sl}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
 

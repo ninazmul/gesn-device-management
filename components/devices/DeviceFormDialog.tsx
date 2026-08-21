@@ -18,12 +18,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Loader2, Plus } from "lucide-react";
+import { Loader2, Plus, Network, X } from "lucide-react";
 import { toast } from "react-hot-toast";
-import { createDevice, updateDevice } from "@/lib/actions/device.actions";
+import { createDevice, updateDevice, getAvailableSwitches } from "@/lib/actions/device.actions";
 import { getBrands, getModels, getDeviceTypes } from "@/lib/actions/catalog.actions";
 import { PRIMARY_DEVICE_TYPES, DEVICE_STATUSES } from "@/lib/constants";
-import type { DeviceStatus, IDevice, IDeviceType, IBrand, IModel } from "@/types";
+import type { DeviceStatus, IDevice, IDeviceType, IBrand, IModel, ISwitchOption } from "@/types";
 
 interface DeviceFormDialogProps {
   open: boolean;
@@ -32,6 +32,8 @@ interface DeviceFormDialogProps {
   deviceToEdit?: IDevice | null;
   onSuccess?: () => void;
 }
+
+const SWITCH_PORT_PRESETS = [4, 8, 16, 24, 48, 52];
 
 export function DeviceFormDialog({
   open,
@@ -49,6 +51,16 @@ export function DeviceFormDialog({
   const [brand, setBrand] = useState(deviceToEdit?.brand || "");
   const [model, setModel] = useState(deviceToEdit?.model || "");
   const [deviceName, setDeviceName] = useState(deviceToEdit?.deviceName || "");
+  const [totalPorts, setTotalPorts] = useState<string>(
+    deviceToEdit?.totalPorts !== undefined ? String(deviceToEdit.totalPorts) : "8"
+  );
+  const [uplinkSwitch, setUplinkSwitch] = useState<string>(
+    typeof deviceToEdit?.uplinkSwitch === "object" && deviceToEdit.uplinkSwitch
+      ? (deviceToEdit.uplinkSwitch as IDevice)._id
+      : typeof deviceToEdit?.uplinkSwitch === "string"
+      ? deviceToEdit.uplinkSwitch
+      : ""
+  );
   const [description, setDescription] = useState(deviceToEdit?.description || "");
   const [onlineLink, setOnlineLink] = useState(deviceToEdit?.onlineLink || "");
   const [macAddress, setMacAddress] = useState(deviceToEdit?.macAddress || "");
@@ -68,12 +80,14 @@ export function DeviceFormDialog({
     (deviceToEdit?.status as DeviceStatus) || "Active"
   );
 
-  // Catalog Options
+  // Catalog & Switch Options
   const [availableTypes, setAvailableTypes] = useState<IDeviceType[]>([]);
   const [availableBrands, setAvailableBrands] = useState<IBrand[]>([]);
   const [availableModels, setAvailableModels] = useState<IModel[]>([]);
+  const [availableSwitches, setAvailableSwitches] = useState<ISwitchOption[]>([]);
   const [loadingBrands, setLoadingBrands] = useState(false);
   const [loadingModels, setLoadingModels] = useState(false);
+  const [loadingSwitches, setLoadingSwitches] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   // Sync state when editing device changes
@@ -83,6 +97,16 @@ export function DeviceFormDialog({
       setBrand(deviceToEdit.brand);
       setModel(deviceToEdit.model);
       setDeviceName(deviceToEdit.deviceName || deviceToEdit.model || "");
+      setTotalPorts(
+        deviceToEdit.totalPorts !== undefined ? String(deviceToEdit.totalPorts) : "8"
+      );
+      setUplinkSwitch(
+        typeof deviceToEdit.uplinkSwitch === "object" && deviceToEdit.uplinkSwitch
+          ? (deviceToEdit.uplinkSwitch as IDevice)._id
+          : typeof deviceToEdit.uplinkSwitch === "string"
+          ? deviceToEdit.uplinkSwitch
+          : ""
+      );
       setDescription(deviceToEdit.description || "");
       setOnlineLink(deviceToEdit.onlineLink || "");
       setMacAddress(deviceToEdit.macAddress || "");
@@ -104,6 +128,8 @@ export function DeviceFormDialog({
       setBrand("");
       setModel("");
       setDeviceName("");
+      setTotalPorts(defaultDeviceType === "switch" ? "8" : "");
+      setUplinkSwitch("");
       setDescription("");
       setOnlineLink("");
       setMacAddress("");
@@ -115,14 +141,13 @@ export function DeviceFormDialog({
     }
   }, [deviceToEdit, defaultDeviceType, open]);
 
-  // Load Device Types on open
+  // Load Device Types and Available Switches on open
   useEffect(() => {
     if (open) {
       getDeviceTypes(true).then((types) => {
         if (types && types.length > 0) {
           setAvailableTypes(types);
         } else {
-          // fallback to primary types
           setAvailableTypes(
             PRIMARY_DEVICE_TYPES.map((p) => ({
               _id: p.slug,
@@ -134,6 +159,13 @@ export function DeviceFormDialog({
           );
         }
       });
+
+      setLoadingSwitches(true);
+      getAvailableSwitches()
+        .then((switches) => {
+          setAvailableSwitches(switches);
+        })
+        .finally(() => setLoadingSwitches(false));
     }
   }, [open]);
 
@@ -177,6 +209,10 @@ export function DeviceFormDialog({
       toast.error("Please enter a device name");
       return;
     }
+    if (deviceType === "switch" && (!totalPorts || isNaN(Number(totalPorts)) || Number(totalPorts) < 1)) {
+      toast.error("Please enter valid total ports for the switch");
+      return;
+    }
 
     try {
       setSubmitting(true);
@@ -185,6 +221,8 @@ export function DeviceFormDialog({
         brand,
         model: model.trim(),
         deviceName: deviceName.trim(),
+        totalPorts: deviceType === "switch" && totalPorts ? Number(totalPorts) : undefined,
+        uplinkSwitch: deviceType !== "switch" && uplinkSwitch ? uplinkSwitch : null,
         description,
         onlineLink,
         macAddress,
@@ -218,6 +256,8 @@ export function DeviceFormDialog({
     const found = availableTypes.find((t) => t.slug === slug);
     return found ? found.name : slug;
   };
+
+  const selectedSwitchData = availableSwitches.find((s) => s._id === uplinkSwitch);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -358,6 +398,196 @@ export function DeviceFormDialog({
               </div>
             </div>
           </div>
+
+          {/* Switch Port Capacity Configuration (When Switch) */}
+          {deviceType === "switch" && (
+            <div className="space-y-3 p-4 rounded-2xl bg-sky-50/50 dark:bg-sky-950/20 border border-sky-100 dark:border-sky-900/40">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Network className="w-4 h-4 text-sky-600 dark:text-sky-400" />
+                  <Label className="text-xs font-bold uppercase tracking-wider text-sky-900 dark:text-sky-300">
+                    Switch Port Capacity <span className="text-rose-500">*</span>
+                  </Label>
+                </div>
+                <span className="text-[11px] text-sky-600 dark:text-sky-400 font-medium">
+                  Physical Ethernet / SFP Ports
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 items-center">
+                <div className="space-y-1.5">
+                  <Input
+                    type="number"
+                    min="1"
+                    max="128"
+                    placeholder="e.g. 8, 16, 24, 48"
+                    value={totalPorts}
+                    onChange={(e) => setTotalPorts(e.target.value)}
+                    className="rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm font-semibold"
+                  />
+                </div>
+
+                {/* Quick Preset Buttons */}
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {SWITCH_PORT_PRESETS.map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => setTotalPorts(String(preset))}
+                      className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${
+                        totalPorts === String(preset)
+                          ? "bg-sky-600 text-white shadow-sm"
+                          : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-sky-400"
+                      }`}
+                    >
+                      {preset}P
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* UpLink Switch Infrastructure Selection (When Non-Switch) */}
+          {deviceType !== "switch" && (
+            <div className="space-y-3 p-4 rounded-2xl bg-indigo-50/40 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/40">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Network className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                  <Label className="text-xs font-bold uppercase tracking-wider text-indigo-900 dark:text-indigo-300">
+                    UpLink Switch Assignment
+                  </Label>
+                </div>
+                {uplinkSwitch && (
+                  <button
+                    type="button"
+                    onClick={() => setUplinkSwitch("")}
+                    className="text-xs text-rose-500 hover:text-rose-700 dark:hover:text-rose-400 font-medium inline-flex items-center gap-1"
+                  >
+                    <X className="w-3.5 h-3.5" /> Detach UpLink
+                  </button>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Select
+                  value={uplinkSwitch}
+                  onValueChange={setUplinkSwitch}
+                  disabled={loadingSwitches}
+                >
+                  <SelectTrigger className="rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950">
+                    <SelectValue
+                      placeholder={
+                        loadingSwitches
+                          ? "Loading available switches..."
+                          : availableSwitches.length === 0
+                          ? "No active switches found in inventory"
+                          : "Select UpLink Switch (Optional)"
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent className="dark:bg-slate-900 dark:border-slate-800 max-h-60">
+                    {availableSwitches.map((sw) => {
+                      const isFull = sw.availablePorts <= 0 && sw._id !== uplinkSwitch;
+                      return (
+                        <SelectItem
+                          key={sw._id}
+                          value={sw._id}
+                          disabled={isFull}
+                          className="py-2 cursor-pointer"
+                        >
+                          <div className="flex items-center justify-between w-full gap-4">
+                            <span className="font-semibold text-slate-900 dark:text-slate-100">
+                              #{sw.sl} — {sw.deviceName} ({sw.brand} {sw.model})
+                            </span>
+                            <span
+                              className={`text-xs px-2 py-0.5 rounded-full font-bold ml-auto ${
+                                sw.availablePorts > 0
+                                  ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300"
+                                  : "bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300"
+                              }`}
+                            >
+                              {sw.availablePorts > 0
+                                ? `${sw.availablePorts}/${sw.totalPorts} Free`
+                                : `Full (0 Free)`}
+                            </span>
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Live Selected Switch Details Card */}
+              {selectedSwitchData && (
+                <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-indigo-100/80 dark:border-indigo-900/60 shadow-sm space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400">
+                        <Network className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+                          <span>{selectedSwitchData.deviceName}</span>
+                          <span className="text-[10px] font-mono text-slate-400">
+                            #{selectedSwitchData.sl}
+                          </span>
+                        </h4>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                          {selectedSwitchData.brand} • {selectedSwitchData.model}
+                          {selectedSwitchData.ipAddress && ` • ${selectedSwitchData.ipAddress}`}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="text-right">
+                      <span
+                        className={`text-xs font-extrabold px-2.5 py-1 rounded-lg ${
+                          selectedSwitchData.availablePorts > 0
+                            ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800"
+                            : "bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400 border border-amber-200 dark:border-amber-800"
+                        }`}
+                      >
+                        {selectedSwitchData.availablePorts > 0
+                          ? `${selectedSwitchData.availablePorts} Port${selectedSwitchData.availablePorts > 1 ? "s" : ""} Available`
+                          : "Switch Capacity Full"}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Port Utilization Gauge */}
+                  <div className="space-y-1.5 pt-1 border-t border-slate-100 dark:border-slate-800">
+                    <div className="flex items-center justify-between text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                      <span>Port Allocation</span>
+                      <span className="font-bold text-slate-800 dark:text-slate-200">
+                        {selectedSwitchData.activePortsCount} Active / {selectedSwitchData.totalPorts} Total Ports ({selectedSwitchData.availablePorts} free)
+                      </span>
+                    </div>
+                    <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2 overflow-hidden flex">
+                      <div
+                        className={`h-full transition-all rounded-full ${
+                          selectedSwitchData.activePortsCount >= selectedSwitchData.totalPorts
+                            ? "bg-rose-500"
+                            : selectedSwitchData.activePortsCount / selectedSwitchData.totalPorts > 0.75
+                            ? "bg-amber-500"
+                            : "bg-emerald-500"
+                        }`}
+                        style={{
+                          width: `${Math.min(
+                            100,
+                            selectedSwitchData.totalPorts > 0
+                              ? (selectedSwitchData.activePortsCount / selectedSwitchData.totalPorts) * 100
+                              : 0
+                          )}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Group 2: Network Configuration */}
           <div className="space-y-3 pt-2 border-t border-slate-100 dark:border-slate-800">

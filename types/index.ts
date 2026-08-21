@@ -49,10 +49,15 @@ export interface IModel {
 export interface IDevice {
   _id: string;
   sl: string; // e.g. "000001"
-  deviceType: string; // slug e.g. "antenna", "server"
+  deviceType: string; // slug e.g. "antenna", "server", "switch"
   brand: string;
   model: string;
   deviceName: string;
+  totalPorts?: number;
+  uplinkSwitch?: IDevice | string | null;
+  activePortsCount?: number;
+  availablePorts?: number;
+  connectedDevices?: IDevice[];
   description?: string;
   onlineLink?: string;
   macAddress?: string;
@@ -65,6 +70,19 @@ export interface IDevice {
   status: DeviceStatus;
   createdAt: string | Date;
   updatedAt: string | Date;
+}
+
+export interface ISwitchOption {
+  _id: string;
+  sl: string;
+  deviceName: string;
+  brand: string;
+  model: string;
+  ipAddress?: string;
+  status: DeviceStatus;
+  totalPorts: number;
+  activePortsCount: number;
+  availablePorts: number;
 }
 
 export interface ICustomer {

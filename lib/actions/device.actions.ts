@@ -8,7 +8,7 @@ import DeviceModel from "@/lib/database/models/model.model";
 import { formatSL, isValidIPv4, isValidMAC } from "@/lib/utils";
 import { revalidatePath } from "next/cache";
 import type { FilterQuery } from "mongoose";
-import type { DeviceStatus, GetDevicesParams, IDevice } from "@/types";
+import type { DeviceStatus, GetDevicesParams, IDevice, ISwitchOption } from "@/types";
 
 // Helper to generate next sequential SL (e.g. "000001")
 async function getNextSL(): Promise<string> {
@@ -18,6 +18,67 @@ async function getNextSL(): Promise<string> {
     { new: true, upsert: true }
   );
   return formatSL(counter.seq, 6);
+}
+
+// ==========================================
+// GET AVAILABLE SWITCHES (WITH LIVE PORT UTILIZATION)
+// ==========================================
+export async function getAvailableSwitches(): Promise<ISwitchOption[]> {
+  await connectToDatabase();
+
+  const switches = await Device.find({
+    deviceType: "switch",
+    status: { $nin: ["Retired"] },
+  })
+    .select("sl deviceName brand model ipAddress status totalPorts")
+    .sort({ deviceName: 1 })
+    .lean();
+
+  if (switches.length === 0) return [];
+
+  const switchIds = switches.map((s) => s._id);
+
+  // Aggregate count of devices connected to each switch
+  const connections = await Device.aggregate([
+    {
+      $match: {
+        uplinkSwitch: { $in: switchIds },
+        status: { $nin: ["Retired"] },
+      },
+    },
+    {
+      $group: {
+        _id: "$uplinkSwitch",
+        count: { $sum: 1 },
+      },
+    },
+  ]);
+
+  const countMap = new Map<string, number>();
+  for (const c of connections) {
+    countMap.set(String(c._id), c.count);
+  }
+
+  const result: ISwitchOption[] = switches.map((s) => {
+    const totalPorts = s.totalPorts || 0;
+    const activePortsCount = countMap.get(String(s._id)) || 0;
+    const availablePorts = Math.max(0, totalPorts - activePortsCount);
+
+    return {
+      _id: String(s._id),
+      sl: s.sl,
+      deviceName: s.deviceName,
+      brand: s.brand,
+      model: s.model,
+      ipAddress: s.ipAddress,
+      status: s.status,
+      totalPorts,
+      activePortsCount,
+      availablePorts,
+    };
+  });
+
+  return JSON.parse(JSON.stringify(result));
 }
 
 // ==========================================
@@ -97,8 +158,9 @@ export async function getDevices(params?: GetDevicesParams) {
       break;
   }
 
-  const [devices, total] = await Promise.all([
+  const [rawDevices, total] = await Promise.all([
     Device.find(query)
+      .populate("uplinkSwitch", "sl deviceName brand model totalPorts ipAddress status")
       .sort(sortObj)
       .skip(skip)
       .limit(limit)
@@ -106,8 +168,47 @@ export async function getDevices(params?: GetDevicesParams) {
     Device.countDocuments(query),
   ]);
 
+  const devices = rawDevices as unknown as IDevice[];
+
+  // For switches in the returned list, calculate connected devices count
+  const switchIds = devices.filter((d) => d.deviceType === "switch").map((d) => d._id);
+  const switchCountMap = new Map<string, number>();
+  if (switchIds.length > 0) {
+    const counts = await Device.aggregate([
+      {
+        $match: {
+          uplinkSwitch: { $in: switchIds },
+          status: { $nin: ["Retired"] },
+        },
+      },
+      {
+        $group: {
+          _id: "$uplinkSwitch",
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+    for (const c of counts) {
+      switchCountMap.set(String(c._id), c.count);
+    }
+  }
+
+  const formattedDevices = devices.map((d) => {
+    if (d.deviceType === "switch") {
+      const totalPorts = d.totalPorts || 0;
+      const activePortsCount = switchCountMap.get(String(d._id)) || 0;
+      const availablePorts = Math.max(0, totalPorts - activePortsCount);
+      return {
+        ...d,
+        activePortsCount,
+        availablePorts,
+      };
+    }
+    return d;
+  });
+
   return {
-    devices: JSON.parse(JSON.stringify(devices)),
+    devices: JSON.parse(JSON.stringify(formattedDevices)),
     total,
     page,
     limit,
@@ -120,8 +221,32 @@ export async function getDevices(params?: GetDevicesParams) {
 // ==========================================
 export async function getDeviceById(id: string) {
   await connectToDatabase();
-  const device = await Device.findById(id).lean();
+  const device = (await Device.findById(id)
+    .populate("uplinkSwitch", "sl deviceName brand model totalPorts ipAddress status")
+    .lean()) as unknown as IDevice | null;
   if (!device) return null;
+
+  // If the device is a switch, fetch connected downlink devices and compute metrics
+  if (device.deviceType === "switch") {
+    const connectedDevices = (await Device.find({ uplinkSwitch: id })
+      .select("sl deviceName deviceType brand model ipAddress macAddress status")
+      .sort({ sl: 1 })
+      .lean()) as unknown as IDevice[];
+
+    const totalPorts = device.totalPorts || 0;
+    const activePortsCount = connectedDevices.filter((d) => d.status !== "Retired").length;
+    const availablePorts = Math.max(0, totalPorts - activePortsCount);
+
+    return JSON.parse(
+      JSON.stringify({
+        ...device,
+        connectedDevices,
+        activePortsCount,
+        availablePorts,
+      })
+    );
+  }
+
   return JSON.parse(JSON.stringify(device));
 }
 
@@ -133,6 +258,8 @@ export async function createDevice(data: {
   brand: string;
   model: string;
   deviceName?: string;
+  totalPorts?: number;
+  uplinkSwitch?: string | null;
   description?: string;
   onlineLink?: string;
   macAddress?: string;
@@ -164,6 +291,8 @@ export async function createDevice(data: {
     brand: data.brand.trim(),
     model: data.model.trim(),
     deviceName,
+    totalPorts: data.totalPorts !== undefined && !isNaN(Number(data.totalPorts)) ? Number(data.totalPorts) : undefined,
+    uplinkSwitch: data.uplinkSwitch ? data.uplinkSwitch : null,
     description: data.description?.trim() || "",
     onlineLink: data.onlineLink?.trim() || "",
     macAddress: data.macAddress?.trim().toUpperCase() || "",
@@ -179,6 +308,9 @@ export async function createDevice(data: {
   revalidatePath("/");
   revalidatePath("/devices");
   revalidatePath(`/devices/${data.deviceType.toLowerCase().trim()}`);
+  if (data.uplinkSwitch) {
+    revalidatePath(`/devices/switch/${data.uplinkSwitch}`);
+  }
 
   return JSON.parse(JSON.stringify(device));
 }
@@ -193,6 +325,8 @@ export async function updateDevice(
     brand?: string;
     model?: string;
     deviceName?: string;
+    totalPorts?: number;
+    uplinkSwitch?: string | null;
     description?: string;
     onlineLink?: string;
     macAddress?: string;
@@ -220,6 +354,12 @@ export async function updateDevice(
   if (data.brand) updatePayload.brand = data.brand.trim();
   if (data.model) updatePayload.model = data.model.trim();
   if (data.deviceName) updatePayload.deviceName = data.deviceName.trim();
+  if (data.totalPorts !== undefined) {
+    updatePayload.totalPorts = !isNaN(Number(data.totalPorts)) ? Number(data.totalPorts) : undefined;
+  }
+  if (data.uplinkSwitch !== undefined) {
+    updatePayload.uplinkSwitch = data.uplinkSwitch ? data.uplinkSwitch : null;
+  }
   if (data.deviceType) updatePayload.deviceType = data.deviceType.toLowerCase().trim();
   if (data.description !== undefined) updatePayload.description = data.description.trim();
   if (data.onlineLink !== undefined) updatePayload.onlineLink = data.onlineLink.trim();
@@ -240,6 +380,7 @@ export async function updateDevice(
   revalidatePath("/");
   revalidatePath("/devices");
   revalidatePath(`/devices/${device.deviceType}`);
+  revalidatePath(`/devices/${device.deviceType}/${device._id}`);
 
   return JSON.parse(JSON.stringify(device));
 }

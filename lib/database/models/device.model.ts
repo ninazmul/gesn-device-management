@@ -7,6 +7,8 @@ export interface IDeviceDoc {
   brand: string;
   model: string;
   deviceName: string;
+  totalPorts?: number;
+  uplinkSwitch?: Schema.Types.ObjectId | IDeviceDoc | null;
   description?: string;
   onlineLink?: string;
   macAddress?: string;
@@ -53,6 +55,16 @@ const DeviceSchema = new Schema(
       type: String,
       required: true,
       trim: true,
+      index: true,
+    },
+    totalPorts: {
+      type: Number,
+      default: undefined,
+    },
+    uplinkSwitch: {
+      type: Schema.Types.ObjectId,
+      ref: "Device",
+      default: null,
       index: true,
     },
     description: {
