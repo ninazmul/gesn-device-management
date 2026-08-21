@@ -72,6 +72,11 @@ const sidebarSections = [
         icon: Server,
       },
       {
+        title: "Switches",
+        url: "/devices/switch",
+        icon: Network,
+      },
+      {
         title: "Antennas",
         url: "/devices/antenna",
         icon: Radio,
@@ -85,11 +90,6 @@ const sidebarSections = [
         title: "Routers",
         url: "/devices/router",
         icon: RouterIcon,
-      },
-      {
-        title: "Switches",
-        url: "/devices/switch",
-        icon: Network,
       },
     ],
   },
