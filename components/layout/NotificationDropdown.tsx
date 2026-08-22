@@ -43,7 +43,7 @@ export function NotificationDropdown() {
 
   // Click outside to close
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
+    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
       if (
         dropdownRef.current &&
         !dropdownRef.current.contains(event.target as Node)
@@ -53,9 +53,11 @@ export function NotificationDropdown() {
     };
     if (open) {
       document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener("touchstart", handleClickOutside);
     }
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
     };
   }, [open]);
 
@@ -122,8 +124,17 @@ export function NotificationDropdown() {
       </Button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-[calc(100vw-2rem)] sm:w-96 max-w-[380px] rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-          {/* Header */}
+        <>
+          {/* Mobile Overlay Backdrop */}
+          <div
+            className="fixed inset-0 z-40 bg-black/20 backdrop-blur-[2px] sm:hidden"
+            onClick={() => setOpen(false)}
+            aria-hidden="true"
+          />
+
+          {/* Popover Card */}
+          <div className="fixed left-3 right-3 top-16 sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-96 sm:max-w-[380px] rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 gap-2">
             <div className="flex items-center gap-2 min-w-0">
               <span className="text-sm font-bold text-slate-900 dark:text-slate-100 truncate">
@@ -238,7 +249,8 @@ export function NotificationDropdown() {
             </Link>
           </div>
         </div>
-      )}
+      </>
+    )}
     </div>
   );
 }
