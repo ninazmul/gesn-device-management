@@ -109,7 +109,7 @@ export function NotificationDropdown() {
           if (!open) fetchNotifications();
         }}
         aria-label="Notifications"
-        className={`relative h-9 w-9 rounded-xl border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/60 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 transition-all ${
+        className={`relative h-9 w-9 rounded-xl border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/60 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all ${
           open ? "ring-2 ring-sky-500/20 bg-sky-50 dark:bg-slate-800" : ""
         }`}
       >
