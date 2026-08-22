@@ -122,15 +122,15 @@ export function NotificationDropdown() {
       </Button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        <div className="absolute right-0 mt-2 w-[calc(100vw-2rem)] sm:w-96 max-w-[380px] rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-bold text-slate-900 dark:text-slate-100">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="text-sm font-bold text-slate-900 dark:text-slate-100 truncate">
                 Staff Activity Alerts
               </span>
               {unreadCount > 0 && (
-                <span className="bg-sky-100 dark:bg-sky-950 text-sky-700 dark:text-sky-300 text-[11px] font-bold px-2 py-0.5 rounded-full">
+                <span className="bg-sky-100 dark:bg-sky-950 text-sky-700 dark:text-sky-300 text-[11px] font-bold px-2 py-0.5 rounded-full shrink-0">
                   {unreadCount} new
                 </span>
               )}
@@ -142,7 +142,7 @@ export function NotificationDropdown() {
                 size="sm"
                 onClick={handleMarkAllRead}
                 disabled={loading}
-                className="h-7 text-xs font-semibold text-slate-500 hover:text-sky-600 dark:hover:text-sky-400 p-1"
+                className="h-7 text-xs font-semibold text-slate-500 hover:text-sky-600 dark:hover:text-sky-400 p-1 shrink-0"
               >
                 <CheckCheck className="w-3.5 h-3.5 mr-1" /> Mark all read
               </Button>
@@ -150,7 +150,7 @@ export function NotificationDropdown() {
           </div>
 
           {/* Notification List */}
-          <div className="max-h-[380px] overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/60">
+          <div className="max-h-[min(65vh,420px)] overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/60 overscroll-contain">
             {notifications.length === 0 ? (
               <div className="py-12 px-4 text-center">
                 <div className="w-10 h-10 rounded-2xl bg-sky-50 dark:bg-sky-950/50 flex items-center justify-center mx-auto text-sky-500 mb-2">
@@ -190,26 +190,26 @@ export function NotificationDropdown() {
                           <span className="text-[11px] font-bold text-slate-800 dark:text-slate-200 truncate">
                             {item.title}
                           </span>
-                          <span className="text-[10px] text-slate-400 flex items-center gap-1 shrink-0">
+                          <span className="text-[10px] text-slate-400 flex items-center gap-1 shrink-0 whitespace-nowrap">
                             <Clock className="w-2.5 h-2.5" />
                             {formatDate(item.createdAt)}
                           </span>
                         </div>
 
-                        <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-2 leading-relaxed">
+                        <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-2 leading-relaxed break-words">
                           {item.message}
                         </p>
 
-                        <div className="mt-2 flex items-center justify-between gap-2">
-                          <span className="inline-flex items-center gap-1 text-[10px] font-medium text-slate-400 dark:text-slate-500">
-                            By <span className="font-semibold text-slate-600 dark:text-slate-300">{item.actorEmail}</span> ({item.actorRole})
+                        <div className="mt-2 flex items-center justify-between gap-2 flex-wrap">
+                          <span className="inline-flex items-center gap-1 text-[10px] font-medium text-slate-400 dark:text-slate-500 min-w-0">
+                            By <span className="font-semibold text-slate-600 dark:text-slate-300 truncate max-w-[130px] sm:max-w-[170px] inline-block align-bottom">{item.actorEmail}</span> ({item.actorRole})
                           </span>
 
                           {item.link && (
                             <Link
                               href={item.link}
                               onClick={() => setOpen(false)}
-                              className="text-[10px] font-semibold text-sky-600 dark:text-sky-400 hover:underline flex items-center gap-0.5"
+                              className="text-[10px] font-semibold text-sky-600 dark:text-sky-400 hover:underline flex items-center gap-0.5 shrink-0"
                             >
                               View <ExternalLink className="w-2.5 h-2.5" />
                             </Link>
