@@ -13,6 +13,7 @@ import { BillingStatusBadge } from "./BillingStatusBadge";
 import { PaymentUpdateDialog } from "./PaymentUpdateDialog";
 import { formatDate } from "@/lib/utils";
 import type { IBilling } from "@/types";
+import { usePermissions } from "@/components/providers/PermissionContext";
 
 interface BillingMobileCardsProps {
   billings: IBilling[];
@@ -30,6 +31,8 @@ export function BillingMobileCards({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { canWrite } = usePermissions();
+  const canWriteBilling = canWrite("billing");
 
   const [paymentBilling, setPaymentBilling] = useState<IBilling | null>(null);
 
@@ -104,15 +107,19 @@ export function BillingMobileCards({
               Due: <strong className="text-slate-700 dark:text-slate-300 font-medium">{formatDate(bill.dueDate)}</strong>
             </span>
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPaymentBilling(bill)}
-              className="rounded-xl h-8 text-xs font-semibold border-slate-200 dark:border-slate-800"
-            >
-              <DollarSign className="w-3.5 h-3.5 mr-1 text-emerald-600" />
-              Update Payment
-            </Button>
+            {canWriteBilling ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPaymentBilling(bill)}
+                className="rounded-xl h-8 text-xs font-semibold border-slate-200 dark:border-slate-800"
+              >
+                <DollarSign className="w-3.5 h-3.5 mr-1 text-emerald-600" />
+                Update Payment
+              </Button>
+            ) : (
+              <span className="text-xs text-slate-400 italic">View only</span>
+            )}
           </div>
         </div>
       ))}

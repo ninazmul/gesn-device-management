@@ -7,8 +7,10 @@ import Customer from "@/lib/database/models/customer.model";
 import Billing from "@/lib/database/models/billing.model";
 import { PRIMARY_DEVICE_TYPES } from "@/lib/constants";
 import type { DashboardStats } from "@/types";
+import { requirePermission } from "@/lib/auth-guard";
 
 export async function getDashboardStats(): Promise<DashboardStats> {
+  await requirePermission("dashboard", "read");
   await connectToDatabase();
 
   const now = new Date();

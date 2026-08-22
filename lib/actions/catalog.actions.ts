@@ -7,6 +7,8 @@ import DeviceModel from "@/lib/database/models/model.model";
 import Device from "@/lib/database/models/device.model";
 import { PRIMARY_DEVICE_TYPES } from "@/lib/constants";
 import { revalidatePath } from "next/cache";
+import { requirePermission, logActivityAndNotify } from "@/lib/auth-guard";
+import type { IDeviceType, IBrand, IModel } from "@/types";
 
 // ==========================================
 // SEED DEFAULT CATALOG
@@ -58,30 +60,39 @@ export async function seedDefaultCatalog() {
       { name: "UniFi U6 Pro", deviceType: "access-point", brand: "Ubiquiti" },
       { name: "UniFi U6 Lite", deviceType: "access-point", brand: "Ubiquiti" },
       { name: "cAP ac", deviceType: "access-point", brand: "MikroTik" },
+      { name: "hAP ac³", deviceType: "access-point", brand: "MikroTik" },
+      { name: "Aironet 2800", deviceType: "access-point", brand: "Cisco" },
       { name: "Catalyst 9115AX", deviceType: "access-point", brand: "Cisco" },
-      { name: "EAP650", deviceType: "access-point", brand: "TP-Link" },
+      { name: "EAP610", deviceType: "access-point", brand: "TP-Link" },
+      { name: "EAP225-Outdoor", deviceType: "access-point", brand: "TP-Link" },
 
       // Router
-      { name: "RB750Gr3 (hEX)", deviceType: "router", brand: "MikroTik" },
+      { name: "CCR1009-7G-1C-1S+", deviceType: "router", brand: "MikroTik" },
+      { name: "CCR1036-8G-2S+", deviceType: "router", brand: "MikroTik" },
       { name: "RB4011iGS+RM", deviceType: "router", brand: "MikroTik" },
-      { name: "CCR2004-16G-2S+", deviceType: "router", brand: "MikroTik" },
       { name: "EdgeRouter 4", deviceType: "router", brand: "Ubiquiti" },
-      { name: "ISR 4321", deviceType: "router", brand: "Cisco" },
+      { name: "EdgeRouter Infinity", deviceType: "router", brand: "Ubiquiti" },
       { name: "ISR 4331", deviceType: "router", brand: "Cisco" },
-      { name: "ER7206", deviceType: "router", brand: "TP-Link" },
+      { name: "ISR 4451", deviceType: "router", brand: "Cisco" },
+      { name: "ER7206 Omada", deviceType: "router", brand: "TP-Link" },
 
       // Switch
+      { name: "Catalyst 2960-X", deviceType: "switch", brand: "Cisco" },
+      { name: "Catalyst 3850", deviceType: "switch", brand: "Cisco" },
+      { name: "Catalyst 9200L", deviceType: "switch", brand: "Cisco" },
+      { name: "EdgeSwitch 24 Lite", deviceType: "switch", brand: "Ubiquiti" },
+      { name: "UniFi Switch Pro 24 PoE", deviceType: "switch", brand: "Ubiquiti" },
       { name: "CRS326-24G-2S+RM", deviceType: "switch", brand: "MikroTik" },
       { name: "CRS328-24P-4S+RM", deviceType: "switch", brand: "MikroTik" },
-      { name: "UniFi Switch Pro 24 PoE", deviceType: "switch", brand: "Ubiquiti" },
-      { name: "Catalyst 2960-X", deviceType: "switch", brand: "Cisco" },
-      { name: "Catalyst 9200L", deviceType: "switch", brand: "Cisco" },
-      { name: "TL-SG3428MP", deviceType: "switch", brand: "TP-Link" },
+      { name: "TL-SG3428", deviceType: "switch", brand: "TP-Link" },
+      { name: "PowerConnect 5524", deviceType: "switch", brand: "Dell" },
 
       // Server
-      { name: "PowerEdge R640", deviceType: "server", brand: "Dell" },
       { name: "PowerEdge R740", deviceType: "server", brand: "Dell" },
+      { name: "PowerEdge R640", deviceType: "server", brand: "Dell" },
+      { name: "PowerEdge R440", deviceType: "server", brand: "Dell" },
       { name: "ProLiant DL380 Gen10", deviceType: "server", brand: "HP" },
+      { name: "ProLiant DL360 Gen10", deviceType: "server", brand: "HP" },
       { name: "UCS C220 M5", deviceType: "server", brand: "Cisco" },
     ];
 
@@ -90,7 +101,6 @@ export async function seedDefaultCatalog() {
     }
   }
 
-  revalidatePath("/catalog");
   return { success: true };
 }
 
@@ -98,29 +108,40 @@ export async function seedDefaultCatalog() {
 // DEVICE TYPES
 // ==========================================
 export async function getDeviceTypes(onlyActive = false) {
+  await requirePermission("catalog", "read");
   await connectToDatabase();
   const query = onlyActive ? { isActive: true } : {};
   const types = await DeviceType.find(query).sort({ isProtected: -1, name: 1 }).lean();
   return JSON.parse(JSON.stringify(types));
 }
 
-export async function createDeviceType(data: { name: string; slug?: string; description?: string }) {
+export async function createDeviceType(data: { name: string; description?: string }) {
+  const actor = await requirePermission("catalog", "write");
   await connectToDatabase();
-  const slug = data.slug
-    ? data.slug.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-")
-    : data.name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-");
+  const name = data.name.trim();
+  const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 
   const existing = await DeviceType.findOne({ slug });
   if (existing) {
-    throw new Error(`Device type with identifier "${slug}" already exists.`);
+    throw new Error(`Device type with name "${name}" already exists.`);
   }
 
   const deviceType = await DeviceType.create({
-    name: data.name.trim(),
+    name,
     slug,
     description: data.description?.trim() || "",
     isProtected: false,
     isActive: true,
+  });
+
+  await logActivityAndNotify({
+    actor,
+    action: "CREATE_DEVICE_TYPE",
+    module: "catalog",
+    resourceId: slug,
+    resourceName: name,
+    details: `Added new device type: ${name} (slug: ${slug})`,
+    link: "/catalog",
   });
 
   revalidatePath("/catalog");
@@ -128,13 +149,27 @@ export async function createDeviceType(data: { name: string; slug?: string; desc
 }
 
 export async function updateDeviceType(id: string, data: { name?: string; description?: string; isActive?: boolean }) {
+  const actor = await requirePermission("catalog", "write");
   await connectToDatabase();
-  const deviceType = await DeviceType.findByIdAndUpdate(id, data, { new: true }).lean();
+  const deviceType = (await DeviceType.findByIdAndUpdate(id, data, { new: true }).lean()) as unknown as IDeviceType | null;
+  if (!deviceType) throw new Error("Device type not found");
+
+  await logActivityAndNotify({
+    actor,
+    action: "UPDATE_DEVICE_TYPE",
+    module: "catalog",
+    resourceId: deviceType.slug,
+    resourceName: deviceType.name,
+    details: `Updated device type: ${deviceType.name}`,
+    link: "/catalog",
+  });
+
   revalidatePath("/catalog");
   return JSON.parse(JSON.stringify(deviceType));
 }
 
 export async function deleteDeviceType(id: string) {
+  const actor = await requirePermission("catalog", "write");
   await connectToDatabase();
   const typeDoc = await DeviceType.findById(id);
   if (!typeDoc) throw new Error("Device type not found");
@@ -147,6 +182,17 @@ export async function deleteDeviceType(id: string) {
   }
 
   await DeviceType.findByIdAndDelete(id);
+
+  await logActivityAndNotify({
+    actor,
+    action: "DELETE_DEVICE_TYPE",
+    module: "catalog",
+    resourceId: typeDoc.slug,
+    resourceName: typeDoc.name,
+    details: `Deleted device type: ${typeDoc.name}`,
+    link: "/catalog",
+  });
+
   revalidatePath("/catalog");
   return { success: true };
 }
@@ -155,6 +201,7 @@ export async function deleteDeviceType(id: string) {
 // BRANDS
 // ==========================================
 export async function getBrands(deviceType?: string, onlyActive = false) {
+  await requirePermission("catalog", "read");
   await connectToDatabase();
   const query: Record<string, unknown> = {};
   if (onlyActive) query.isActive = true;
@@ -165,6 +212,7 @@ export async function getBrands(deviceType?: string, onlyActive = false) {
 }
 
 export async function createBrand(data: { name: string; deviceTypes: string[] }) {
+  const actor = await requirePermission("catalog", "write");
   await connectToDatabase();
   const name = data.name.trim();
 
@@ -184,18 +232,42 @@ export async function createBrand(data: { name: string; deviceTypes: string[] })
     isActive: true,
   });
 
+  await logActivityAndNotify({
+    actor,
+    action: "CREATE_BRAND",
+    module: "catalog",
+    resourceId: String(brand._id),
+    resourceName: name,
+    details: `Added new brand: ${name} (${data.deviceTypes.join(", ")})`,
+    link: "/catalog",
+  });
+
   revalidatePath("/catalog");
   return JSON.parse(JSON.stringify(brand));
 }
 
 export async function updateBrand(id: string, data: { name?: string; deviceTypes?: string[]; isActive?: boolean }) {
+  const actor = await requirePermission("catalog", "write");
   await connectToDatabase();
-  const brand = await Brand.findByIdAndUpdate(id, data, { new: true }).lean();
+  const brand = (await Brand.findByIdAndUpdate(id, data, { new: true }).lean()) as unknown as IBrand | null;
+  if (!brand) throw new Error("Brand not found");
+
+  await logActivityAndNotify({
+    actor,
+    action: "UPDATE_BRAND",
+    module: "catalog",
+    resourceId: String(brand._id),
+    resourceName: brand.name,
+    details: `Updated brand: ${brand.name}`,
+    link: "/catalog",
+  });
+
   revalidatePath("/catalog");
   return JSON.parse(JSON.stringify(brand));
 }
 
 export async function deleteBrand(id: string) {
+  const actor = await requirePermission("catalog", "write");
   await connectToDatabase();
   const brand = await Brand.findById(id);
   if (!brand) throw new Error("Brand not found");
@@ -209,6 +281,16 @@ export async function deleteBrand(id: string) {
   await DeviceModel.deleteMany({ brand: brand.name });
   await Brand.findByIdAndDelete(id);
 
+  await logActivityAndNotify({
+    actor,
+    action: "DELETE_BRAND",
+    module: "catalog",
+    resourceId: String(brand._id),
+    resourceName: brand.name,
+    details: `Deleted brand: ${brand.name}`,
+    link: "/catalog",
+  });
+
   revalidatePath("/catalog");
   return { success: true };
 }
@@ -217,6 +299,7 @@ export async function deleteBrand(id: string) {
 // MODELS
 // ==========================================
 export async function getModels(params?: { deviceType?: string; brand?: string; onlyActive?: boolean }) {
+  await requirePermission("catalog", "read");
   await connectToDatabase();
   const query: Record<string, unknown> = {};
   if (params?.onlyActive) query.isActive = true;
@@ -233,6 +316,7 @@ export async function createModel(data: {
   brand: string;
   specifications?: string;
 }) {
+  const actor = await requirePermission("catalog", "write");
   await connectToDatabase();
   const name = data.name.trim();
   const brand = data.brand.trim();
@@ -262,6 +346,16 @@ export async function createModel(data: {
     { $addToSet: { deviceTypes: deviceType } }
   );
 
+  await logActivityAndNotify({
+    actor,
+    action: "CREATE_MODEL",
+    module: "catalog",
+    resourceId: String(model._id),
+    resourceName: `${brand} ${name}`,
+    details: `Added new model: ${name} (${brand} - ${deviceType})`,
+    link: "/catalog",
+  });
+
   revalidatePath("/catalog");
   return JSON.parse(JSON.stringify(model));
 }
@@ -270,13 +364,27 @@ export async function updateModel(
   id: string,
   data: { name?: string; specifications?: string; isActive?: boolean }
 ) {
+  const actor = await requirePermission("catalog", "write");
   await connectToDatabase();
-  const model = await DeviceModel.findByIdAndUpdate(id, data, { new: true }).lean();
+  const model = (await DeviceModel.findByIdAndUpdate(id, data, { new: true }).lean()) as unknown as IModel | null;
+  if (!model) throw new Error("Model not found");
+
+  await logActivityAndNotify({
+    actor,
+    action: "UPDATE_MODEL",
+    module: "catalog",
+    resourceId: String(model._id),
+    resourceName: `${model.brand} ${model.name}`,
+    details: `Updated model specifications for: ${model.brand} ${model.name}`,
+    link: "/catalog",
+  });
+
   revalidatePath("/catalog");
   return JSON.parse(JSON.stringify(model));
 }
 
 export async function deleteModel(id: string) {
+  const actor = await requirePermission("catalog", "write");
   await connectToDatabase();
   const model = await DeviceModel.findById(id);
   if (!model) throw new Error("Model not found");
@@ -293,6 +401,17 @@ export async function deleteModel(id: string) {
   }
 
   await DeviceModel.findByIdAndDelete(id);
+
+  await logActivityAndNotify({
+    actor,
+    action: "DELETE_MODEL",
+    module: "catalog",
+    resourceId: String(model._id),
+    resourceName: `${model.brand} ${model.name}`,
+    details: `Deleted model: ${model.brand} ${model.name}`,
+    link: "/catalog",
+  });
+
   revalidatePath("/catalog");
   return { success: true };
 }

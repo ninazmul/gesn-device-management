@@ -120,10 +120,77 @@ export interface IBilling {
   updatedAt: string | Date;
 }
 
-export interface Admin {
+export type AdminRole =
+  | "super_admin"
+  | "admin"
+  | "editor"
+  | "moderator"
+  | "viewer"
+  | "custom";
+
+export type PermissionLevel = "none" | "read" | "write";
+
+export type AppModule =
+  | "dashboard"
+  | "devices"
+  | "customers"
+  | "billing"
+  | "catalog"
+  | "admins"
+  | "activity_logs"
+  | "settings";
+
+export type ModulePermissions = Record<AppModule, PermissionLevel>;
+
+export interface IAdminUser {
   _id: string;
   email: string;
-  createdAt: Date;
+  name?: string;
+  role: AdminRole;
+  permissions?: Partial<ModulePermissions>;
+  isActive: boolean;
+  createdAt: Date | string;
+  updatedAt?: Date | string;
+}
+
+export type Admin = IAdminUser;
+
+export interface IActivityLog {
+  _id: string;
+  actorEmail: string;
+  actorRole: AdminRole;
+  action: string; // "CREATE" | "UPDATE" | "DELETE" | "STATUS_CHANGE" | "GENERATE_BILLS" | etc.
+  module: AppModule | "system";
+  resourceId?: string;
+  resourceName?: string;
+  details: string;
+  metadata?: Record<string, unknown>;
+  ipAddress?: string;
+  createdAt: Date | string;
+}
+
+export interface INotification {
+  _id: string;
+  actorEmail: string;
+  actorRole: AdminRole;
+  action: string;
+  module: AppModule | "system";
+  title: string;
+  message: string;
+  link?: string;
+  readBy: string[]; // super admin emails who marked read
+  createdAt: Date | string;
+}
+
+export interface GetActivityLogsParams {
+  module?: string;
+  action?: string;
+  actorEmail?: string;
+  search?: string;
+  startDate?: string;
+  endDate?: string;
+  page?: number;
+  limit?: number;
 }
 
 export interface DashboardStats {

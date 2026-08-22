@@ -30,6 +30,7 @@ import { deleteDevice } from "@/lib/actions/device.actions";
 import { formatDate, formatDateTime } from "@/lib/utils";
 import { toast } from "react-hot-toast";
 import type { IDevice } from "@/types";
+import { usePermissions } from "@/components/providers/PermissionContext";
 
 function getDeviceIcon(type: string) {
   switch (type?.toLowerCase()) {
@@ -55,6 +56,8 @@ interface DeviceDetailsViewProps {
 export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
   const router = useRouter();
   const Icon = getDeviceIcon(device.deviceType);
+  const { canWrite } = usePermissions();
+  const canWriteDevices = canWrite("devices");
 
   const [isStatusOpen, setIsStatusOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -122,25 +125,29 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
 
           {/* Action Buttons */}
           <div className="flex items-center gap-2.5 flex-wrap">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setIsStatusOpen(true)}
-              className="rounded-xl border-slate-200 dark:border-slate-800 text-xs font-semibold"
-            >
-              <Activity className="w-3.5 h-3.5 mr-1.5 text-sky-500" />
-              Change Status
-            </Button>
+            {canWriteDevices && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsStatusOpen(true)}
+                className="rounded-xl border-slate-200 dark:border-slate-800 text-xs font-semibold"
+              >
+                <Activity className="w-3.5 h-3.5 mr-1.5 text-sky-500" />
+                Change Status
+              </Button>
+            )}
 
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setIsEditOpen(true)}
-              className="rounded-xl border-slate-200 dark:border-slate-800 text-xs font-semibold"
-            >
-              <Pencil className="w-3.5 h-3.5 mr-1.5 text-slate-500" />
-              Edit Device
-            </Button>
+            {canWriteDevices && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsEditOpen(true)}
+                className="rounded-xl border-slate-200 dark:border-slate-800 text-xs font-semibold"
+              >
+                <Pencil className="w-3.5 h-3.5 mr-1.5 text-slate-500" />
+                Edit Device
+              </Button>
+            )}
 
             {device.onlineLink && (
               <a
@@ -159,16 +166,18 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
               </a>
             )}
 
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={() => setIsDeleteOpen(true)}
-              className="rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40"
-              title="Delete Device"
-            >
-              <Trash2 className="w-4 h-4" />
-            </Button>
+            {canWriteDevices && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => setIsDeleteOpen(true)}
+                className="rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40"
+                title="Delete Device"
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            )}
           </div>
         </div>
       </div>

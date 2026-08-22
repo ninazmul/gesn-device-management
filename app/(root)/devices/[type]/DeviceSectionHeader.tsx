@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Server, Radio, Wifi, Router as RouterIcon, Network, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DeviceFormDialog } from "@/components/devices/DeviceFormDialog";
+import { usePermissions } from "@/components/providers/PermissionContext";
 
 function getDeviceIcon(type: string) {
   switch (type?.toLowerCase()) {
@@ -37,6 +38,8 @@ export function DeviceSectionHeader({
   const router = useRouter();
   const [isAddOpen, setIsAddOpen] = useState(false);
   const Icon = getDeviceIcon(typeSlug);
+  const { canWrite } = usePermissions();
+  const canWriteDevices = canWrite("devices");
 
   return (
     <>
@@ -55,12 +58,14 @@ export function DeviceSectionHeader({
           </div>
         </div>
 
-        <Button
-          onClick={() => setIsAddOpen(true)}
-          className="rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-semibold text-xs shadow-md shadow-sky-600/10 shrink-0"
-        >
-          <Plus className="w-4 h-4 mr-1.5" /> Add {typeName}
-        </Button>
+        {canWriteDevices && (
+          <Button
+            onClick={() => setIsAddOpen(true)}
+            className="rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-semibold text-xs shadow-md shadow-sky-600/10 shrink-0"
+          >
+            <Plus className="w-4 h-4 mr-1.5" /> Add {typeName}
+          </Button>
+        )}
       </div>
 
       <DeviceFormDialog

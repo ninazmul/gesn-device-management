@@ -22,6 +22,7 @@ import { CustomerFormDialog } from "@/components/customers/CustomerFormDialog";
 import { DeviceStatusBadge } from "@/components/devices/DeviceStatusBadge";
 import { GlobalSearchModal } from "@/components/shared/GlobalSearchModal";
 import type { DashboardStats } from "@/types";
+import { usePermissions } from "@/components/providers/PermissionContext";
 
 // ==========================================
 // CUSTOM ICONS TAILORED TO DASHBOARD THEME
@@ -123,6 +124,12 @@ interface DashboardClientProps {
 }
 
 export function DashboardClient({ stats }: DashboardClientProps) {
+  const { canRead, canWrite } = usePermissions();
+  const canWriteDevices = canWrite("devices");
+  const canWriteCustomers = canWrite("customers");
+  const canReadCustomers = canRead("customers");
+  const canReadBilling = canRead("billing");
+
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [createCustomerOpen, setCreateCustomerOpen] = useState(false);
   const [createType, setCreateType] = useState("antenna");
@@ -160,89 +167,91 @@ export function DashboardClient({ stats }: DashboardClientProps) {
       {/* ========================================================================= */}
       {/* SECTION 1: QUICK ADD                                                      */}
       {/* ========================================================================= */}
-      <section className="space-y-2.5">
-        <h2 className="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-slate-100 px-0.5">
-          Quick Add
-        </h2>
+      {canWriteDevices && (
+        <section className="space-y-2.5">
+          <h2 className="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-slate-100 px-0.5">
+            Quick Add
+          </h2>
 
-        <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
-          {/* Add Antenna */}
-          <button
-            type="button"
-            onClick={() => openCreateFor("antenna")}
-            className="group flex items-center justify-between p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-sky-100 dark:border-slate-800 hover:border-sky-300 dark:hover:border-sky-700 shadow-[0_1px_3px_rgba(0,0,0,0.03)] hover:shadow-md transition-all active:scale-[0.98] text-left"
-          >
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-xl bg-[#e0f2fe] dark:bg-sky-950/60 border border-[#bae6fd] dark:border-sky-800/60 text-[#0284c7] dark:text-sky-400 shrink-0 group-hover:scale-105 transition-transform">
-                <AntennaIcon className="w-4 md:w-5 h-4 md:h-5" />
+          <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
+            {/* Add Antenna */}
+            <button
+              type="button"
+              onClick={() => openCreateFor("antenna")}
+              className="group flex items-center justify-between p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-sky-100 dark:border-slate-800 hover:border-sky-300 dark:hover:border-sky-700 shadow-[0_1px_3px_rgba(0,0,0,0.03)] hover:shadow-md transition-all active:scale-[0.98] text-left"
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-[#e0f2fe] dark:bg-sky-950/60 border border-[#bae6fd] dark:border-sky-800/60 text-[#0284c7] dark:text-sky-400 shrink-0 group-hover:scale-105 transition-transform">
+                  <AntennaIcon className="w-4 md:w-5 h-4 md:h-5" />
+                </div>
+                <span className="text-xs md:text-sm font-bold text-[#0284c7] dark:text-sky-400">
+                  Add Antenna
+                </span>
               </div>
-              <span className="text-xs md:text-sm font-bold text-[#0284c7] dark:text-sky-400">
-                Add Antenna
-              </span>
-            </div>
-            <div className="w-7 h-7 rounded-full border border-slate-200/80 dark:border-slate-700/80 flex items-center justify-center text-slate-400 group-hover:text-sky-600 dark:group-hover:text-sky-400 group-hover:border-sky-200 transition-colors shrink-0">
-              <ChevronRight className="w-4 h-4" />
-            </div>
-          </button>
+              <div className="w-7 h-7 rounded-full border border-slate-200/80 dark:border-slate-700/80 flex items-center justify-center text-slate-400 group-hover:text-sky-600 dark:group-hover:text-sky-400 group-hover:border-sky-200 transition-colors shrink-0">
+                <ChevronRight className="w-4 h-4" />
+              </div>
+            </button>
 
-          {/* Add Access Point */}
-          <button
-            type="button"
-            onClick={() => openCreateFor("access-point")}
-            className="group flex items-center justify-between p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-purple-100 dark:border-slate-800 hover:border-purple-300 dark:hover:border-purple-700 shadow-[0_1px_3px_rgba(0,0,0,0.03)] hover:shadow-md transition-all active:scale-[0.98] text-left"
-          >
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-xl bg-[#f3e8ff] dark:bg-purple-950/60 border border-[#e9d5ff] dark:border-purple-800/60 text-[#9333ea] dark:text-purple-400 shrink-0 group-hover:scale-105 transition-transform">
-                <AccessPointIcon className="w-4 md:w-5 h-4 md:h-5" />
+            {/* Add Access Point */}
+            <button
+              type="button"
+              onClick={() => openCreateFor("access-point")}
+              className="group flex items-center justify-between p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-purple-100 dark:border-slate-800 hover:border-purple-300 dark:hover:border-purple-700 shadow-[0_1px_3px_rgba(0,0,0,0.03)] hover:shadow-md transition-all active:scale-[0.98] text-left"
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-[#f3e8ff] dark:bg-purple-950/60 border border-[#e9d5ff] dark:border-purple-800/60 text-[#9333ea] dark:text-purple-400 shrink-0 group-hover:scale-105 transition-transform">
+                  <AccessPointIcon className="w-4 md:w-5 h-4 md:h-5" />
+                </div>
+                <span className="text-xs md:text-sm font-bold text-[#9333ea] dark:text-purple-400">
+                  Add Access Point
+                </span>
               </div>
-              <span className="text-xs md:text-sm font-bold text-[#9333ea] dark:text-purple-400">
-                Add Access Point
-              </span>
-            </div>
-            <div className="w-7 h-7 rounded-full border border-slate-200/80 dark:border-slate-700/80 flex items-center justify-center text-slate-400 group-hover:text-purple-600 dark:group-hover:text-purple-400 group-hover:border-purple-200 transition-colors shrink-0">
-              <ChevronRight className="w-4 h-4" />
-            </div>
-          </button>
+              <div className="w-7 h-7 rounded-full border border-slate-200/80 dark:border-slate-700/80 flex items-center justify-center text-slate-400 group-hover:text-purple-600 dark:group-hover:text-purple-400 group-hover:border-purple-200 transition-colors shrink-0">
+                <ChevronRight className="w-4 h-4" />
+              </div>
+            </button>
 
-          {/* Add Router */}
-          <button
-            type="button"
-            onClick={() => openCreateFor("router")}
-            className="group flex items-center justify-between p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-indigo-100 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-700 shadow-[0_1px_3px_rgba(0,0,0,0.03)] hover:shadow-md transition-all active:scale-[0.98] text-left"
-          >
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-xl bg-[#e0e7ff] dark:bg-indigo-950/60 border border-[#c7d2fe] dark:border-indigo-800/60 text-[#4f46e5] dark:text-indigo-400 shrink-0 group-hover:scale-105 transition-transform">
-                <CustomRouterIcon className="w-4 md:w-5 h-4 md:h-5" />
+            {/* Add Router */}
+            <button
+              type="button"
+              onClick={() => openCreateFor("router")}
+              className="group flex items-center justify-between p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-indigo-100 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-700 shadow-[0_1px_3px_rgba(0,0,0,0.03)] hover:shadow-md transition-all active:scale-[0.98] text-left"
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-[#e0e7ff] dark:bg-indigo-950/60 border border-[#c7d2fe] dark:border-indigo-800/60 text-[#4f46e5] dark:text-indigo-400 shrink-0 group-hover:scale-105 transition-transform">
+                  <CustomRouterIcon className="w-4 md:w-5 h-4 md:h-5" />
+                </div>
+                <span className="text-xs md:text-sm font-bold text-[#4f46e5] dark:text-indigo-400">
+                  Add Router
+                </span>
               </div>
-              <span className="text-xs md:text-sm font-bold text-[#4f46e5] dark:text-indigo-400">
-                Add Router
-              </span>
-            </div>
-            <div className="w-7 h-7 rounded-full border border-slate-200/80 dark:border-slate-700/80 flex items-center justify-center text-slate-400 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 group-hover:border-indigo-200 transition-colors shrink-0">
-              <ChevronRight className="w-4 h-4" />
-            </div>
-          </button>
+              <div className="w-7 h-7 rounded-full border border-slate-200/80 dark:border-slate-700/80 flex items-center justify-center text-slate-400 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 group-hover:border-indigo-200 transition-colors shrink-0">
+                <ChevronRight className="w-4 h-4" />
+              </div>
+            </button>
 
-          {/* Add Switch */}
-          <button
-            type="button"
-            onClick={() => openCreateFor("switch")}
-            className="group flex items-center justify-between p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-emerald-100 dark:border-slate-800 hover:border-emerald-300 dark:hover:border-emerald-700 shadow-[0_1px_3px_rgba(0,0,0,0.03)] hover:shadow-md transition-all active:scale-[0.98] text-left"
-          >
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-xl bg-[#dcfce7] dark:bg-emerald-950/60 border border-[#bbf7d0] dark:border-emerald-800/60 text-[#16a34a] dark:text-emerald-400 shrink-0 group-hover:scale-105 transition-transform">
-                <SwitchIcon className="w-4 md:w-5 h-4 md:h-5" />
+            {/* Add Switch */}
+            <button
+              type="button"
+              onClick={() => openCreateFor("switch")}
+              className="group flex items-center justify-between p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-emerald-100 dark:border-slate-800 hover:border-emerald-300 dark:hover:border-emerald-700 shadow-[0_1px_3px_rgba(0,0,0,0.03)] hover:shadow-md transition-all active:scale-[0.98] text-left"
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-[#dcfce7] dark:bg-emerald-950/60 border border-[#bbf7d0] dark:border-emerald-800/60 text-[#16a34a] dark:text-emerald-400 shrink-0 group-hover:scale-105 transition-transform">
+                  <SwitchIcon className="w-4 md:w-5 h-4 md:h-5" />
+                </div>
+                <span className="text-xs md:text-sm font-bold text-[#16a34a] dark:text-emerald-400">
+                  Add Switch
+                </span>
               </div>
-              <span className="text-xs md:text-sm font-bold text-[#16a34a] dark:text-emerald-400">
-                Add Switch
-              </span>
-            </div>
-            <div className="w-7 h-7 rounded-full border border-slate-200/80 dark:border-slate-700/80 flex items-center justify-center text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 group-hover:border-emerald-200 transition-colors shrink-0">
-              <ChevronRight className="w-4 h-4" />
-            </div>
-          </button>
-        </div>
-      </section>
+              <div className="w-7 h-7 rounded-full border border-slate-200/80 dark:border-slate-700/80 flex items-center justify-center text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 group-hover:border-emerald-200 transition-colors shrink-0">
+                <ChevronRight className="w-4 h-4" />
+              </div>
+            </button>
+          </div>
+        </section>
+      )}
 
       {/* ========================================================================= */}
       {/* SECTION 2: DEVICE OVERVIEW                                                */}
@@ -390,16 +399,18 @@ export function DashboardClient({ stats }: DashboardClientProps) {
           </h2>
         </div>
 
-        <div className="grid grid-cols-2 gap-2">
+        <div className={`grid ${canWriteDevices ? "grid-cols-2" : "grid-cols-1"} gap-2`}>
           {/* Top Action: Add Server */}
-          <button
-            type="button"
-            onClick={() => openCreateFor("server")}
-            className="w-full py-2.5 px-4 rounded-2xl border border-blue-200/90 dark:border-blue-800/70 bg-blue-50/40 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 font-bold text-xs sm:text-sm hover:bg-blue-100/60 dark:hover:bg-blue-900/40 transition-all flex items-center justify-center gap-2 shadow-xs active:scale-[0.99]"
-          >
-            <ServerStackIcon className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-            <span>Add Server</span>
-          </button>
+          {canWriteDevices && (
+            <button
+              type="button"
+              onClick={() => openCreateFor("server")}
+              className="w-full py-2.5 px-4 rounded-2xl border border-blue-200/90 dark:border-blue-800/70 bg-blue-50/40 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 font-bold text-xs sm:text-sm hover:bg-blue-100/60 dark:hover:bg-blue-900/40 transition-all flex items-center justify-center gap-2 shadow-xs active:scale-[0.99]"
+            >
+              <ServerStackIcon className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+              <span>Add Server</span>
+            </button>
+          )}
 
           {/* Bottom Action: View Servers */}
           <Link
@@ -408,7 +419,8 @@ export function DashboardClient({ stats }: DashboardClientProps) {
           >
             <ServerStackIcon className="w-4 h-4 text-blue-600 dark:text-blue-400" />
             <span>View Servers</span>
-          </Link></div>
+          </Link>
+        </div>
 
         {/* 3-Column Metrics Row */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-2 sm:gap-3">
@@ -525,35 +537,41 @@ export function DashboardClient({ stats }: DashboardClientProps) {
           </div>
         </div>
 
-        {/* 3 Action Buttons Row */}
+        {/* Action Buttons Row */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-2 sm:gap-3">
           {/* Add Customer */}
-          <button
-            type="button"
-            onClick={() => setCreateCustomerOpen(true)}
-            className="py-2.5 px-2 sm:px-3 rounded-xl border border-purple-200 dark:border-purple-800/80 bg-purple-50/60 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 font-bold text-xs hover:bg-purple-100/80 dark:hover:bg-purple-900/50 transition-all flex items-center justify-center gap-1.5 active:scale-[0.98] shadow-xs truncate"
-          >
-            <UserPlus className="w-3.5 h-3.5 shrink-0" />
-            <span className="truncate">Add Customer</span>
-          </button>
+          {canWriteCustomers && (
+            <button
+              type="button"
+              onClick={() => setCreateCustomerOpen(true)}
+              className="py-2.5 px-2 sm:px-3 rounded-xl border border-purple-200 dark:border-purple-800/80 bg-purple-50/60 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 font-bold text-xs hover:bg-purple-100/80 dark:hover:bg-purple-900/50 transition-all flex items-center justify-center gap-1.5 active:scale-[0.98] shadow-xs truncate"
+            >
+              <UserPlus className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">Add Customer</span>
+            </button>
+          )}
 
           {/* View Customers */}
-          <Link
-            href="/customers"
-            className="py-2.5 px-2 sm:px-3 rounded-xl border border-purple-200 dark:border-purple-800/80 bg-purple-50/60 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 font-bold text-xs hover:bg-purple-100/80 dark:hover:bg-purple-900/50 transition-all flex items-center justify-center gap-1.5 active:scale-[0.98] shadow-xs truncate"
-          >
-            <Users className="w-3.5 h-3.5 shrink-0" />
-            <span className="truncate">View Customers</span>
-          </Link>
+          {canReadCustomers && (
+            <Link
+              href="/customers"
+              className="py-2.5 px-2 sm:px-3 rounded-xl border border-purple-200 dark:border-purple-800/80 bg-purple-50/60 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 font-bold text-xs hover:bg-purple-100/80 dark:hover:bg-purple-900/50 transition-all flex items-center justify-center gap-1.5 active:scale-[0.98] shadow-xs truncate"
+            >
+              <Users className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">View Customers</span>
+            </Link>
+          )}
 
-          {/* Collect Payment */}
-          <Link
-            href="/billing"
-            className="py-2.5 px-2 sm:px-3 rounded-xl border border-emerald-200 dark:border-emerald-800/80 bg-emerald-50/60 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 font-bold text-xs hover:bg-emerald-100/80 dark:hover:bg-emerald-900/50 transition-all flex items-center justify-center gap-1.5 active:scale-[0.98] shadow-xs truncate"
-          >
-            <Receipt className="w-3.5 h-3.5 shrink-0" />
-            <span className="truncate">Billing</span>
-          </Link>
+          {/* Collect Payment / Billing */}
+          {canReadBilling && (
+            <Link
+              href="/billing"
+              className="py-2.5 px-2 sm:px-3 rounded-xl border border-emerald-200 dark:border-emerald-800/80 bg-emerald-50/60 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 font-bold text-xs hover:bg-emerald-100/80 dark:hover:bg-emerald-900/50 transition-all flex items-center justify-center gap-1.5 active:scale-[0.98] shadow-xs truncate"
+            >
+              <Receipt className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">Billing</span>
+            </Link>
+          )}
         </div>
       </section>
 

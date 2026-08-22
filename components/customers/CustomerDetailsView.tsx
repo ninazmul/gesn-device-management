@@ -26,6 +26,7 @@ import { CustomerFormDialog } from "./CustomerFormDialog";
 import { PaymentUpdateDialog } from "@/components/billing/PaymentUpdateDialog";
 import { formatDate } from "@/lib/utils";
 import type { ICustomer, IBilling, IDevice } from "@/types";
+import { usePermissions } from "@/components/providers/PermissionContext";
 
 function getDeviceIcon(type: string) {
   switch (type?.toLowerCase()) {
@@ -60,6 +61,8 @@ export function CustomerDetailsView({
   billingTotalPages,
 }: CustomerDetailsViewProps) {
   const router = useRouter();
+  const { canWrite } = usePermissions();
+  const canWriteCustomers = canWrite("customers");
 
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [selectedBillingForPayment, setSelectedBillingForPayment] = useState<IBilling | null>(null);
@@ -108,15 +111,17 @@ export function CustomerDetailsView({
           </div>
 
           <div className="flex items-center gap-2.5 flex-wrap">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setIsEditOpen(true)}
-              className="rounded-xl border-slate-200 dark:border-slate-800 text-xs font-semibold"
-            >
-              <Pencil className="w-3.5 h-3.5 mr-1.5 text-slate-500" />
-              Edit Customer
-            </Button>
+            {canWriteCustomers && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsEditOpen(true)}
+                className="rounded-xl border-slate-200 dark:border-slate-800 text-xs font-semibold"
+              >
+                <Pencil className="w-3.5 h-3.5 mr-1.5 text-slate-500" />
+                Edit Customer
+              </Button>
+            )}
             <Link href={`/billing?search=${encodeURIComponent(customer.name)}`}>
               <Button className="rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-semibold">
                 <Receipt className="w-3.5 h-3.5 mr-1.5" />

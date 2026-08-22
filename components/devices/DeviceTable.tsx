@@ -34,6 +34,7 @@ import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { deleteDevice } from "@/lib/actions/device.actions";
 import { toast } from "react-hot-toast";
 import type { IDevice } from "@/types";
+import { usePermissions } from "@/components/providers/PermissionContext";
 
 function getDeviceIcon(type: string) {
   switch (type?.toLowerCase()) {
@@ -74,6 +75,8 @@ export function DeviceTable({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { canWrite } = usePermissions();
+  const canWriteDevices = canWrite("devices");
 
   // Modals state
   const [editingDevice, setEditingDevice] = useState<IDevice | null>(null);
@@ -275,14 +278,18 @@ export function DeviceTable({
 
                       {/* Status */}
                       <TableCell className="whitespace-nowrap">
-                        <button
-                          type="button"
-                          onClick={() => setStatusDevice(device)}
-                          className="cursor-pointer hover:opacity-85 transition-opacity"
-                          title="Click to update status"
-                        >
+                        {canWriteDevices ? (
+                          <button
+                            type="button"
+                            onClick={() => setStatusDevice(device)}
+                            className="cursor-pointer hover:opacity-85 transition-opacity"
+                            title="Click to update status"
+                          >
+                            <DeviceStatusBadge status={device.status} />
+                          </button>
+                        ) : (
                           <DeviceStatusBadge status={device.status} />
-                        </button>
+                        )}
                       </TableCell>
 
                       {/* Row Actions */}
@@ -295,22 +302,26 @@ export function DeviceTable({
                           >
                             <Eye className="w-4 h-4" />
                           </Link>
-                          <button
-                            type="button"
-                            onClick={() => setEditingDevice(device)}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-950/40 transition-colors"
-                            title="Edit Device"
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setDeletingDevice(device)}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
-                            title="Delete Device"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          {canWriteDevices && (
+                            <button
+                              type="button"
+                              onClick={() => setEditingDevice(device)}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-950/40 transition-colors"
+                              title="Edit Device"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </button>
+                          )}
+                          {canWriteDevices && (
+                            <button
+                              type="button"
+                              onClick={() => setDeletingDevice(device)}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                              title="Delete Device"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>

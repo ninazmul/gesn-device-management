@@ -25,6 +25,7 @@ import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { deleteDevice } from "@/lib/actions/device.actions";
 import { toast } from "react-hot-toast";
 import type { IDevice } from "@/types";
+import { usePermissions } from "@/components/providers/PermissionContext";
 
 function getDeviceIcon(type: string) {
   switch (type?.toLowerCase()) {
@@ -62,6 +63,8 @@ export function DeviceMobileCards({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { canWrite } = usePermissions();
+  const canWriteDevices = canWrite("devices");
 
   const [editingDevice, setEditingDevice] = useState<IDevice | null>(null);
   const [statusDevice, setStatusDevice] = useState<IDevice | null>(null);
@@ -125,7 +128,7 @@ export function DeviceMobileCards({
                       </span>
                     )}
                     {["antenna", "access-point", "router"].includes(device.deviceType) && device.uplinkSwitch && typeof device.uplinkSwitch === "object" && (
-                      <span className="inline-flex items-center px-1.5 py-0.2 rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-medium text-[10px]">
+                      <span className="inline-flex items-center px-1.5 py-0.2 rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:indigo-400 font-medium text-[10px]">
                         UpLink: #{(device.uplinkSwitch as IDevice).sl}
                       </span>
                     )}
@@ -196,26 +199,30 @@ export function DeviceMobileCards({
               <div className="flex items-center gap-1">
                 <Link
                   href={`/devices/${device.deviceType}/${device._id}`}
-                  className="p-2 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-semibold flex items-center gap-1"
+                  className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-sky-600 p-2 rounded-xl hover:bg-sky-50 dark:hover:bg-sky-950/40"
                 >
                   <Eye className="w-4 h-4" /> Details
                 </Link>
-                <button
-                  type="button"
-                  onClick={() => setEditingDevice(device)}
-                  className="p-2 rounded-xl text-slate-500 dark:text-slate-400 hover:text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-950/40"
-                  title="Edit"
-                >
-                  <Pencil className="w-4 h-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDeletingDevice(device)}
-                  className="p-2 rounded-xl text-slate-500 dark:text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40"
-                  title="Delete"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                {canWriteDevices && (
+                  <button
+                    type="button"
+                    onClick={() => setEditingDevice(device)}
+                    className="p-2 rounded-xl text-slate-500 dark:text-slate-400 hover:text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-950/40"
+                    title="Edit"
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </button>
+                )}
+                {canWriteDevices && (
+                  <button
+                    type="button"
+                    onClick={() => setDeletingDevice(device)}
+                    className="p-2 rounded-xl text-slate-500 dark:text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40"
+                    title="Delete"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
               </div>
             </div>
           </div>

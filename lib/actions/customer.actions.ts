@@ -9,6 +9,7 @@ import { formatSL } from "@/lib/utils";
 import { revalidatePath } from "next/cache";
 import type { FilterQuery } from "mongoose";
 import type { CustomerStatus, GetCustomersParams, ICustomer } from "@/types";
+import { requirePermission, logActivityAndNotify } from "@/lib/auth-guard";
 
 // Helper to generate next sequential Customer ID (e.g. "CUS-000001")
 async function getNextCustomerId(): Promise<string> {
@@ -24,6 +25,7 @@ async function getNextCustomerId(): Promise<string> {
 // GET CUSTOMERS (PAGINATED & SEARCHABLE)
 // ==========================================
 export async function getCustomers(params?: GetCustomersParams) {
+  await requirePermission("customers", "read");
   await connectToDatabase();
 
   const {
@@ -111,6 +113,7 @@ export async function getCustomers(params?: GetCustomersParams) {
 // GET SINGLE CUSTOMER BY ID
 // ==========================================
 export async function getCustomerById(id: string) {
+  await requirePermission("customers", "read");
   await connectToDatabase();
   const customer = await Customer.findById(id)
     .populate({
@@ -139,6 +142,7 @@ export async function createCustomer(data: {
   status?: CustomerStatus;
   assignedDeviceIds?: string[];
 }) {
+  const actor = await requirePermission("customers", "write");
   await connectToDatabase();
 
   const customerId = await getNextCustomerId();
@@ -155,6 +159,16 @@ export async function createCustomer(data: {
     billingDay: data.billingDay ? Math.min(31, Math.max(1, Number(data.billingDay))) : 1,
     status: data.status || "Active",
     assignedDevices: data.assignedDeviceIds || [],
+  });
+
+  await logActivityAndNotify({
+    actor,
+    action: "CREATE_CUSTOMER",
+    module: "customers",
+    resourceId: customerId,
+    resourceName: `${data.name.trim()} (${customerId})`,
+    details: `Added new customer: ${data.name.trim()} (ID: ${customerId}, Monthly Bill: ৳${Number(data.monthlyBill) || 0})`,
+    link: `/customers/${customer._id}`,
   });
 
   revalidatePath("/");
@@ -182,6 +196,7 @@ export async function updateCustomer(
     assignedDeviceIds?: string[];
   }
 ) {
+  const actor = await requirePermission("customers", "write");
   await connectToDatabase();
 
   const updatePayload: Record<string, unknown> = {};
@@ -201,6 +216,16 @@ export async function updateCustomer(
   const customer = (await Customer.findByIdAndUpdate(id, updatePayload, { new: true }).lean()) as ICustomer | null;
   if (!customer) throw new Error("Customer not found");
 
+  await logActivityAndNotify({
+    actor,
+    action: "UPDATE_CUSTOMER",
+    module: "customers",
+    resourceId: customer.customerId,
+    resourceName: `${customer.name} (${customer.customerId})`,
+    details: `Updated customer information for ${customer.name} (${customer.customerId})`,
+    link: `/customers/${id}`,
+  });
+
   revalidatePath("/");
   revalidatePath("/customers");
   revalidatePath(`/customers/${id}`);
@@ -213,9 +238,20 @@ export async function updateCustomer(
 // UPDATE CUSTOMER STATUS
 // ==========================================
 export async function updateCustomerStatus(id: string, status: CustomerStatus) {
+  const actor = await requirePermission("customers", "write");
   await connectToDatabase();
   const customer = (await Customer.findByIdAndUpdate(id, { status }, { new: true }).lean()) as ICustomer | null;
   if (!customer) throw new Error("Customer not found");
+
+  await logActivityAndNotify({
+    actor,
+    action: "STATUS_CHANGE",
+    module: "customers",
+    resourceId: customer.customerId,
+    resourceName: `${customer.name} (${customer.customerId})`,
+    details: `Changed customer status to "${status}" for ${customer.name} (${customer.customerId})`,
+    link: `/customers/${id}`,
+  });
 
   revalidatePath("/");
   revalidatePath("/customers");
@@ -228,7 +264,11 @@ export async function updateCustomerStatus(id: string, status: CustomerStatus) {
 // DELETE OR ARCHIVE CUSTOMER
 // ==========================================
 export async function deleteCustomer(id: string) {
+  const actor = await requirePermission("customers", "write");
   await connectToDatabase();
+
+  const customer = await Customer.findById(id);
+  if (!customer) throw new Error("Customer not found");
 
   // Check if historical billing exists
   const billingCount = await Billing.countDocuments({ customer: id });
@@ -240,6 +280,15 @@ export async function deleteCustomer(id: string) {
 
   await Customer.findByIdAndDelete(id);
 
+  await logActivityAndNotify({
+    actor,
+    action: "DELETE_CUSTOMER",
+    module: "customers",
+    resourceId: customer.customerId,
+    resourceName: `${customer.name} (${customer.customerId})`,
+    details: `Deleted customer record: ${customer.name} (${customer.customerId})`,
+  });
+
   revalidatePath("/");
   revalidatePath("/customers");
   return { success: true };
@@ -249,6 +298,7 @@ export async function deleteCustomer(id: string) {
 // SEARCH ACTIVE CUSTOMERS FOR SELECTION
 // ==========================================
 export async function searchActiveCustomers(query: string = "") {
+  await requirePermission("customers", "read");
   await connectToDatabase();
   const filter: FilterQuery<typeof Customer> = { status: "Active" };
 

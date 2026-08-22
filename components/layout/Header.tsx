@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { ThemeToggle } from "@/components/shared/ThemeToggle";
 import { GlobalSearchModal } from "@/components/shared/GlobalSearchModal";
+import { NotificationDropdown } from "@/components/layout/NotificationDropdown";
 import { UserButton } from "@clerk/nextjs";
 import { Search, Command } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -36,7 +37,7 @@ export function Header() {
           </div>
         </div>
 
-        {/* Center/Right: Quick Search + Theme Toggle + User Button */}
+        {/* Center/Right: Quick Search + Notification Bell + Theme Toggle + User Button */}
         <div className="flex items-center gap-2.5">
           {/* Quick Search Button */}
           <Button
@@ -50,6 +51,9 @@ export function Header() {
               <Command className="w-2.5 h-2.5" /> K
             </kbd>
           </Button>
+
+          {/* Super Admin Notifications Bell */}
+          <NotificationDropdown />
 
           {/* Theme Switcher */}
           <ThemeToggle />

@@ -48,6 +48,7 @@ import {
 } from "@/lib/actions/catalog.actions";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import type { IDeviceType, IBrand, IModel } from "@/types";
+import { usePermissions } from "@/components/providers/PermissionContext";
 
 interface CatalogManagementProps {
   initialTypes: IDeviceType[];
@@ -61,6 +62,8 @@ export function CatalogManagement({
   initialModels,
 }: CatalogManagementProps) {
   const router = useRouter();
+  const { canWrite } = usePermissions();
+  const canWriteCatalog = canWrite("catalog");
 
   // Search filters per tab
   const [typeSearch, setTypeSearch] = useState("");
@@ -315,7 +318,7 @@ export function CatalogManagement({
         </div>
 
         <div className="flex items-center gap-2">
-          {initialBrands.length === 0 && (
+          {initialBrands.length === 0 && canWriteCatalog && (
             <Button
               type="button"
               variant="outline"
@@ -393,12 +396,14 @@ export function CatalogManagement({
               </div>
             </div>
 
-            <Button
-              onClick={openCreateModel}
-              className="rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-semibold text-xs shrink-0"
-            >
-              <Plus className="w-4 h-4 mr-1.5" /> Add Model
-            </Button>
+            {canWriteCatalog && (
+              <Button
+                onClick={openCreateModel}
+                className="rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-semibold text-xs shrink-0"
+              >
+                <Plus className="w-4 h-4 mr-1.5" /> Add Model
+              </Button>
+            )}
           </div>
 
           {/* Models Grid */}
@@ -427,26 +432,28 @@ export function CatalogManagement({
                   )}
                 </div>
 
-                <div className="flex items-center justify-end gap-1 pt-3 border-t border-slate-100 dark:border-slate-800/60 mt-3">
-                  <button
-                    type="button"
-                    onClick={() => openEditModel(m)}
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-950/40 transition-colors"
-                    title="Edit Model"
-                  >
-                    <Pencil className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setDeleteTarget({ type: "model", id: m._id, name: m.name })
-                    }
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
-                    title="Delete Model"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
+                {canWriteCatalog && (
+                  <div className="flex items-center justify-end gap-1 pt-3 border-t border-slate-100 dark:border-slate-800/60 mt-3">
+                    <button
+                      type="button"
+                      onClick={() => openEditModel(m)}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-950/40 transition-colors"
+                      title="Edit Model"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setDeleteTarget({ type: "model", id: m._id, name: m.name })
+                      }
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                      title="Delete Model"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -477,12 +484,14 @@ export function CatalogManagement({
               />
             </div>
 
-            <Button
-              onClick={openCreateBrand}
-              className="rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-semibold text-xs shrink-0"
-            >
-              <Plus className="w-4 h-4 mr-1.5" /> Add Brand
-            </Button>
+            {canWriteCatalog && (
+              <Button
+                onClick={openCreateBrand}
+                className="rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-semibold text-xs shrink-0"
+              >
+                <Plus className="w-4 h-4 mr-1.5" /> Add Brand
+              </Button>
+            )}
           </div>
 
           {/* Brands Grid */}
@@ -508,26 +517,28 @@ export function CatalogManagement({
                   </div>
                 </div>
 
-                <div className="flex items-center justify-end gap-1 pt-3 border-t border-slate-100 dark:border-slate-800/60 mt-3">
-                  <button
-                    type="button"
-                    onClick={() => openEditBrand(b)}
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-950/40 transition-colors"
-                    title="Edit Brand"
-                  >
-                    <Pencil className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setDeleteTarget({ type: "brand", id: b._id, name: b.name })
-                    }
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
-                    title="Delete Brand"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
+                {canWriteCatalog && (
+                  <div className="flex items-center justify-end gap-1 pt-3 border-t border-slate-100 dark:border-slate-800/60 mt-3">
+                    <button
+                      type="button"
+                      onClick={() => openEditBrand(b)}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-950/40 transition-colors"
+                      title="Edit Brand"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setDeleteTarget({ type: "brand", id: b._id, name: b.name })
+                      }
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                      title="Delete Brand"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -558,12 +569,14 @@ export function CatalogManagement({
               />
             </div>
 
-            <Button
-              onClick={openCreateType}
-              className="rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-semibold text-xs shrink-0"
-            >
-              <Plus className="w-4 h-4 mr-1.5" /> Add Device Type
-            </Button>
+            {canWriteCatalog && (
+              <Button
+                onClick={openCreateType}
+                className="rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-semibold text-xs shrink-0"
+              >
+                <Plus className="w-4 h-4 mr-1.5" /> Add Device Type
+              </Button>
+            )}
           </div>
 
           {/* Types Grid */}
@@ -594,28 +607,30 @@ export function CatalogManagement({
                   )}
                 </div>
 
-                <div className="flex items-center justify-end gap-1 pt-3 border-t border-slate-100 dark:border-slate-800/60 mt-3">
-                  <button
-                    type="button"
-                    onClick={() => openEditType(t)}
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-950/40 transition-colors"
-                    title="Edit Type"
-                  >
-                    <Pencil className="w-3.5 h-3.5" />
-                  </button>
-                  {!t.isProtected && (
+                {canWriteCatalog && (
+                  <div className="flex items-center justify-end gap-1 pt-3 border-t border-slate-100 dark:border-slate-800/60 mt-3">
                     <button
                       type="button"
-                      onClick={() =>
-                        setDeleteTarget({ type: "type", id: t._id, name: t.name })
-                      }
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
-                      title="Delete Type"
+                      onClick={() => openEditType(t)}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-950/40 transition-colors"
+                      title="Edit Type"
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
+                      <Pencil className="w-3.5 h-3.5" />
                     </button>
-                  )}
-                </div>
+                    {!t.isProtected && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setDeleteTarget({ type: "type", id: t._id, name: t.name })
+                        }
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                        title="Delete Type"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             ))}
           </div>

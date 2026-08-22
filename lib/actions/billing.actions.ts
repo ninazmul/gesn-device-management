@@ -8,6 +8,7 @@ import { formatSL } from "@/lib/utils";
 import { revalidatePath } from "next/cache";
 import type { FilterQuery } from "mongoose";
 import type { BillingStatus, GetBillingsParams, IBilling } from "@/types";
+import { requirePermission, logActivityAndNotify } from "@/lib/auth-guard";
 
 // Helper to generate next sequential Billing ID (e.g. "BILL-000001")
 async function getNextBillingId(): Promise<string> {
@@ -23,6 +24,7 @@ async function getNextBillingId(): Promise<string> {
 // GET BILLINGS (PAGINATED, FILTERED & SEARCHABLE)
 // ==========================================
 export async function getBillings(params?: GetBillingsParams) {
+  await requirePermission("billing", "read");
   await connectToDatabase();
 
   const {
@@ -133,6 +135,7 @@ export async function getCustomerBillingHistory(
   page = 1,
   limit = 10
 ) {
+  await requirePermission("billing", "read");
   await connectToDatabase();
 
   const skip = (Math.max(1, page) - 1) * limit;
@@ -160,6 +163,7 @@ export async function getCustomerBillingHistory(
 // GENERATE MONTHLY BILLS
 // ==========================================
 export async function generateMonthlyBills(targetMonth?: string) {
+  const actor = await requirePermission("billing", "write");
   await connectToDatabase();
 
   // If no month provided, use current month "YYYY-MM"
@@ -241,6 +245,16 @@ export async function generateMonthlyBills(targetMonth?: string) {
     }
   }
 
+  await logActivityAndNotify({
+    actor,
+    action: "GENERATE_BILLS",
+    module: "billing",
+    resourceId: month,
+    resourceName: `Month ${month}`,
+    details: `Generated ${createdCount} monthly bill(s) for ${month} (skipped ${skippedCount})`,
+    link: "/billing",
+  });
+
   revalidatePath("/");
   revalidatePath("/billing");
   revalidatePath("/customers");
@@ -266,9 +280,10 @@ export async function updatePayment(
     paymentReference?: string;
   }
 ) {
+  const actor = await requirePermission("billing", "write");
   await connectToDatabase();
 
-  const bill = await Billing.findById(id);
+  const bill = await Billing.findById(id).populate("customer", "name customerId");
   if (!bill) throw new Error("Billing record not found");
 
   const paidAmount = Number(data.paidAmount);
@@ -295,6 +310,7 @@ export async function updatePayment(
     status = bill.dueDate < new Date() ? "Overdue" : "Pending";
   }
 
+  const previousPaid = bill.paidAmount;
   bill.paidAmount = paidAmount;
   bill.dueAmount = dueAmount;
   bill.status = status;
@@ -304,9 +320,19 @@ export async function updatePayment(
 
   await bill.save();
 
+  await logActivityAndNotify({
+    actor,
+    action: "PAYMENT_UPDATE",
+    module: "billing",
+    resourceId: bill.billingId,
+    resourceName: `${bill.billingId} (${bill.billingMonth})`,
+    details: `Updated payment for bill ${bill.billingId}: ৳${previousPaid} ➔ ৳${paidAmount} (Status: ${status})`,
+    link: "/billing",
+  });
+
   revalidatePath("/");
   revalidatePath("/billing");
-  revalidatePath(`/customers/${bill.customer}`);
+  revalidatePath(`/customers/${bill.customer?._id || bill.customer}`);
 
   return JSON.parse(JSON.stringify(bill)) as IBilling;
 }
@@ -315,9 +341,20 @@ export async function updatePayment(
 // UPDATE BILLING STATUS
 // ==========================================
 export async function updateBillingStatus(id: string, status: BillingStatus) {
+  const actor = await requirePermission("billing", "write");
   await connectToDatabase();
   const bill = (await Billing.findByIdAndUpdate(id, { status }, { new: true }).lean()) as IBilling | null;
   if (!bill) throw new Error("Billing record not found");
+
+  await logActivityAndNotify({
+    actor,
+    action: "STATUS_CHANGE",
+    module: "billing",
+    resourceId: bill.billingId,
+    resourceName: bill.billingId,
+    details: `Changed billing status to "${status}" for ${bill.billingId}`,
+    link: "/billing",
+  });
 
   revalidatePath("/");
   revalidatePath("/billing");
@@ -328,8 +365,20 @@ export async function updateBillingStatus(id: string, status: BillingStatus) {
 // DELETE BILLING RECORD
 // ==========================================
 export async function deleteBilling(id: string) {
+  const actor = await requirePermission("billing", "write");
   await connectToDatabase();
-  await Billing.findByIdAndDelete(id);
+  const bill = (await Billing.findByIdAndDelete(id).lean()) as unknown as IBilling | null;
+  if (bill) {
+    await logActivityAndNotify({
+      actor,
+      action: "DELETE_BILLING",
+      module: "billing",
+      resourceId: bill.billingId,
+      resourceName: bill.billingId,
+      details: `Deleted billing record ${bill.billingId} (${bill.billingMonth})`,
+      link: "/billing",
+    });
+  }
 
   revalidatePath("/");
   revalidatePath("/billing");

@@ -24,6 +24,7 @@ import { PaymentUpdateDialog } from "./PaymentUpdateDialog";
 import { GenerateBillsDialog } from "./GenerateBillsDialog";
 import { formatDate } from "@/lib/utils";
 import type { IBilling } from "@/types";
+import { usePermissions } from "@/components/providers/PermissionContext";
 
 interface BillingTableProps {
   billings: IBilling[];
@@ -43,6 +44,8 @@ export function BillingTable({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { canWrite } = usePermissions();
+  const canWriteBilling = canWrite("billing");
 
   const [paymentBilling, setPaymentBilling] = useState<IBilling | null>(null);
   const [generateOpen, setGenerateOpen] = useState(false);
@@ -109,7 +112,7 @@ export function BillingTable({
                           ? "No billing records match your selected month or search filters."
                           : "Generate monthly bills for your active client accounts."}
                       </p>
-                      {!searchParams.toString() && (
+                      {!searchParams.toString() && canWriteBilling && (
                         <Button
                           onClick={() => setGenerateOpen(true)}
                           className="rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-semibold text-xs mt-2"
@@ -188,15 +191,19 @@ export function BillingTable({
 
                     {/* Actions */}
                     <TableCell className="text-right whitespace-nowrap">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setPaymentBilling(bill)}
-                        className="rounded-xl h-8 text-xs font-semibold border-slate-200 dark:border-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-700 dark:hover:text-emerald-300"
-                      >
-                        <DollarSign className="w-3.5 h-3.5 mr-1 text-emerald-600" />
-                        Update Payment
-                      </Button>
+                      {canWriteBilling ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setPaymentBilling(bill)}
+                          className="rounded-xl h-8 text-xs font-semibold border-slate-200 dark:border-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-700 dark:hover:text-emerald-300"
+                        >
+                          <DollarSign className="w-3.5 h-3.5 mr-1 text-emerald-600" />
+                          Update Payment
+                        </Button>
+                      ) : (
+                        <span className="text-xs text-slate-400 italic">View only</span>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))

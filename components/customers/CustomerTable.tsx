@@ -29,6 +29,7 @@ import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { deleteCustomer } from "@/lib/actions/customer.actions";
 import { toast } from "react-hot-toast";
 import type { ICustomer } from "@/types";
+import { usePermissions } from "@/components/providers/PermissionContext";
 
 interface CustomerTableProps {
   customers: ICustomer[];
@@ -48,6 +49,8 @@ export function CustomerTable({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { canWrite } = usePermissions();
+  const canWriteCustomers = canWrite("customers");
 
   const [editingCustomer, setEditingCustomer] = useState<ICustomer | null>(null);
   const [deletingCustomer, setDeletingCustomer] = useState<ICustomer | null>(null);
@@ -215,22 +218,26 @@ export function CustomerTable({
                         >
                           <Eye className="w-4 h-4" />
                         </Link>
-                        <button
-                          type="button"
-                          onClick={() => setEditingCustomer(cust)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-950/40 transition-colors"
-                          title="Edit Customer"
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setDeletingCustomer(cust)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
-                          title="Delete Customer"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        {canWriteCustomers && (
+                          <button
+                            type="button"
+                            onClick={() => setEditingCustomer(cust)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-950/40 transition-colors"
+                            title="Edit Customer"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                        )}
+                        {canWriteCustomers && (
+                          <button
+                            type="button"
+                            onClick={() => setDeletingCustomer(cust)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                            title="Delete Customer"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>

@@ -9,6 +9,7 @@ import { formatSL, isValidIPv4, isValidMAC } from "@/lib/utils";
 import { revalidatePath } from "next/cache";
 import type { FilterQuery } from "mongoose";
 import type { DeviceStatus, GetDevicesParams, IDevice, ISwitchOption } from "@/types";
+import { requirePermission, logActivityAndNotify } from "@/lib/auth-guard";
 
 // Helper to generate next sequential SL (e.g. "000001")
 async function getNextSL(): Promise<string> {
@@ -24,6 +25,7 @@ async function getNextSL(): Promise<string> {
 // GET AVAILABLE SWITCHES (WITH LIVE PORT UTILIZATION)
 // ==========================================
 export async function getAvailableSwitches(): Promise<ISwitchOption[]> {
+  await requirePermission("devices", "read");
   await connectToDatabase();
 
   const switches = await Device.find({
@@ -85,6 +87,7 @@ export async function getAvailableSwitches(): Promise<ISwitchOption[]> {
 // GET DEVICES (PAGINATED & SERVER FILTERED)
 // ==========================================
 export async function getDevices(params?: GetDevicesParams) {
+  await requirePermission("devices", "read");
   await connectToDatabase();
 
   const {
@@ -220,6 +223,7 @@ export async function getDevices(params?: GetDevicesParams) {
 // GET SINGLE DEVICE BY ID
 // ==========================================
 export async function getDeviceById(id: string) {
+  await requirePermission("devices", "read");
   await connectToDatabase();
   const device = (await Device.findById(id)
     .populate("uplinkSwitch", "sl deviceName brand model totalPorts ipAddress status")
@@ -271,6 +275,7 @@ export async function createDevice(data: {
   };
   status?: DeviceStatus;
 }) {
+  const actor = await requirePermission("devices", "write");
   await connectToDatabase();
 
   // Validate MAC & IP if provided
@@ -303,6 +308,16 @@ export async function createDevice(data: {
       longitude: data.gps?.longitude !== undefined && !isNaN(Number(data.gps.longitude)) ? Number(data.gps.longitude) : undefined,
     },
     status: data.status || "Active",
+  });
+
+  await logActivityAndNotify({
+    actor,
+    action: "CREATE_DEVICE",
+    module: "devices",
+    resourceId: sl,
+    resourceName: `${deviceName} (${sl})`,
+    details: `Added new ${data.deviceType} device: ${deviceName} (SL: ${sl}, IP: ${data.ipAddress || "N/A"})`,
+    link: `/devices/${data.deviceType.toLowerCase().trim()}`,
   });
 
   revalidatePath("/");
@@ -339,6 +354,7 @@ export async function updateDevice(
     status?: DeviceStatus;
   }
 ) {
+  const actor = await requirePermission("devices", "write");
   await connectToDatabase();
 
   if (data.macAddress && !isValidMAC(data.macAddress)) {
@@ -377,6 +393,16 @@ export async function updateDevice(
   const device = (await Device.findByIdAndUpdate(id, updatePayload, { new: true }).lean()) as IDevice | null;
   if (!device) throw new Error("Device not found");
 
+  await logActivityAndNotify({
+    actor,
+    action: "UPDATE_DEVICE",
+    module: "devices",
+    resourceId: device.sl,
+    resourceName: `${device.deviceName} (${device.sl})`,
+    details: `Updated device parameters for ${device.deviceName} (SL: ${device.sl})`,
+    link: `/devices/${device.deviceType}`,
+  });
+
   revalidatePath("/");
   revalidatePath("/devices");
   revalidatePath(`/devices/${device.deviceType}`);
@@ -389,9 +415,20 @@ export async function updateDevice(
 // UPDATE DEVICE STATUS
 // ==========================================
 export async function updateDeviceStatus(id: string, status: DeviceStatus) {
+  const actor = await requirePermission("devices", "write");
   await connectToDatabase();
   const device = (await Device.findByIdAndUpdate(id, { status }, { new: true }).lean()) as IDevice | null;
   if (!device) throw new Error("Device not found");
+
+  await logActivityAndNotify({
+    actor,
+    action: "STATUS_CHANGE",
+    module: "devices",
+    resourceId: device.sl,
+    resourceName: `${device.deviceName} (${device.sl})`,
+    details: `Changed device status to "${status}" for ${device.deviceName} (SL: ${device.sl})`,
+    link: `/devices/${device.deviceType}`,
+  });
 
   revalidatePath("/");
   revalidatePath("/devices");
@@ -404,9 +441,19 @@ export async function updateDeviceStatus(id: string, status: DeviceStatus) {
 // DELETE DEVICE
 // ==========================================
 export async function deleteDevice(id: string) {
+  const actor = await requirePermission("devices", "write");
   await connectToDatabase();
   const device = (await Device.findByIdAndDelete(id).lean()) as IDevice | null;
   if (device) {
+    await logActivityAndNotify({
+      actor,
+      action: "DELETE_DEVICE",
+      module: "devices",
+      resourceId: device.sl,
+      resourceName: `${device.deviceName} (${device.sl})`,
+      details: `Deleted ${device.deviceType} device: ${device.deviceName} (SL: ${device.sl})`,
+    });
+
     revalidatePath("/");
     revalidatePath("/devices");
     revalidatePath(`/devices/${device.deviceType}`);

@@ -27,12 +27,27 @@ import {
   Boxes,
   Users,
   Receipt,
+  History,
 } from "lucide-react";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { usePermissions } from "@/components/providers/PermissionContext";
+import { AppModule } from "@/types";
 
-const sidebarSections = [
+interface SidebarItem {
+  title: string;
+  url: string;
+  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+  module: AppModule;
+}
+
+interface SidebarSection {
+  label: string;
+  items: SidebarItem[];
+}
+
+const sidebarSections: SidebarSection[] = [
   {
     label: "Overview",
     items: [
@@ -40,6 +55,7 @@ const sidebarSections = [
         title: "Dashboard",
         url: "/",
         icon: LayoutDashboard,
+        module: "dashboard",
       },
     ],
   },
@@ -50,11 +66,13 @@ const sidebarSections = [
         title: "Customers",
         url: "/customers",
         icon: Users,
+        module: "customers",
       },
       {
         title: "Billing",
         url: "/billing",
         icon: Receipt,
+        module: "billing",
       },
     ],
   },
@@ -65,31 +83,37 @@ const sidebarSections = [
         title: "All Devices",
         url: "/devices",
         icon: Boxes,
+        module: "devices",
       },
       {
         title: "Servers",
         url: "/devices/server",
         icon: Server,
+        module: "devices",
       },
       {
         title: "Switches",
         url: "/devices/switch",
         icon: Network,
+        module: "devices",
       },
       {
         title: "Antennas",
         url: "/devices/antenna",
         icon: Radio,
+        module: "devices",
       },
       {
         title: "Access Points",
         url: "/devices/access-point",
         icon: Wifi,
+        module: "devices",
       },
       {
         title: "Routers",
         url: "/devices/router",
         icon: RouterIcon,
+        module: "devices",
       },
     ],
   },
@@ -100,6 +124,7 @@ const sidebarSections = [
         title: "Device Catalog",
         url: "/catalog",
         icon: BookOpen,
+        module: "catalog",
       },
     ],
   },
@@ -110,11 +135,19 @@ const sidebarSections = [
         title: "Manage Admins",
         url: "/admins",
         icon: ShieldCheck,
+        module: "admins",
+      },
+      {
+        title: "Activity Logs",
+        url: "/activity-logs",
+        icon: History,
+        module: "activity_logs",
       },
       {
         title: "Settings",
         url: "/settings",
         icon: Settings,
+        module: "settings",
       },
     ],
   },
@@ -123,6 +156,7 @@ const sidebarSections = [
 const AppSidebar = () => {
   const currentPath = usePathname();
   const { state, isMobile, setOpenMobile } = useSidebar();
+  const { canRead } = usePermissions();
   const isCollapsed = state === "collapsed";
 
   // Automatically close mobile sidebar menu on route change
@@ -131,6 +165,14 @@ const AppSidebar = () => {
       setOpenMobile(false);
     }
   }, [currentPath, isMobile, setOpenMobile]);
+
+  // Filter sections and items based on permissions
+  const visibleSections = sidebarSections
+    .map((section) => ({
+      ...section,
+      items: section.items.filter((item) => canRead(item.module)),
+    }))
+    .filter((section) => section.items.length > 0);
 
   return (
     <Sidebar
@@ -157,7 +199,7 @@ const AppSidebar = () => {
       </SidebarHeader>
 
       <SidebarContent className="py-2">
-        {sidebarSections.map((section) => (
+        {visibleSections.map((section) => (
           <SidebarGroup
             key={section.label}
             className="py-1 group-data-[collapsible=icon]:py-0.5"
