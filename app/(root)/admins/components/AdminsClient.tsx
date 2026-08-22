@@ -217,6 +217,7 @@ export default function AdminsClient({
   const [editingAdmin, setEditingAdmin] = useState<IAdminUser | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showRoleGuide, setShowRoleGuide] = useState(true);
+  const [selectedRoleGuide, setSelectedRoleGuide] = useState<AdminRole>("super_admin");
 
   // Form states for Add Admin
   const [newEmail, setNewEmail] = useState("");
@@ -557,151 +558,212 @@ export default function AdminsClient({
       </div>
 
       {/* ========================================================================= */}
-      {/* ROLE PERMISSIONS & ACCESS GUIDE SECTION                                   */}
+      {/* ROLE PERMISSIONS & ACCESS GUIDE (COMPACT ACCORDION & TABS)                */}
       {/* ========================================================================= */}
       <Card className="rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900 overflow-hidden">
+        {/* Header Bar */}
         <div className="p-5 sm:p-6 border-b border-slate-100 dark:border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-slate-50/80 via-white to-slate-50/80 dark:from-slate-950/40 dark:via-slate-900 dark:to-slate-950/40">
-          <div className="flex items-start sm:items-center gap-3">
+          <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 shrink-0">
               <Shield className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                Role Permissions & Access Guide
-                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 border border-sky-200/60 dark:border-sky-800/60">
-                  {ROLE_OPTIONS.length} Roles
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100">
+                  Role Permissions & Access Guide
+                </h2>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 border border-sky-200/60 dark:border-sky-800/60">
+                  6 Role Presets
                 </span>
-              </h2>
+              </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Understand what each staff role can access, add, modify, or delete across all system sections.
+                Select any role below to view its specific capabilities, restrictions, and module permissions.
               </p>
             </div>
           </div>
 
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setShowRoleGuide(!showRoleGuide)}
-            className="rounded-xl border-slate-200 dark:border-slate-800 text-xs font-semibold self-start sm:self-auto shrink-0"
-          >
-            {showRoleGuide ? (
-              <>
-                <ChevronUp className="w-3.5 h-3.5 mr-1.5" /> Hide Role Guide
-              </>
-            ) : (
-              <>
-                <ChevronDown className="w-3.5 h-3.5 mr-1.5" /> View Role Guide
-              </>
-            )}
-          </Button>
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setShowRoleGuide(!showRoleGuide)}
+              className="rounded-xl border-slate-200 dark:border-slate-800 text-xs font-semibold shrink-0"
+            >
+              {showRoleGuide ? (
+                <>
+                  <ChevronUp className="w-3.5 h-3.5 mr-1.5" /> Collapse Guide
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="w-3.5 h-3.5 mr-1.5" /> Expand Guide
+                </>
+              )}
+            </Button>
+          </div>
         </div>
 
         {showRoleGuide && (
-          <div className="p-5 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 bg-slate-50/50 dark:bg-slate-950/30">
-            {ROLE_OPTIONS.map((role) => (
-              <div
-                key={role.value}
-                className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-4.5 flex flex-col justify-between shadow-xs hover:border-slate-300 dark:hover:border-slate-700 transition-all space-y-3.5"
-              >
-                <div>
-                  {/* Card Header */}
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <div className={`p-1.5 rounded-xl ${role.bgLight} ${role.color} border ${role.border}`}>
-                        {role.value === "super_admin" && <Crown className="w-4 h-4" />}
-                        {role.value === "admin" && <ShieldCheck className="w-4 h-4" />}
-                        {role.value === "editor" && <Edit2 className="w-4 h-4" />}
-                        {role.value === "moderator" && <UserCheck className="w-4 h-4" />}
-                        {role.value === "viewer" && <Lock className="w-4 h-4" />}
-                        {role.value === "custom" && <KeyRound className="w-4 h-4" />}
+          <div className="p-5 sm:p-6 space-y-5 bg-slate-50/40 dark:bg-slate-950/20">
+            {/* Compact Role Selection Tabs */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
+              {ROLE_OPTIONS.map((role) => {
+                const isSelected = selectedRoleGuide === role.value;
+                return (
+                  <button
+                    key={role.value}
+                    type="button"
+                    onClick={() => setSelectedRoleGuide(role.value)}
+                    className={`flex items-center gap-2 px-3.5 py-2 rounded-2xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                      isSelected
+                        ? `${role.bgLight} ${role.color} border ${role.border} shadow-xs ring-2 ring-sky-500/20`
+                        : "bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700"
+                    }`}
+                  >
+                    {role.value === "super_admin" && <Crown className="w-3.5 h-3.5" />}
+                    {role.value === "admin" && <ShieldCheck className="w-3.5 h-3.5" />}
+                    {role.value === "editor" && <Edit2 className="w-3.5 h-3.5" />}
+                    {role.value === "moderator" && <UserCheck className="w-3.5 h-3.5" />}
+                    {role.value === "viewer" && <Lock className="w-3.5 h-3.5" />}
+                    {role.value === "custom" && <KeyRound className="w-3.5 h-3.5" />}
+                    <span>{role.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Selected Role Interactive Card (High-Density 2-Column Layout) */}
+            {(() => {
+              const activeRole = ROLE_OPTIONS.find((r) => r.value === selectedRoleGuide) || ROLE_OPTIONS[0];
+
+              return (
+                <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-5 sm:p-6 shadow-xs space-y-5">
+                  {/* Top Bar */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100 dark:border-slate-800">
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2 rounded-xl ${activeRole.bgLight} ${activeRole.color} border ${activeRole.border}`}>
+                        {activeRole.value === "super_admin" && <Crown className="w-5 h-5" />}
+                        {activeRole.value === "admin" && <ShieldCheck className="w-5 h-5" />}
+                        {activeRole.value === "editor" && <Edit2 className="w-5 h-5" />}
+                        {activeRole.value === "moderator" && <UserCheck className="w-5 h-5" />}
+                        {activeRole.value === "viewer" && <Lock className="w-5 h-5" />}
+                        {activeRole.value === "custom" && <KeyRound className="w-5 h-5" />}
                       </div>
                       <div>
-                        <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100">
-                          {role.label}
-                        </h3>
-                        <span className="text-[10px] text-slate-400 font-medium block">
-                          {role.summary}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-extrabold text-base sm:text-lg text-slate-900 dark:text-slate-100">
+                            {activeRole.label}
+                          </h3>
+                          <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${activeRole.bgLight} ${activeRole.color} ${activeRole.border}`}>
+                            {activeRole.summary}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                          {activeRole.desc}
+                        </p>
                       </div>
                     </div>
-
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${role.bgLight} ${role.color} ${role.border} shrink-0`}>
-                      {role.badge}
-                    </span>
                   </div>
 
-                  <p className="text-xs text-slate-600 dark:text-slate-400 mt-2.5 leading-relaxed">
-                    {role.desc}
-                  </p>
-
-                  {/* Capabilities List */}
-                  <div className="mt-3 space-y-1.5">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-                      Capabilities:
-                    </span>
-                    <ul className="space-y-1">
-                      {role.canDo.map((item, idx) => (
-                        <li key={idx} className="flex items-start gap-1.5 text-[11px] text-slate-700 dark:text-slate-300 leading-tight">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
-                          <span>{item}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  {/* Restrictions List */}
-                  {role.cannotDo.length > 0 && (
-                    <div className="mt-2.5 space-y-1 pt-2 border-t border-slate-100 dark:border-slate-800">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-                        Restrictions:
-                      </span>
-                      <ul className="space-y-1">
-                        {role.cannotDo.map((item, idx) => (
-                          <li key={idx} className="flex items-start gap-1.5 text-[11px] text-rose-600/90 dark:text-rose-400/90 leading-tight">
-                            <XCircle className="w-3.5 h-3.5 text-rose-400 shrink-0 mt-0.5" />
-                            <span>{item}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-
-                {/* Permissions Breakdown Footer */}
-                <div className="pt-2.5 border-t border-slate-100 dark:border-slate-800 flex flex-wrap gap-1">
-                  {role.value === "super_admin" ? (
-                    <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400">
-                      ★ Unrestricted Root Super Admin
-                    </span>
-                  ) : role.value === "custom" ? (
-                    <span className="text-[10px] font-semibold text-purple-600 dark:text-purple-400">
-                      Configured dynamically per administrator
-                    </span>
-                  ) : (
-                    ALL_APP_MODULES.map((mod) => {
-                      const lvl = DEFAULT_ROLE_PERMISSIONS[role.value]?.[mod] || "none";
-                      if (lvl === "none") return null;
-                      return (
-                        <span
-                          key={mod}
-                          className={`text-[9px] px-1.5 py-0.2 rounded font-medium border ${
-                            lvl === "write"
-                              ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20"
-                              : "bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/20"
-                          }`}
-                        >
-                          {mod}:{lvl}
+                  {/* 2-Column Grid: Left (Capabilities & Restrictions), Right (Module Access Matrix) */}
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    {/* Left Column: Action Lists (7 cols) */}
+                    <div className="lg:col-span-7 space-y-4">
+                      {/* What this role CAN do */}
+                      <div className="space-y-2">
+                        <span className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                          Authorized Capabilities
                         </span>
-                      );
-                    })
-                  )}
+                        <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {activeRole.canDo.map((item, idx) => (
+                            <li
+                              key={idx}
+                              className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-100 dark:border-slate-800 text-xs text-slate-700 dark:text-slate-300 flex items-start gap-2 leading-relaxed"
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                              <span>{item}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      {/* What this role CANNOT do */}
+                      {activeRole.cannotDo.length > 0 && (
+                        <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                          <span className="text-xs font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400 flex items-center gap-1.5">
+                            <XCircle className="w-4 h-4 text-rose-500" />
+                            Role Restrictions
+                          </span>
+                          <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            {activeRole.cannotDo.map((item, idx) => (
+                              <li
+                                key={idx}
+                                className="p-2.5 rounded-xl bg-rose-50/50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30 text-xs text-rose-700 dark:text-rose-300 flex items-start gap-2 leading-relaxed"
+                              >
+                                <XCircle className="w-3.5 h-3.5 text-rose-400 shrink-0 mt-0.5" />
+                                <span>{item}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Right Column: Module Access Level Breakdown (5 cols) */}
+                    <div className="lg:col-span-5 space-y-2.5 bg-slate-50/70 dark:bg-slate-950/50 p-4 sm:p-5 rounded-2xl border border-slate-100 dark:border-slate-800/80">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                          Module Permissions Breakdown
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-medium">
+                          {activeRole.value === "custom" ? "Custom Matrix" : "Default Preset"}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                        {ALL_APP_MODULES.map((mod) => {
+                          const level =
+                            activeRole.value === "super_admin"
+                              ? "write"
+                              : activeRole.value === "custom"
+                              ? "Configurable"
+                              : DEFAULT_ROLE_PERMISSIONS[activeRole.value]?.[mod] || "none";
+
+                          return (
+                            <div
+                              key={mod}
+                              className="flex items-center justify-between p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 text-xs"
+                            >
+                              <span className="font-medium text-slate-700 dark:text-slate-300 truncate pr-2">
+                                {MODULE_LABELS[mod]}
+                              </span>
+                              <span
+                                className={`text-[10px] font-bold px-2 py-0.5 rounded-md border shrink-0 ${
+                                  level === "write"
+                                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                                    : level === "read"
+                                    ? "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20"
+                                    : level === "Configurable"
+                                    ? "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20"
+                                    : "bg-slate-100 dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700"
+                                }`}
+                              >
+                                {level === "write" ? "Read & Write" : level === "read" ? "Read Only" : level === "Configurable" ? "Custom" : "No Access"}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })()}
           </div>
         )}
       </Card>
+
 
       {/* Admins Table */}
       <Card className="rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900 overflow-hidden">
