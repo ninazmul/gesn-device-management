@@ -178,7 +178,7 @@ export function DashboardClient({ stats }: DashboardClientProps) {
             <button
               type="button"
               onClick={() => openCreateFor("antenna")}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full font-bold text-xs sm:text-sm bg-sky-500 hover:bg-sky-600 active:bg-sky-700 text-white shadow-sm hover:shadow-md active:scale-[0.97] transition-all duration-150"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm bg-sky-500 hover:bg-sky-600 active:bg-sky-700 text-white shadow-sm hover:shadow-md active:scale-[0.97] transition-all duration-150"
             >
               <AntennaIcon className="w-4 h-4 shrink-0" />
               Antenna
@@ -188,7 +188,7 @@ export function DashboardClient({ stats }: DashboardClientProps) {
             <button
               type="button"
               onClick={() => openCreateFor("access-point")}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full font-bold text-xs sm:text-sm bg-purple-500 hover:bg-purple-600 active:bg-purple-700 text-white shadow-sm hover:shadow-md active:scale-[0.97] transition-all duration-150"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm bg-purple-500 hover:bg-purple-600 active:bg-purple-700 text-white shadow-sm hover:shadow-md active:scale-[0.97] transition-all duration-150"
             >
               <AccessPointIcon className="w-4 h-4 shrink-0" />
               Access Point
@@ -198,7 +198,7 @@ export function DashboardClient({ stats }: DashboardClientProps) {
             <button
               type="button"
               onClick={() => openCreateFor("router")}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full font-bold text-xs sm:text-sm bg-indigo-500 hover:bg-indigo-600 active:bg-indigo-700 text-white shadow-sm hover:shadow-md active:scale-[0.97] transition-all duration-150"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm bg-indigo-500 hover:bg-indigo-600 active:bg-indigo-700 text-white shadow-sm hover:shadow-md active:scale-[0.97] transition-all duration-150"
             >
               <CustomRouterIcon className="w-4 h-4 shrink-0" />
               Router
@@ -208,7 +208,7 @@ export function DashboardClient({ stats }: DashboardClientProps) {
             <button
               type="button"
               onClick={() => openCreateFor("switch")}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full font-bold text-xs sm:text-sm bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white shadow-sm hover:shadow-md active:scale-[0.97] transition-all duration-150"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white shadow-sm hover:shadow-md active:scale-[0.97] transition-all duration-150"
             >
               <SwitchIcon className="w-4 h-4 shrink-0" />
               Switch
