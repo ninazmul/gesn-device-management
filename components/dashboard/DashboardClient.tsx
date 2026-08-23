@@ -173,81 +173,45 @@ export function DashboardClient({ stats }: DashboardClientProps) {
             Quick Add
           </h2>
 
-          <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
-            {/* Add Antenna */}
+          <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
+            {/* Antenna */}
             <button
               type="button"
               onClick={() => openCreateFor("antenna")}
-              className="group flex items-center justify-between p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-sky-100 dark:border-slate-800 hover:border-sky-300 dark:hover:border-sky-700 shadow-[0_1px_3px_rgba(0,0,0,0.03)] hover:shadow-md transition-all active:scale-[0.98] text-left"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full font-bold text-xs sm:text-sm bg-sky-500 hover:bg-sky-600 active:bg-sky-700 text-white shadow-sm hover:shadow-md active:scale-[0.97] transition-all duration-150"
             >
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-[#e0f2fe] dark:bg-sky-950/60 border border-[#bae6fd] dark:border-sky-800/60 text-[#0284c7] dark:text-sky-400 shrink-0 group-hover:scale-105 transition-transform">
-                  <AntennaIcon className="w-4 md:w-5 h-4 md:h-5" />
-                </div>
-                <span className="text-xs md:text-sm font-bold text-[#0284c7] dark:text-sky-400">
-                  Add Antenna
-                </span>
-              </div>
-              <div className="w-7 h-7 rounded-full border border-slate-200/80 dark:border-slate-700/80 flex items-center justify-center text-slate-400 group-hover:text-sky-600 dark:group-hover:text-sky-400 group-hover:border-sky-200 transition-colors shrink-0">
-                <ChevronRight className="w-4 h-4" />
-              </div>
+              <AntennaIcon className="w-4 h-4 shrink-0" />
+              Antenna
             </button>
 
-            {/* Add Access Point */}
+            {/* Access Point */}
             <button
               type="button"
               onClick={() => openCreateFor("access-point")}
-              className="group flex items-center justify-between p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-purple-100 dark:border-slate-800 hover:border-purple-300 dark:hover:border-purple-700 shadow-[0_1px_3px_rgba(0,0,0,0.03)] hover:shadow-md transition-all active:scale-[0.98] text-left"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full font-bold text-xs sm:text-sm bg-purple-500 hover:bg-purple-600 active:bg-purple-700 text-white shadow-sm hover:shadow-md active:scale-[0.97] transition-all duration-150"
             >
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-[#f3e8ff] dark:bg-purple-950/60 border border-[#e9d5ff] dark:border-purple-800/60 text-[#9333ea] dark:text-purple-400 shrink-0 group-hover:scale-105 transition-transform">
-                  <AccessPointIcon className="w-4 md:w-5 h-4 md:h-5" />
-                </div>
-                <span className="text-xs md:text-sm font-bold text-[#9333ea] dark:text-purple-400">
-                  Add Access Point
-                </span>
-              </div>
-              <div className="w-7 h-7 rounded-full border border-slate-200/80 dark:border-slate-700/80 flex items-center justify-center text-slate-400 group-hover:text-purple-600 dark:group-hover:text-purple-400 group-hover:border-purple-200 transition-colors shrink-0">
-                <ChevronRight className="w-4 h-4" />
-              </div>
+              <AccessPointIcon className="w-4 h-4 shrink-0" />
+              Access Point
             </button>
 
-            {/* Add Router */}
+            {/* Router */}
             <button
               type="button"
               onClick={() => openCreateFor("router")}
-              className="group flex items-center justify-between p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-indigo-100 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-700 shadow-[0_1px_3px_rgba(0,0,0,0.03)] hover:shadow-md transition-all active:scale-[0.98] text-left"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full font-bold text-xs sm:text-sm bg-indigo-500 hover:bg-indigo-600 active:bg-indigo-700 text-white shadow-sm hover:shadow-md active:scale-[0.97] transition-all duration-150"
             >
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-[#e0e7ff] dark:bg-indigo-950/60 border border-[#c7d2fe] dark:border-indigo-800/60 text-[#4f46e5] dark:text-indigo-400 shrink-0 group-hover:scale-105 transition-transform">
-                  <CustomRouterIcon className="w-4 md:w-5 h-4 md:h-5" />
-                </div>
-                <span className="text-xs md:text-sm font-bold text-[#4f46e5] dark:text-indigo-400">
-                  Add Router
-                </span>
-              </div>
-              <div className="w-7 h-7 rounded-full border border-slate-200/80 dark:border-slate-700/80 flex items-center justify-center text-slate-400 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 group-hover:border-indigo-200 transition-colors shrink-0">
-                <ChevronRight className="w-4 h-4" />
-              </div>
+              <CustomRouterIcon className="w-4 h-4 shrink-0" />
+              Router
             </button>
 
-            {/* Add Switch */}
+            {/* Switch */}
             <button
               type="button"
               onClick={() => openCreateFor("switch")}
-              className="group flex items-center justify-between p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-emerald-100 dark:border-slate-800 hover:border-emerald-300 dark:hover:border-emerald-700 shadow-[0_1px_3px_rgba(0,0,0,0.03)] hover:shadow-md transition-all active:scale-[0.98] text-left"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full font-bold text-xs sm:text-sm bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white shadow-sm hover:shadow-md active:scale-[0.97] transition-all duration-150"
             >
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-[#dcfce7] dark:bg-emerald-950/60 border border-[#bbf7d0] dark:border-emerald-800/60 text-[#16a34a] dark:text-emerald-400 shrink-0 group-hover:scale-105 transition-transform">
-                  <SwitchIcon className="w-4 md:w-5 h-4 md:h-5" />
-                </div>
-                <span className="text-xs md:text-sm font-bold text-[#16a34a] dark:text-emerald-400">
-                  Add Switch
-                </span>
-              </div>
-              <div className="w-7 h-7 rounded-full border border-slate-200/80 dark:border-slate-700/80 flex items-center justify-center text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 group-hover:border-emerald-200 transition-colors shrink-0">
-                <ChevronRight className="w-4 h-4" />
-              </div>
+              <SwitchIcon className="w-4 h-4 shrink-0" />
+              Switch
             </button>
           </div>
         </section>
