@@ -173,7 +173,7 @@ export function DashboardClient({ stats }: DashboardClientProps) {
             Quick Add
           </h2>
 
-          <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-2.5">
             {/* Antenna */}
             <button
               type="button"
