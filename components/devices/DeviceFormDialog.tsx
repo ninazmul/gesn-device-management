@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -174,8 +174,22 @@ export function DeviceFormDialog({
     enabled: open,
   });
 
-  // Sync state when editing device changes
+  // Track previous open value so we only reset fields when the dialog
+  // transitions from closed → open (not on every re-render while it's open,
+  // e.g. when the scanner sub-modal opens/closes and changes scannerOpen state).
+  const prevOpenRef = useRef(open);
+
+  // Sync state when editing device changes OR when the dialog first opens
   useEffect(() => {
+    const justOpened = open && !prevOpenRef.current;
+    prevOpenRef.current = open;
+
+    // Only reset/populate fields when the dialog actually opens or the target
+    // device changes. Skip intermediate renders (open already true) so that
+    // values written by handleBarcodeScan are not overwritten.
+    if (!justOpened && !deviceToEdit) return;
+    if (!open && !deviceToEdit) return;
+
     if (deviceToEdit) {
       setDeviceType(deviceToEdit.deviceType);
       setBrand(deviceToEdit.brand);
@@ -208,7 +222,8 @@ export function DeviceFormDialog({
         deviceToEdit.gps?.longitude !== undefined ? String(deviceToEdit.gps.longitude) : ""
       );
       setStatus(deviceToEdit.status || "Active");
-    } else {
+    } else if (justOpened) {
+      // Only clear fields when the dialog is freshly opened for a new device
       setDeviceType(defaultDeviceType);
       setBrand("");
       setModel("");
