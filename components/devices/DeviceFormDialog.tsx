@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Loader2, Plus, Network, X, ScanBarcode, Camera } from "lucide-react";
+import { Loader2, Plus, Network, X, ScanBarcode, Camera, Hash, Wifi, Fingerprint, MapPin } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { createDevice, updateDevice, getAvailableSwitches } from "@/lib/actions/device.actions";
 import { getBrands, getModels, getDeviceTypes } from "@/lib/actions/catalog.actions";
@@ -97,30 +97,56 @@ export function DeviceFormDialog({
   const [scannerTargetField, setScannerTargetField] = useState<string>("Barcode / QR / MAC");
   // Tracks which form fields were just populated by scan (for glow animation)
   const [scannedFields, setScannedFields] = useState<Set<string>>(new Set());
+  // Holds a scanned value that needs user confirmation before being assigned to a field
+  const [scanPendingResult, setScanPendingResult] = useState<{ raw: string; parsed: import("@/lib/barcode").ParsedBarcodeResult } | null>(null);
 
-  // Handle scanned barcode: ONLY puts values into form input fields (does NOT auto-save)
+  // Assign a confirmed scan value to a specific field
+  const assignScanToField = (value: string, field: "serialNumber" | "macAddress" | "ipAddress" | "deviceName") => {
+    const highlighted = new Set<string>();
+    if (field === "serialNumber") {
+      setSerialNumber(value.toUpperCase());
+      highlighted.add("serialNumber");
+      toast.success(`S/N set to: ${value.toUpperCase()}`);
+    } else if (field === "macAddress") {
+      setMacAddress(value.toUpperCase());
+      highlighted.add("macAddress");
+      toast.success(`MAC set to: ${value.toUpperCase()}`);
+    } else if (field === "ipAddress") {
+      setIpAddress(value);
+      highlighted.add("ipAddress");
+      toast.success(`IP set to: ${value}`);
+    } else if (field === "deviceName") {
+      setDeviceName(value);
+      highlighted.add("deviceName");
+      toast.success(`Device Name set to: ${value}`);
+    }
+    setScannedFields(highlighted);
+    setTimeout(() => setScannedFields(new Set()), 1400);
+    setScanPendingResult(null);
+  };
+
+  // Handle scanned barcode: auto-fills clearly identified fields (MAC, IP);
+  // for ambiguous values (could be S/N, WiFi PW, etc.) shows a confirmation dialog.
   const handleBarcodeScan = (result: ParsedBarcodeResult) => {
     const filledFields: string[] = [];
     const highlighted = new Set<string>();
+    let hasAmbiguous = false;
 
+    // Auto-fill clearly identified MAC address
     if (result.macAddress) {
       setMacAddress(result.macAddress);
       filledFields.push(`MAC: ${result.macAddress}`);
       highlighted.add("macAddress");
     }
 
-    if (result.serialNumber) {
-      setSerialNumber(result.serialNumber);
-      filledFields.push(`S/N: ${result.serialNumber}`);
-      highlighted.add("serialNumber");
-    }
-
+    // Auto-fill clearly identified IP address
     if (result.ipAddress) {
       setIpAddress(result.ipAddress);
       filledFields.push(`IP: ${result.ipAddress}`);
       highlighted.add("ipAddress");
     }
 
+    // Auto-fill model when it came from a labelled key-value field (e.g. "MODEL:xxx")
     if (result.model) {
       setModel(result.model);
       if (!deviceName || deviceName === model) {
@@ -137,9 +163,24 @@ export function DeviceFormDialog({
       highlighted.add("brand");
     }
 
-    // Fallback if raw text wasn't categorized by key-value parser
-    if (filledFields.length === 0 && result.raw) {
+    // Serial number: if it came from an explicit key-value label (e.g. "SN:xxx") auto-fill;
+    // if it was inferred as a fallback from a short alphanumeric string, ask the user.
+    if (result.serialNumber) {
+      const isExplicitLabel = /(?:s\/?n|serial|sn)\s*[:=-]/i.test(result.raw);
+      if (isExplicitLabel) {
+        setSerialNumber(result.serialNumber);
+        filledFields.push(`S/N: ${result.serialNumber}`);
+        highlighted.add("serialNumber");
+      } else {
+        // Ambiguous – could be S/N, WiFi PW, part number, etc. Let the user decide.
+        hasAmbiguous = true;
+      }
+    }
+
+    // Fallback: raw value wasn't categorised at all (pure alphanumeric / hex blob)
+    if (!result.macAddress && !result.serialNumber && !result.ipAddress && !result.model && result.raw) {
       const rawText = result.raw.trim();
+      // Could be an unformatted MAC
       if (/^[0-9A-Fa-f:.-]{12,17}$/.test(rawText)) {
         const cleanedHex = rawText.replace(/[^0-9A-Fa-f]/g, "").toUpperCase();
         if (cleanedHex.length === 12) {
@@ -148,23 +189,26 @@ export function DeviceFormDialog({
           filledFields.push(`MAC: ${formatted}`);
           highlighted.add("macAddress");
         } else {
-          setMacAddress(rawText.toUpperCase());
-          filledFields.push(`MAC: ${rawText.toUpperCase()}`);
-          highlighted.add("macAddress");
+          // Still ambiguous
+          hasAmbiguous = true;
         }
       } else {
-        setSerialNumber(rawText);
-        filledFields.push(`S/N: ${rawText}`);
-        highlighted.add("serialNumber");
+        hasAmbiguous = true;
       }
     }
 
+    // If there is an ambiguous value, pause and ask the user which field to assign it to
+    if (hasAmbiguous) {
+      const ambiguousValue = result.serialNumber || result.raw.trim();
+      setScanPendingResult({ raw: ambiguousValue, parsed: result });
+    }
+
     if (filledFields.length > 0) {
-      // Apply glow animation to affected fields
       setScannedFields(highlighted);
-      // Remove after animation completes so re-scan re-triggers it
       setTimeout(() => setScannedFields(new Set()), 1400);
-      toast.success(`Scanned: ${filledFields.join(", ")}. Form inputs updated.`);
+      if (!hasAmbiguous) {
+        toast.success(`Scanned: ${filledFields.join(", ")}. Form inputs updated.`);
+      }
     }
   };
 
@@ -947,6 +991,95 @@ export function DeviceFormDialog({
           description="Point your camera at the barcode, MAC address sticker, or QR code on the back of the device."
           targetFieldLabel={scannerTargetField}
         />
+
+        {/* Scan Result Field-Assignment Confirmation */}
+        {scanPendingResult && (
+          <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center p-3 sm:p-4">
+            {/* Backdrop */}
+            <div
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              onClick={() => setScanPendingResult(null)}
+            />
+            <div className="relative w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden animate-in slide-in-from-bottom-4 duration-200">
+              {/* Header */}
+              <div className="flex items-center justify-between px-4 py-3 bg-amber-50 dark:bg-amber-950/40 border-b border-amber-200 dark:border-amber-800/50">
+                <div className="flex items-center gap-2">
+                  <ScanBarcode className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                  <span className="text-sm font-bold text-amber-900 dark:text-amber-200">Assign Scanned Value</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setScanPendingResult(null)}
+                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="px-4 py-3 space-y-3">
+                {/* Scanned value display */}
+                <div className="space-y-1">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Decoded Value</p>
+                  <div className="px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                    <span className="font-mono text-sm font-bold text-slate-800 dark:text-slate-100 break-all">
+                      {scanPendingResult.raw}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                    Multiple barcodes were detected on the sticker. Choose which field this value belongs to, or dismiss to discard.
+                  </p>
+                </div>
+
+                {/* Field assignment buttons */}
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => assignScanToField(scanPendingResult.raw, "serialNumber")}
+                    className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800/60 text-sky-700 dark:text-sky-300 text-xs font-semibold hover:bg-sky-100 dark:hover:bg-sky-900/50 transition-colors text-left"
+                  >
+                    <Hash className="w-3.5 h-3.5 shrink-0" />
+                    Serial Number
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => assignScanToField(scanPendingResult.raw, "macAddress")}
+                    className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-violet-50 dark:bg-violet-950/40 border border-violet-200 dark:border-violet-800/60 text-violet-700 dark:text-violet-300 text-xs font-semibold hover:bg-violet-100 dark:hover:bg-violet-900/50 transition-colors text-left"
+                  >
+                    <Fingerprint className="w-3.5 h-3.5 shrink-0" />
+                    MAC Address
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => assignScanToField(scanPendingResult.raw, "ipAddress")}
+                    className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 text-emerald-700 dark:text-emerald-300 text-xs font-semibold hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors text-left"
+                  >
+                    <MapPin className="w-3.5 h-3.5 shrink-0" />
+                    IP Address
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => assignScanToField(scanPendingResult.raw, "deviceName")}
+                    className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-orange-50 dark:bg-orange-950/40 border border-orange-200 dark:border-orange-800/60 text-orange-700 dark:text-orange-300 text-xs font-semibold hover:bg-orange-100 dark:hover:bg-orange-900/50 transition-colors text-left"
+                  >
+                    <Wifi className="w-3.5 h-3.5 shrink-0" />
+                    Device Name
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setScanPendingResult(null)}
+                  className="w-full py-2 text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors font-medium"
+                >
+                  Dismiss — value not needed
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
