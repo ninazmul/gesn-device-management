@@ -321,15 +321,17 @@ export function DeviceFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-2xl">
-        <DialogHeader className="border-b border-slate-100 dark:border-slate-800 pb-4">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <DialogTitle className="text-xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2.5">
-                <span className="p-2 rounded-xl bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400">
-                  <Plus className="w-5 h-5" />
+      <DialogContent className="w-[95vw] sm:max-w-2xl max-h-[92vh] overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl">
+        <DialogHeader className="border-b border-slate-100 dark:border-slate-800 pb-3 sm:pb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+            <div className="min-w-0">
+              <DialogTitle className="text-lg sm:text-xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2 sm:gap-2.5">
+                <span className="p-1.5 sm:p-2 rounded-xl bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400 shrink-0">
+                  <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
                 </span>
-                {isEditing ? `Edit Device #${deviceToEdit?.sl}` : `Add New ${getTypeName(deviceType)}`}
+                <span className="truncate">
+                  {isEditing ? `Edit Device #${deviceToEdit?.sl}` : `Add New ${getTypeName(deviceType)}`}
+                </span>
               </DialogTitle>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                 {isEditing
@@ -346,10 +348,10 @@ export function DeviceFormDialog({
                 setScannerTargetField("Device Back Sticker");
                 setScannerOpen(true);
               }}
-              className="shrink-0 h-9 px-3 text-xs font-semibold rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 shadow-sm transition-all"
+              className="w-full sm:w-auto shrink-0 h-9 px-3 text-xs font-semibold rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 shadow-sm transition-all flex items-center justify-center gap-1.5"
             >
-              <ScanBarcode className="w-4 h-4 mr-1.5 text-emerald-600 dark:text-emerald-400" />
-              Live Scan Barcode
+              <ScanBarcode className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <span>Live Scan Barcode</span>
             </Button>
           </div>
         </DialogHeader>
