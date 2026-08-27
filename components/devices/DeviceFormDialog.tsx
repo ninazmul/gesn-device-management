@@ -18,12 +18,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Loader2, Plus, Network, X } from "lucide-react";
+import { Loader2, Plus, Network, X, ScanBarcode, Camera } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { createDevice, updateDevice, getAvailableSwitches } from "@/lib/actions/device.actions";
 import { getBrands, getModels, getDeviceTypes } from "@/lib/actions/catalog.actions";
 import { PRIMARY_DEVICE_TYPES, DEVICE_STATUSES } from "@/lib/constants";
 import type { DeviceStatus, IDevice, IDeviceType, IBrand, IModel, ISwitchOption } from "@/types";
+import { BarcodeScannerModal } from "./BarcodeScannerModal";
+import { useBarcodeGun } from "@/hooks/useBarcodeGun";
+import type { ParsedBarcodeResult } from "@/lib/barcode";
 
 interface DeviceFormDialogProps {
   open: boolean;
@@ -89,6 +92,63 @@ export function DeviceFormDialog({
   const [loadingModels, setLoadingModels] = useState(false);
   const [loadingSwitches, setLoadingSwitches] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [scannerOpen, setScannerOpen] = useState(false);
+  const [scannerTargetField, setScannerTargetField] = useState<string>("MAC / Serial Barcode");
+
+  // Handle scanned barcode from camera or hardware gun
+  const handleBarcodeScan = (result: ParsedBarcodeResult) => {
+    let matchedSomething = false;
+
+    if (result.macAddress) {
+      setMacAddress(result.macAddress);
+      matchedSomething = true;
+    }
+
+    if (result.ipAddress && !ipAddress) {
+      setIpAddress(result.ipAddress);
+      matchedSomething = true;
+    }
+
+    if (result.model) {
+      setModel(result.model);
+      if (!deviceName || deviceName === model) {
+        setDeviceName(result.model);
+      }
+      matchedSomething = true;
+    } else if (result.serialNumber && !deviceName) {
+      setDeviceName(result.serialNumber);
+      matchedSomething = true;
+    }
+
+    if (result.brand && !brand) {
+      setBrand(result.brand);
+      matchedSomething = true;
+    }
+
+    if (matchedSomething) {
+      const summary = result.macAddress || result.serialNumber || result.model || result.raw;
+      toast.success(`Scanned: ${summary}`);
+    } else if (result.raw) {
+      // If raw text looks like a MAC hex string or serial, set to MAC
+      if (/^[0-9A-Fa-f:.-]{12,17}$/.test(result.raw.trim())) {
+        const parsedMac = result.raw.replace(/[^0-9A-Fa-f]/g, "").toUpperCase();
+        if (parsedMac.length === 12) {
+          setMacAddress((parsedMac.match(/.{1,2}/g) || []).join(":"));
+        } else {
+          setMacAddress(result.raw.toUpperCase());
+        }
+      } else if (!deviceName) {
+        setDeviceName(result.raw);
+      }
+      toast.success(`Scanned: ${result.raw}`);
+    }
+  };
+
+  // Hardware Scanner Gun Listener (Keyboard Wedge)
+  useBarcodeGun({
+    onScan: handleBarcodeScan,
+    enabled: open,
+  });
 
   // Sync state when editing device changes
   useEffect(() => {
@@ -263,17 +323,35 @@ export function DeviceFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-2xl">
         <DialogHeader className="border-b border-slate-100 dark:border-slate-800 pb-4">
-          <DialogTitle className="text-xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2.5">
-            <span className="p-2 rounded-xl bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400">
-              <Plus className="w-5 h-5" />
-            </span>
-            {isEditing ? `Edit Device #${deviceToEdit?.sl}` : `Add New ${getTypeName(deviceType)}`}
-          </DialogTitle>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            {isEditing
-              ? "Update network specifications and deployment properties."
-              : "Register infrastructure hardware into the device inventory."}
-          </p>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <DialogTitle className="text-xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2.5">
+                <span className="p-2 rounded-xl bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400">
+                  <Plus className="w-5 h-5" />
+                </span>
+                {isEditing ? `Edit Device #${deviceToEdit?.sl}` : `Add New ${getTypeName(deviceType)}`}
+              </DialogTitle>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                {isEditing
+                  ? "Update network specifications and deployment properties."
+                  : "Register infrastructure hardware into the device inventory."}
+              </p>
+            </div>
+
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setScannerTargetField("Device Back Sticker");
+                setScannerOpen(true);
+              }}
+              className="shrink-0 h-9 px-3 text-xs font-semibold rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 shadow-sm transition-all"
+            >
+              <ScanBarcode className="w-4 h-4 mr-1.5 text-emerald-600 dark:text-emerald-400" />
+              Live Scan Barcode
+            </Button>
+          </div>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6 pt-2">
@@ -614,15 +692,40 @@ export function DeviceFormDialog({
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  MAC Address
-                </Label>
-                <Input
-                  placeholder="AA:BB:CC:DD:EE:FF"
-                  value={macAddress}
-                  onChange={(e) => setMacAddress(e.target.value)}
-                  className="rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 font-mono text-sm uppercase"
-                />
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    MAC Address
+                  </Label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setScannerTargetField("MAC Address");
+                      setScannerOpen(true);
+                    }}
+                    className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 inline-flex items-center gap-1 transition-colors"
+                  >
+                    <Camera className="w-3.5 h-3.5" /> Scan MAC
+                  </button>
+                </div>
+                <div className="relative">
+                  <Input
+                    placeholder="AA:BB:CC:DD:EE:FF"
+                    value={macAddress}
+                    onChange={(e) => setMacAddress(e.target.value)}
+                    className="rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 font-mono text-sm uppercase pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setScannerTargetField("MAC Address");
+                      setScannerOpen(true);
+                    }}
+                    title="Live Scan MAC Address"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-emerald-500 transition-colors"
+                  >
+                    <ScanBarcode className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -750,6 +853,16 @@ export function DeviceFormDialog({
             </Button>
           </div>
         </form>
+
+        {/* Live Camera Scanner Modal */}
+        <BarcodeScannerModal
+          open={scannerOpen}
+          onOpenChange={setScannerOpen}
+          onScan={handleBarcodeScan}
+          title="Scan Device Barcode / Back Sticker"
+          description="Point your camera at the barcode, MAC address sticker, or QR code on the back of the device."
+          targetFieldLabel={scannerTargetField}
+        />
       </DialogContent>
     </Dialog>
   );

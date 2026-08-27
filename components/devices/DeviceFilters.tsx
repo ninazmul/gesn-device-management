@@ -11,9 +11,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, X, RotateCcw, SlidersHorizontal } from "lucide-react";
+import { Search, X, RotateCcw, SlidersHorizontal, ScanBarcode } from "lucide-react";
 import { DEVICE_STATUSES, SORT_OPTIONS } from "@/lib/constants";
 import { getDeviceFilterOptions } from "@/lib/actions/device.actions";
+import { BarcodeScannerModal } from "./BarcodeScannerModal";
+import { useBarcodeGun } from "@/hooks/useBarcodeGun";
+import type { ParsedBarcodeResult } from "@/lib/barcode";
+import { toast } from "react-hot-toast";
 
 interface DeviceFiltersProps {
   currentType?: string;
@@ -37,6 +41,23 @@ export function DeviceFilters({ currentType, totalDevices }: DeviceFiltersProps)
   const [brands, setBrands] = useState<string[]>([]);
   const [models, setModels] = useState<Array<{ name: string; brand: string }>>([]);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [scannerOpen, setScannerOpen] = useState(false);
+
+  // Handle scanned barcode in search filter
+  const handleBarcodeScan = (result: ParsedBarcodeResult) => {
+    const searchVal = result.macAddress || result.serialNumber || result.model || result.raw;
+    if (searchVal) {
+      setSearchTerm(searchVal);
+      updateQuery("search", searchVal);
+      toast.success(`Filter applied: ${searchVal}`);
+    }
+  };
+
+  // Hardware scanner gun support on the table/filter page
+  useBarcodeGun({
+    onScan: handleBarcodeScan,
+    enabled: true,
+  });
 
   // Sync search input if URL changes externally
   useEffect(() => {
@@ -97,24 +118,35 @@ export function DeviceFilters({ currentType, totalDevices }: DeviceFiltersProps)
     <div className="space-y-3 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
       {/* Top Row: Search + Quick Status + Sort + Toggle */}
       <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
-        {/* Search Input */}
+        {/* Search Input with Live Camera Barcode Scan */}
         <div className="relative flex-1 min-w-[240px]">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <Input
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search by SL, Device Name, IP, MAC, Model..."
-            className="pl-10 pr-9 rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm focus-visible:ring-sky-500"
+            className="pl-10 pr-20 rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm focus-visible:ring-sky-500"
           />
-          {searchTerm && (
+          <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm("")}
+                className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                type="button"
+                title="Clear search"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
             <button
-              onClick={() => setSearchTerm("")}
-              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
               type="button"
+              onClick={() => setScannerOpen(true)}
+              className="p-1.5 rounded-lg text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 transition-colors"
+              title="Live Scan Barcode / MAC to Search"
             >
-              <X className="w-3.5 h-3.5" />
+              <ScanBarcode className="w-4 h-4" />
             </button>
-          )}
+          </div>
         </div>
 
         {/* Status Dropdown */}
@@ -251,6 +283,16 @@ export function DeviceFilters({ currentType, totalDevices }: DeviceFiltersProps)
           </div>
         </div>
       )}
+
+      {/* Live Camera Barcode Scanner for Search */}
+      <BarcodeScannerModal
+        open={scannerOpen}
+        onOpenChange={setScannerOpen}
+        onScan={handleBarcodeScan}
+        title="Scan Device Barcode to Search"
+        description="Point camera at the device barcode or MAC sticker to instantly filter and find the device."
+        targetFieldLabel="Search Filter"
+      />
     </div>
   );
 }
