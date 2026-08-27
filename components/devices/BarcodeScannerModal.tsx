@@ -48,6 +48,8 @@ export function BarcodeScannerModal({
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [lastScannedValue, setLastScannedValue] = useState<string | null>(null);
+  const [showFlash, setShowFlash] = useState(false);
+  const [flashKey, setFlashKey] = useState(0); // key forces remount to replay animation
   const isStoppingRef = useRef(false);
 
   // Stop scanner safely
@@ -168,6 +170,11 @@ export function BarcodeScannerModal({
     }
     triggerScanVibration(100);
 
+    // Trigger green viewport flash effect
+    setFlashKey((k) => k + 1);
+    setShowFlash(true);
+    setTimeout(() => setShowFlash(false), 600);
+
     const parsed = parseScannedBarcode(decodedText);
     setLastScannedValue(parsed.macAddress || parsed.serialNumber || decodedText);
 
@@ -179,7 +186,7 @@ export function BarcodeScannerModal({
       stopScanner().then(() => {
         onOpenChange(false);
       });
-    }, 450);
+    }, 600);
   };
 
   // Toggle mirror display via CSS
@@ -269,34 +276,42 @@ export function BarcodeScannerModal({
           {/* Scanner Overlay UI / Aiming Reticle */}
           {isScanning && !errorMessage && !lastScannedValue && (
             <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center p-4 sm:p-6">
-              {/* Outer darkened vignette */}
               <div className="relative w-full max-w-[320px] h-[170px] sm:h-[190px] rounded-xl border-2 border-emerald-400/80 shadow-[0_0_20px_rgba(16,185,129,0.3)] flex items-center justify-center overflow-hidden">
-                {/* Corner guide brackets */}
-                <div className="absolute top-0 left-0 w-5 h-5 sm:w-6 sm:h-6 border-t-4 border-l-4 border-emerald-400 rounded-tl-sm" />
-                <div className="absolute top-0 right-0 w-5 h-5 sm:w-6 sm:h-6 border-t-4 border-r-4 border-emerald-400 rounded-tr-sm" />
-                <div className="absolute bottom-0 left-0 w-5 h-5 sm:w-6 sm:h-6 border-b-4 border-l-4 border-emerald-400 rounded-bl-sm" />
-                <div className="absolute bottom-0 right-0 w-5 h-5 sm:w-6 sm:h-6 border-b-4 border-r-4 border-emerald-400 rounded-br-sm" />
+                {/* Animated corner brackets */}
+                <div className="scan-corner absolute top-0 left-0 w-5 h-5 sm:w-6 sm:h-6 border-t-4 border-l-4 border-emerald-400 rounded-tl-sm" />
+                <div className="scan-corner absolute top-0 right-0 w-5 h-5 sm:w-6 sm:h-6 border-t-4 border-r-4 border-emerald-400 rounded-tr-sm" style={{ animationDelay: "0.45s" }} />
+                <div className="scan-corner absolute bottom-0 left-0 w-5 h-5 sm:w-6 sm:h-6 border-b-4 border-l-4 border-emerald-400 rounded-bl-sm" style={{ animationDelay: "0.9s" }} />
+                <div className="scan-corner absolute bottom-0 right-0 w-5 h-5 sm:w-6 sm:h-6 border-b-4 border-r-4 border-emerald-400 rounded-br-sm" style={{ animationDelay: "1.35s" }} />
 
-                {/* Laser animation beam */}
-                <div className="absolute left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-emerald-400 to-transparent shadow-[0_0_8px_#34d399] animate-[bounce_2s_infinite]" />
+                {/* Sweeping laser line */}
+                <div className="scan-laser-line" />
 
-                <span className="text-[10px] sm:text-[11px] font-medium tracking-wide text-emerald-300/90 bg-slate-950/80 px-2 py-0.5 rounded-full border border-emerald-500/20 backdrop-blur-sm text-center mx-2">
+                <span className="text-[10px] sm:text-[11px] font-medium tracking-wide text-emerald-300/90 bg-slate-950/80 px-2 py-0.5 rounded-full border border-emerald-500/20 backdrop-blur-sm text-center mx-2 z-10">
                   Align Barcode / QR Inside Frame
                 </span>
               </div>
             </div>
           )}
 
+          {/* Green flash overlay on successful decode */}
+          {showFlash && (
+            <div key={flashKey} className="scan-flash-overlay rounded-none" />
+          )}
+
           {/* Scanned Confirmation Overlay */}
           {lastScannedValue && (
             <div className="absolute inset-0 bg-emerald-950/90 backdrop-blur-sm flex flex-col items-center justify-center p-4 sm:p-6 text-center z-20 animate-in fade-in zoom-in-95">
-              <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-emerald-500/20 border-2 border-emerald-400 flex items-center justify-center mb-2 sm:mb-3">
-                <CheckCircle2 className="w-8 h-8 sm:w-10 sm:h-10 text-emerald-400 animate-bounce" />
+              {/* Ripple ring */}
+              <div className="scan-ripple" />
+
+              <div className="relative w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-emerald-500/20 border-2 border-emerald-400 flex items-center justify-center mb-2 sm:mb-3">
+                <CheckCircle2 className="w-8 h-8 sm:w-10 sm:h-10 text-emerald-400 animate-in zoom-in-50" />
               </div>
-              <h4 className="text-base sm:text-lg font-bold text-white mb-1">Scanned Successfully!</h4>
-              <div className="px-3 py-1 rounded-lg bg-slate-900/80 border border-emerald-500/40 text-emerald-300 font-mono text-xs sm:text-sm font-semibold max-w-[95%] truncate">
+              <h4 className="text-base sm:text-lg font-bold text-white mb-1 animate-in slide-in-from-bottom-2">Scanned Successfully!</h4>
+              <div className="px-3 py-1 rounded-lg bg-slate-900/80 border border-emerald-500/40 text-emerald-300 font-mono text-xs sm:text-sm font-semibold max-w-[95%] truncate animate-in slide-in-from-bottom-2">
                 {lastScannedValue}
               </div>
+              <p className="text-[10px] text-emerald-400/70 mt-2 animate-in fade-in">Filling form fields…</p>
             </div>
           )}
 

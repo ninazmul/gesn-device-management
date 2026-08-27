@@ -192,6 +192,18 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
           </div>
 
           <div className="space-y-4">
+            {device.serialNumber && (
+              <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50">
+                <div>
+                  <span className="text-xs text-slate-400 block">Serial Number (S/N)</span>
+                  <span className="font-mono text-sm font-bold text-slate-900 dark:text-slate-100">
+                    {device.serialNumber}
+                  </span>
+                </div>
+                <CopyButton text={device.serialNumber} label="Serial Number" />
+              </div>
+            )}
+
             <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50">
               <div>
                 <span className="text-xs text-slate-400 block">IPv4 Address</span>

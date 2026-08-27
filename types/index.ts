@@ -53,6 +53,7 @@ export interface IDevice {
   brand: string;
   model: string;
   deviceName: string;
+  serialNumber?: string;
   totalPorts?: number;
   uplinkSwitch?: IDevice | string | null;
   activePortsCount?: number;

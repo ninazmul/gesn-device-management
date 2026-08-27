@@ -243,16 +243,23 @@ export function DeviceTable({
                         )}
                       </TableCell>
 
-                      {/* MAC Address */}
+                      {/* MAC Address & Serial */}
                       <TableCell className="whitespace-nowrap">
-                        {device.macAddress ? (
-                          <div className="inline-flex items-center gap-1.5 font-mono text-xs font-medium text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/60 px-2.5 py-1 rounded-lg border border-slate-200/60 dark:border-slate-700/60">
-                            <span>{device.macAddress}</span>
-                            <CopyButton text={device.macAddress} label="MAC Address" />
-                          </div>
-                        ) : (
-                          <span className="text-slate-300 dark:text-slate-600 text-xs">—</span>
-                        )}
+                        <div className="space-y-1">
+                          {device.macAddress ? (
+                            <div className="inline-flex items-center gap-1.5 font-mono text-xs font-medium text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/60 px-2.5 py-1 rounded-lg border border-slate-200/60 dark:border-slate-700/60">
+                              <span>{device.macAddress}</span>
+                              <CopyButton text={device.macAddress} label="MAC Address" />
+                            </div>
+                          ) : (
+                            <span className="text-slate-300 dark:text-slate-600 text-xs">—</span>
+                          )}
+                          {device.serialNumber && (
+                            <div className="text-[10px] font-mono text-slate-400 font-medium">
+                              SN: {device.serialNumber}
+                            </div>
+                          )}
+                        </div>
                       </TableCell>
 
                       {/* Online Link */}

@@ -159,3 +159,84 @@ body {
     max-width: calc(100vw - 2rem) !important;
   }
 }
+
+/* ============================================================
+   Barcode Scanner Effects
+   ============================================================ */
+
+/* Laser scan line sweeping top-to-bottom */
+@keyframes scan-laser {
+  0%   { top: 6px; opacity: 1; }
+  48%  { top: calc(100% - 6px); opacity: 1; }
+  50%  { top: calc(100% - 6px); opacity: 0; }
+  52%  { top: 6px; opacity: 0; }
+  54%  { top: 6px; opacity: 1; }
+  100% { top: 6px; opacity: 1; }
+}
+
+/* Viewport success flash */
+@keyframes scan-flash {
+  0%   { opacity: 0; }
+  15%  { opacity: 0.55; }
+  100% { opacity: 0; }
+}
+
+/* Corner bracket pulse glow */
+@keyframes corner-pulse {
+  0%, 100% { opacity: 0.7; box-shadow: none; }
+  50%       { opacity: 1;   box-shadow: 0 0 10px 2px rgba(52, 211, 153, 0.6); }
+}
+
+/* Form field autofill highlight – green ring pop then fade */
+@keyframes field-scan-pop {
+  0%   { box-shadow: 0 0 0 0   rgba(16, 185, 129, 0);   background-color: transparent; }
+  20%  { box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.45); background-color: rgba(16, 185, 129, 0.08); }
+  60%  { box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25); background-color: rgba(16, 185, 129, 0.05); }
+  100% { box-shadow: 0 0 0 0   rgba(16, 185, 129, 0);   background-color: transparent; }
+}
+
+.scan-field-highlight {
+  animation: field-scan-pop 1.2s ease-out forwards;
+  border-radius: 0.5rem;
+}
+
+/* Ripple out from scan reticle on success */
+@keyframes scan-ripple {
+  0%   { transform: scale(1);   opacity: 0.8; }
+  100% { transform: scale(1.18); opacity: 0; }
+}
+
+.scan-laser-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(to right, transparent 0%, #34d399 20%, #6ee7b7 50%, #34d399 80%, transparent 100%);
+  box-shadow: 0 0 8px 2px rgba(52, 211, 153, 0.6), 0 0 20px 4px rgba(52, 211, 153, 0.2);
+  animation: scan-laser 2.2s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.scan-flash-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(52, 211, 153, 0.35);
+  animation: scan-flash 0.55s ease-out forwards;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.scan-corner {
+  animation: corner-pulse 1.8s ease-in-out infinite;
+}
+
+.scan-ripple {
+  position: absolute;
+  inset: 0;
+  border: 2px solid rgba(52, 211, 153, 0.7);
+  border-radius: 0.75rem;
+  animation: scan-ripple 0.5s ease-out forwards;
+  pointer-events: none;
+  z-index: 3;
+}

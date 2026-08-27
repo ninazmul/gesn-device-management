@@ -126,6 +126,7 @@ export async function getDevices(params?: GetDevicesParams) {
     query.$or = [
       { sl: regex },
       { deviceName: regex },
+      { serialNumber: regex },
       { brand: regex },
       { model: regex },
       { ipAddress: regex },
@@ -262,6 +263,7 @@ export async function createDevice(data: {
   brand: string;
   model: string;
   deviceName?: string;
+  serialNumber?: string;
   totalPorts?: number;
   uplinkSwitch?: string | null;
   description?: string;
@@ -296,6 +298,7 @@ export async function createDevice(data: {
     brand: data.brand.trim(),
     model: data.model.trim(),
     deviceName,
+    serialNumber: data.serialNumber?.trim().toUpperCase() || "",
     totalPorts: data.totalPorts !== undefined && !isNaN(Number(data.totalPorts)) ? Number(data.totalPorts) : undefined,
     uplinkSwitch: data.uplinkSwitch ? data.uplinkSwitch : null,
     description: data.description?.trim() || "",
@@ -340,6 +343,7 @@ export async function updateDevice(
     brand?: string;
     model?: string;
     deviceName?: string;
+    serialNumber?: string;
     totalPorts?: number;
     uplinkSwitch?: string | null;
     description?: string;
@@ -370,6 +374,7 @@ export async function updateDevice(
   if (data.brand) updatePayload.brand = data.brand.trim();
   if (data.model) updatePayload.model = data.model.trim();
   if (data.deviceName) updatePayload.deviceName = data.deviceName.trim();
+  if (data.serialNumber !== undefined) updatePayload.serialNumber = data.serialNumber.trim().toUpperCase();
   if (data.totalPorts !== undefined) {
     updatePayload.totalPorts = !isNaN(Number(data.totalPorts)) ? Number(data.totalPorts) : undefined;
   }

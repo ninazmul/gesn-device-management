@@ -7,6 +7,7 @@ export interface IDeviceDoc {
   brand: string;
   model: string;
   deviceName: string;
+  serialNumber?: string;
   totalPorts?: number;
   uplinkSwitch?: Schema.Types.ObjectId | IDeviceDoc | null;
   description?: string;
@@ -54,6 +55,12 @@ const DeviceSchema = new Schema(
     deviceName: {
       type: String,
       required: true,
+      trim: true,
+      index: true,
+    },
+    serialNumber: {
+      type: String,
+      default: "",
       trim: true,
       index: true,
     },
@@ -117,6 +124,7 @@ DeviceSchema.index({ brand: 1, model: 1 });
 DeviceSchema.index({
   deviceName: "text",
   sl: "text",
+  serialNumber: "text",
   ipAddress: "text",
   macAddress: "text",
   description: "text",

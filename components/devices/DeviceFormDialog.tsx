@@ -66,6 +66,7 @@ export function DeviceFormDialog({
   );
   const [description, setDescription] = useState(deviceToEdit?.description || "");
   const [onlineLink, setOnlineLink] = useState(deviceToEdit?.onlineLink || "");
+  const [serialNumber, setSerialNumber] = useState(deviceToEdit?.serialNumber || "");
   const [macAddress, setMacAddress] = useState(deviceToEdit?.macAddress || "");
   const [ipAddress, setIpAddress] = useState(deviceToEdit?.ipAddress || "");
   const [activationDate, setActivationDate] = useState(
@@ -93,58 +94,81 @@ export function DeviceFormDialog({
   const [loadingSwitches, setLoadingSwitches] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [scannerOpen, setScannerOpen] = useState(false);
-  const [scannerTargetField, setScannerTargetField] = useState<string>("MAC / Serial Barcode");
+  const [scannerTargetField, setScannerTargetField] = useState<string>("Barcode / QR / MAC");
+  // Tracks which form fields were just populated by scan (for glow animation)
+  const [scannedFields, setScannedFields] = useState<Set<string>>(new Set());
 
-  // Handle scanned barcode from camera or hardware gun
+  // Handle scanned barcode: ONLY puts values into form input fields (does NOT auto-save)
   const handleBarcodeScan = (result: ParsedBarcodeResult) => {
-    let matchedSomething = false;
+    const filledFields: string[] = [];
+    const highlighted = new Set<string>();
 
     if (result.macAddress) {
       setMacAddress(result.macAddress);
-      matchedSomething = true;
+      filledFields.push(`MAC: ${result.macAddress}`);
+      highlighted.add("macAddress");
     }
 
-    if (result.ipAddress && !ipAddress) {
+    if (result.serialNumber) {
+      setSerialNumber(result.serialNumber);
+      filledFields.push(`S/N: ${result.serialNumber}`);
+      highlighted.add("serialNumber");
+    }
+
+    if (result.ipAddress) {
       setIpAddress(result.ipAddress);
-      matchedSomething = true;
+      filledFields.push(`IP: ${result.ipAddress}`);
+      highlighted.add("ipAddress");
     }
 
     if (result.model) {
       setModel(result.model);
       if (!deviceName || deviceName === model) {
         setDeviceName(result.model);
+        highlighted.add("deviceName");
       }
-      matchedSomething = true;
-    } else if (result.serialNumber && !deviceName) {
-      setDeviceName(result.serialNumber);
-      matchedSomething = true;
+      filledFields.push(`Model: ${result.model}`);
+      highlighted.add("model");
     }
 
     if (result.brand && !brand) {
       setBrand(result.brand);
-      matchedSomething = true;
+      filledFields.push(`Brand: ${result.brand}`);
+      highlighted.add("brand");
     }
 
-    if (matchedSomething) {
-      const summary = result.macAddress || result.serialNumber || result.model || result.raw;
-      toast.success(`Scanned: ${summary}`);
-    } else if (result.raw) {
-      // If raw text looks like a MAC hex string or serial, set to MAC
-      if (/^[0-9A-Fa-f:.-]{12,17}$/.test(result.raw.trim())) {
-        const parsedMac = result.raw.replace(/[^0-9A-Fa-f]/g, "").toUpperCase();
-        if (parsedMac.length === 12) {
-          setMacAddress((parsedMac.match(/.{1,2}/g) || []).join(":"));
+    // Fallback if raw text wasn't categorized by key-value parser
+    if (filledFields.length === 0 && result.raw) {
+      const rawText = result.raw.trim();
+      if (/^[0-9A-Fa-f:.-]{12,17}$/.test(rawText)) {
+        const cleanedHex = rawText.replace(/[^0-9A-Fa-f]/g, "").toUpperCase();
+        if (cleanedHex.length === 12) {
+          const formatted = (cleanedHex.match(/.{1,2}/g) || []).join(":");
+          setMacAddress(formatted);
+          filledFields.push(`MAC: ${formatted}`);
+          highlighted.add("macAddress");
         } else {
-          setMacAddress(result.raw.toUpperCase());
+          setMacAddress(rawText.toUpperCase());
+          filledFields.push(`MAC: ${rawText.toUpperCase()}`);
+          highlighted.add("macAddress");
         }
-      } else if (!deviceName) {
-        setDeviceName(result.raw);
+      } else {
+        setSerialNumber(rawText);
+        filledFields.push(`S/N: ${rawText}`);
+        highlighted.add("serialNumber");
       }
-      toast.success(`Scanned: ${result.raw}`);
+    }
+
+    if (filledFields.length > 0) {
+      // Apply glow animation to affected fields
+      setScannedFields(highlighted);
+      // Remove after animation completes so re-scan re-triggers it
+      setTimeout(() => setScannedFields(new Set()), 1400);
+      toast.success(`Scanned: ${filledFields.join(", ")}. Form inputs updated.`);
     }
   };
 
-  // Hardware Scanner Gun Listener (Keyboard Wedge)
+  // Hardware Scanner Gun Listener (Keyboard Wedge) - Fills inputs only
   useBarcodeGun({
     onScan: handleBarcodeScan,
     enabled: open,
@@ -157,6 +181,7 @@ export function DeviceFormDialog({
       setBrand(deviceToEdit.brand);
       setModel(deviceToEdit.model);
       setDeviceName(deviceToEdit.deviceName || deviceToEdit.model || "");
+      setSerialNumber(deviceToEdit.serialNumber || "");
       setTotalPorts(
         deviceToEdit.totalPorts !== undefined ? String(deviceToEdit.totalPorts) : "8"
       );
@@ -188,6 +213,7 @@ export function DeviceFormDialog({
       setBrand("");
       setModel("");
       setDeviceName("");
+      setSerialNumber("");
       setTotalPorts(defaultDeviceType === "switch" ? "8" : "");
       setUplinkSwitch("");
       setDescription("");
@@ -281,6 +307,7 @@ export function DeviceFormDialog({
         brand,
         model: model.trim(),
         deviceName: deviceName.trim(),
+        serialNumber: serialNumber.trim().toUpperCase(),
         totalPorts: deviceType === "switch" && totalPorts ? Number(totalPorts) : undefined,
         uplinkSwitch: ["antenna", "access-point", "router"].includes(deviceType) && uplinkSwitch ? uplinkSwitch : null,
         description,
@@ -675,24 +702,51 @@ export function DeviceFormDialog({
             </div>
           )}
 
-          {/* Group 2: Network Configuration */}
+          {/* Group 2: Hardware Identifiers & Connectivity */}
           <div className="space-y-3 pt-2 border-t border-slate-100 dark:border-slate-800">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-              2. Network & Connectivity
+              2. Hardware Identifiers & Connectivity
             </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+              {/* Serial Number (S/N) */}
               <div className="space-y-1.5">
-                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  IPv4 Address
-                </Label>
-                <Input
-                  placeholder="192.168.1.100"
-                  value={ipAddress}
-                  onChange={(e) => setIpAddress(e.target.value)}
-                  className="rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 font-mono text-sm"
-                />
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Serial Number (S/N)
+                  </Label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setScannerTargetField("Serial Number (S/N)");
+                      setScannerOpen(true);
+                    }}
+                    className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 inline-flex items-center gap-1 transition-colors"
+                  >
+                    <Camera className="w-3.5 h-3.5" /> Scan
+                  </button>
+                </div>
+                <div className={`relative transition-all${scannedFields.has("serialNumber") ? " scan-field-highlight" : ""}`}>
+                  <Input
+                    placeholder="e.g. SN123456789"
+                    value={serialNumber}
+                    onChange={(e) => setSerialNumber(e.target.value)}
+                    className="rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 font-mono text-sm uppercase pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setScannerTargetField("Serial Number (S/N)");
+                      setScannerOpen(true);
+                    }}
+                    title="Live Scan Serial Number"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-emerald-500 transition-colors"
+                  >
+                    <ScanBarcode className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
 
+              {/* MAC Address */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
@@ -706,10 +760,10 @@ export function DeviceFormDialog({
                     }}
                     className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 inline-flex items-center gap-1 transition-colors"
                   >
-                    <Camera className="w-3.5 h-3.5" /> Scan MAC
+                    <Camera className="w-3.5 h-3.5" /> Scan
                   </button>
                 </div>
-                <div className="relative">
+                <div className={`relative transition-all${scannedFields.has("macAddress") ? " scan-field-highlight" : ""}`}>
                   <Input
                     placeholder="AA:BB:CC:DD:EE:FF"
                     value={macAddress}
@@ -728,6 +782,19 @@ export function DeviceFormDialog({
                     <ScanBarcode className="w-4 h-4" />
                   </button>
                 </div>
+              </div>
+
+              {/* IPv4 Address */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  IPv4 Address
+                </Label>
+                <Input
+                  placeholder="192.168.1.100"
+                  value={ipAddress}
+                  onChange={(e) => setIpAddress(e.target.value)}
+                  className={`rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 font-mono text-sm${scannedFields.has("ipAddress") ? " scan-field-highlight" : ""}`}
+                />
               </div>
             </div>
 
