@@ -158,7 +158,7 @@ export function AllDevicesHeader({ total }: AllDevicesHeaderProps) {
         </div>
 
         {/* Polished Actions Dropdown Menu */}
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 shrink-0 ml-auto">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
