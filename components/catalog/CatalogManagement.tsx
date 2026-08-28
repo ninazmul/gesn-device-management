@@ -21,6 +21,14 @@ import {
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   BookOpen,
   Plus,
   Pencil,
@@ -32,6 +40,7 @@ import {
   Loader2,
   Shield,
   Search,
+  ChevronDown,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import {
@@ -317,24 +326,43 @@ export function CatalogManagement({
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          {initialBrands.length === 0 && canWriteCatalog && (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleSeed}
-              disabled={isSeeding}
-              className="rounded-xl border-sky-200 dark:border-sky-800 bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 text-xs font-semibold"
-            >
-              {isSeeding ? (
-                <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-              ) : (
-                <Sparkles className="w-3.5 h-3.5 mr-1.5 text-amber-500" />
-              )}
-              Seed Defaults
-            </Button>
-          )}
-        </div>
+        {canWriteCatalog && (
+          <div className="flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button className="rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-semibold text-xs shadow-md shadow-sky-600/10 gap-1.5 h-10 px-4">
+                  <span>Catalog Actions</span>
+                  <ChevronDown className="w-3.5 h-3.5 opacity-80" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>Create Taxonomy</DropdownMenuLabel>
+                <DropdownMenuItem onClick={openCreateModel}>
+                  <Cpu className="w-4 h-4 text-sky-600 dark:text-sky-400" />
+                  <span>Add Device Model</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={openCreateBrand}>
+                  <Tag className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                  <span>Add Brand</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={openCreateType}>
+                  <Layers className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                  <span>Add Device Type</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel>System Defaults</DropdownMenuLabel>
+                <DropdownMenuItem onClick={handleSeed} disabled={isSeeding}>
+                  {isSeeding ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-amber-500" />
+                  ) : (
+                    <Sparkles className="w-4 h-4 text-amber-500" />
+                  )}
+                  <span>Seed Default Catalog</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        )}
       </div>
 
       {/* Main Tabs Container */}

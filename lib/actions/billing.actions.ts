@@ -384,3 +384,31 @@ export async function deleteBilling(id: string) {
   revalidatePath("/billing");
   return { success: true };
 }
+
+// ==========================================
+// GET ALL BILLINGS FOR EXCEL EXPORT
+// ==========================================
+export async function getAllBillingsForExport(params?: {
+  billingMonth?: string;
+  status?: string;
+  search?: string;
+}) {
+  await requirePermission("billing", "read");
+  await connectToDatabase();
+
+  const query: FilterQuery<typeof Billing> = {};
+  if (params?.billingMonth && params.billingMonth !== "all") {
+    query.billingMonth = params.billingMonth;
+  }
+  if (params?.status && params.status !== "all") {
+    query.status = params.status;
+  }
+
+  const billings = await Billing.find(query)
+    .populate("customer", "customerId name phone email address")
+    .sort({ billingMonth: -1, billingId: 1 })
+    .lean();
+
+  return JSON.parse(JSON.stringify(billings)) as IBilling[];
+}
+

@@ -2,7 +2,7 @@ import { getDevices } from "@/lib/actions/device.actions";
 import { DeviceTable } from "@/components/devices/DeviceTable";
 import { DeviceMobileCards } from "@/components/devices/DeviceMobileCards";
 import { DeviceFilters } from "@/components/devices/DeviceFilters";
-import { Boxes } from "lucide-react";
+import { AllDevicesHeader } from "./AllDevicesHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -34,21 +34,8 @@ export default async function AllDevicesPage({ searchParams }: DevicesPageProps)
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-[1600px] mx-auto">
       {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
-        <div className="flex items-center gap-3.5">
-          <div className="p-3 rounded-2xl bg-sky-50 dark:bg-sky-950/50 text-sky-600 dark:text-sky-400 border border-sky-200/50 dark:border-sky-800/50">
-            <Boxes className="w-6 h-6" />
-          </div>
-          <div>
-            <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">
-              All Devices
-            </h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Total registered hardware inventory: <span className="font-bold text-slate-800 dark:text-slate-200">{total.toLocaleString()}</span> units
-            </p>
-          </div>
-        </div>
-      </div>
+      <AllDevicesHeader total={total} />
+
 
       {/* Filter Toolbar */}
       <DeviceFilters totalDevices={total} />

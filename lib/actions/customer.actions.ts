@@ -315,3 +315,118 @@ export async function searchActiveCustomers(query: string = "") {
 
   return JSON.parse(JSON.stringify(customers));
 }
+
+// ==========================================
+// GET ALL CUSTOMERS FOR EXCEL EXPORT
+// ==========================================
+export async function getAllCustomersForExport(params?: {
+  status?: string;
+  search?: string;
+}) {
+  await requirePermission("customers", "read");
+  await connectToDatabase();
+
+  const query: FilterQuery<typeof Customer> = {};
+  if (params?.status && params.status !== "all") {
+    query.status = params.status;
+  }
+  if (params?.search && params.search.trim()) {
+    const term = params.search.trim();
+    const regex = new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+    query.$or = [
+      { customerId: regex },
+      { name: regex },
+      { contactPerson: regex },
+      { phone: regex },
+      { email: regex },
+      { address: regex },
+    ];
+  }
+
+  const customers = await Customer.find(query).sort({ customerId: 1 }).lean();
+  return JSON.parse(JSON.stringify(customers)) as ICustomer[];
+}
+
+// ==========================================
+// BULK IMPORT CUSTOMERS FROM EXCEL
+// ==========================================
+export async function importCustomersBulk(rows: Record<string, unknown>[]) {
+  const actor = await requirePermission("customers", "write");
+  await connectToDatabase();
+
+  if (!rows || rows.length === 0) {
+    throw new Error("No data rows provided for import.");
+  }
+
+  let createdCount = 0;
+  const errors: string[] = [];
+
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
+    const rowNum = i + 2; // account for header row
+
+    // Resolve fields flexibly
+    const name = String(r["Customer Name"] || r["Name"] || r["name"] || r["Customer"] || "").trim();
+    if (!name) {
+      errors.push(`Row ${rowNum}: Skipped due to missing Customer Name.`);
+      continue;
+    }
+
+    const contactPerson = String(r["Contact Person"] || r["Contact"] || r["contactPerson"] || "").trim();
+    const phone = String(r["Phone"] || r["Mobile"] || r["phone"] || r["Contact No"] || "").trim();
+    const email = String(r["Email"] || r["email"] || "").trim().toLowerCase();
+    const address = String(r["Address"] || r["address"] || r["Location"] || "").trim();
+    const rawBill = r["Monthly Bill"] || r["MonthlyBill"] || r["Bill"] || r["monthlyBill"] || 0;
+    const monthlyBill = Math.max(0, Number(String(rawBill).replace(/[^0-9.-]/g, "")) || 0);
+    const rawDay = r["Billing Day"] || r["BillingDay"] || r["Day"] || r["billingDay"] || 1;
+    const billingDay = Math.min(31, Math.max(1, Number(rawDay) || 1));
+    const rawStatus = String(r["Status"] || r["status"] || "Active").trim();
+    const status: CustomerStatus = ["Active", "Inactive", "Suspended"].includes(rawStatus)
+      ? (rawStatus as CustomerStatus)
+      : "Active";
+
+    try {
+      const customerId = await getNextCustomerId();
+      await Customer.create({
+        customerId,
+        name,
+        contactPerson,
+        phone,
+        email,
+        address,
+        monthlyBill,
+        billingDay,
+        billingStartDate: new Date(),
+        status,
+        assignedDevices: [],
+      });
+      createdCount++;
+    } catch (err) {
+      errors.push(`Row ${rowNum} (${name}): ${err instanceof Error ? err.message : "Failed to insert"}`);
+    }
+  }
+
+  if (createdCount > 0) {
+    await logActivityAndNotify({
+      actor,
+      action: "CREATE_CUSTOMER",
+      module: "customers",
+      resourceId: "BULK_IMPORT",
+      resourceName: `${createdCount} Customers`,
+      details: `Bulk imported ${createdCount} customers from Excel file`,
+      link: "/customers",
+    });
+
+    revalidatePath("/");
+    revalidatePath("/customers");
+    revalidatePath("/billing");
+  }
+
+  return {
+    success: true,
+    createdCount,
+    totalRows: rows.length,
+    errors,
+  };
+}
+

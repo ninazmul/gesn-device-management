@@ -3,11 +3,7 @@
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
-  Server,
-  Radio,
-  Wifi,
-  Router as RouterIcon,
-  Network,
+  Boxes,
   Plus,
   FileSpreadsheet,
   Download,
@@ -30,23 +26,6 @@ import { usePermissions } from "@/components/providers/PermissionContext";
 import { getAllDevicesForExport, importDevicesBulk } from "@/lib/actions/device.actions";
 import { exportToExcel, downloadTemplate } from "@/lib/excel";
 import { toast } from "react-hot-toast";
-
-function getDeviceIcon(type: string) {
-  switch (type?.toLowerCase()) {
-    case "server":
-      return Server;
-    case "antenna":
-      return Radio;
-    case "access-point":
-      return Wifi;
-    case "router":
-      return RouterIcon;
-    case "switch":
-      return Network;
-    default:
-      return Network;
-  }
-}
 
 const DEVICE_EXPORT_HEADERS = [
   "SL",
@@ -77,24 +56,17 @@ const DEVICE_TEMPLATE_HEADERS = [
   "Description",
 ];
 
-interface DeviceSectionHeaderProps {
-  typeSlug: string;
-  typeName: string;
+interface AllDevicesHeaderProps {
   total: number;
 }
 
-export function DeviceSectionHeader({
-  typeSlug,
-  typeName,
-  total,
-}: DeviceSectionHeaderProps) {
+export function AllDevicesHeader({ total }: AllDevicesHeaderProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
 
-  const Icon = getDeviceIcon(typeSlug);
   const { canWrite } = usePermissions();
   const canWriteDevices = canWrite("devices");
 
@@ -102,7 +74,6 @@ export function DeviceSectionHeader({
     try {
       setIsExporting(true);
       const devices = await getAllDevicesForExport({
-        deviceType: typeSlug,
         status: searchParams.get("status") || undefined,
         brand: searchParams.get("brand") || undefined,
         model: searchParams.get("model") || undefined,
@@ -133,10 +104,10 @@ export function DeviceSectionHeader({
       exportToExcel(
         rows,
         DEVICE_EXPORT_HEADERS,
-        typeName,
-        `${typeSlug}-inventory-${dateStr}.xlsx`
+        "All Devices",
+        `all-devices-inventory-${dateStr}.xlsx`
       );
-      toast.success(`Exported ${devices.length} ${typeName.toLowerCase()} records!`);
+      toast.success(`Exported ${devices.length} device records!`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to export devices");
     } finally {
@@ -148,19 +119,19 @@ export function DeviceSectionHeader({
     downloadTemplate(
       DEVICE_TEMPLATE_HEADERS,
       {
-        "Device Name": `${typeName} Main Node`,
-        "Device Type": typeSlug,
-        "Brand": "MikroTik",
-        "Model": "CCR1036",
-        "IP Address": "192.168.1.1",
+        "Device Name": "Core Switch 1",
+        "Device Type": "switch",
+        "Brand": "Cisco",
+        "Model": "Catalyst 2960",
+        "IP Address": "192.168.1.2",
         "MAC Address": "48:8F:5A:11:22:33",
         "Serial Number": "SN-98234719",
         "Status": "Active",
-        "Total Ports": typeSlug === "switch" ? 24 : "",
-        "Online Link": "https://192.168.1.1",
-        "Description": "Installed at Core Rack",
+        "Total Ports": 24,
+        "Online Link": "https://192.168.1.2",
+        "Description": "Core Distribution Switch",
       },
-      `${typeSlug}-import-template.xlsx`
+      `devices-import-template.xlsx`
     );
     toast.success("Excel template downloaded!");
   };
@@ -170,14 +141,18 @@ export function DeviceSectionHeader({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
         <div className="flex items-center gap-3.5">
           <div className="p-3 rounded-2xl bg-sky-50 dark:bg-sky-950/50 text-sky-600 dark:text-sky-400 border border-sky-200/50 dark:border-sky-800/50">
-            <Icon className="w-6 h-6" />
+            <Boxes className="w-6 h-6" />
           </div>
           <div>
             <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">
-              {typeName}s
+              All Devices
             </h1>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Active inventory: <span className="font-bold text-slate-800 dark:text-slate-200">{total.toLocaleString()}</span> units deployed
+              Total registered hardware inventory:{" "}
+              <span className="font-bold text-slate-800 dark:text-slate-200">
+                {total.toLocaleString()}
+              </span>{" "}
+              units
             </p>
           </div>
         </div>
@@ -199,7 +174,7 @@ export function DeviceSectionHeader({
                   <DropdownMenuLabel>Inventory Management</DropdownMenuLabel>
                   <DropdownMenuItem onClick={() => setIsAddOpen(true)}>
                     <Plus className="w-4 h-4 text-sky-600 dark:text-sky-400" />
-                    <span>Add {typeName}</span>
+                    <span>Add Device</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setIsImportOpen(true)}>
                     <UploadCloud className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
@@ -231,7 +206,7 @@ export function DeviceSectionHeader({
       <DeviceFormDialog
         open={isAddOpen}
         onOpenChange={setIsAddOpen}
-        defaultDeviceType={typeSlug}
+        defaultDeviceType="antenna"
         onSuccess={() => {
           setIsAddOpen(false);
           router.refresh();
@@ -242,24 +217,24 @@ export function DeviceSectionHeader({
       <BulkImportDialog
         open={isImportOpen}
         onOpenChange={setIsImportOpen}
-        title={`Bulk Import ${typeName}s`}
-        description={`Upload an Excel or CSV file to register multiple ${typeName.toLowerCase()} units at once.`}
+        title="Bulk Import Devices"
+        description="Upload an Excel or CSV file to register multiple devices into inventory at once."
         templateHeaders={DEVICE_TEMPLATE_HEADERS}
         sampleRow={{
-          "Device Name": `${typeName} Alpha-1`,
-          "Device Type": typeSlug,
-          "Brand": "MikroTik",
-          "Model": "CCR2004",
-          "IP Address": "10.0.10.5",
-          "MAC Address": "BC:24:11:44:88:99",
-          "Serial Number": "SN-884210",
+          "Device Name": "Antenna Base 1",
+          "Device Type": "antenna",
+          "Brand": "Ubiquiti",
+          "Model": "LiteBeam 5AC",
+          "IP Address": "10.0.10.20",
+          "MAC Address": "F4:92:BF:88:99:11",
+          "Serial Number": "SN-552200",
           "Status": "Active",
-          "Total Ports": typeSlug === "switch" ? 24 : "",
-          "Online Link": "https://10.0.10.5",
-          "Description": "Tower Node 1",
+          "Total Ports": "",
+          "Online Link": "https://10.0.10.20",
+          "Description": "Base Station Link",
         }}
-        templateFilename={`${typeSlug}-import-template.xlsx`}
-        onImport={async (rows) => importDevicesBulk(rows, typeSlug)}
+        templateFilename="devices-import-template.xlsx"
+        onImport={async (rows) => importDevicesBulk(rows)}
         onSuccess={() => router.refresh()}
       />
     </>

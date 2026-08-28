@@ -26,6 +26,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   History,
   Search,
   RotateCcw,
@@ -35,8 +43,13 @@ import {
   Layers,
   Activity,
   FileCode,
+  FileSpreadsheet,
+  ChevronDown,
+  Loader2,
 } from "lucide-react";
-import { getActivityLogs } from "@/lib/actions/activityLog.actions";
+import { getActivityLogs, getAllLogsForExport } from "@/lib/actions/activityLog.actions";
+import { exportToExcel } from "@/lib/excel";
+import { toast } from "react-hot-toast";
 import { IActivityLog } from "@/types";
 import { formatDate } from "@/lib/utils";
 
@@ -143,6 +156,60 @@ export default function ActivityLogsClient({
     }
   };
 
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExport = async () => {
+    try {
+      setIsExporting(true);
+      const allLogs = await getAllLogsForExport({
+        module: selectedModule,
+        search,
+        startDate: startDate || undefined,
+        endDate: endDate || undefined,
+      });
+
+      if (allLogs.length === 0) {
+        toast.error("No logs found to export.");
+        return;
+      }
+
+      const rows = allLogs.map((l) => ({
+        "Timestamp": new Date(l.createdAt).toLocaleString("en-GB"),
+        "Actor Email": l.actorEmail,
+        "Actor Role": l.actorRole,
+        "Action": l.action,
+        "Module": l.module,
+        "Resource ID": l.resourceId || "",
+        "Resource Name": l.resourceName || "",
+        "Details": l.details,
+        "IP Address": l.ipAddress || "",
+      }));
+
+      const dateStr = new Date().toISOString().slice(0, 10);
+      exportToExcel(
+        rows,
+        [
+          "Timestamp",
+          "Actor Email",
+          "Actor Role",
+          "Action",
+          "Module",
+          "Resource ID",
+          "Resource Name",
+          "Details",
+          "IP Address",
+        ],
+        "Audit Logs",
+        `audit-logs-${dateStr}.xlsx`
+      );
+      toast.success(`Exported ${allLogs.length} audit log records!`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to export logs");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto">
       {/* Header */}
@@ -162,14 +229,33 @@ export default function ActivityLogsClient({
           </div>
         </div>
 
-        <Button
-          variant="outline"
-          onClick={() => fetchLogs(page)}
-          disabled={loading}
-          className="rounded-xl border-slate-200 dark:border-slate-800 text-xs font-semibold gap-2"
-        >
-          <RotateCcw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} /> Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button className="rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-semibold text-xs shadow-md shadow-sky-600/10 gap-1.5 h-10 px-4">
+                <span>Actions</span>
+                <ChevronDown className="w-3.5 h-3.5 opacity-80" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52">
+              <DropdownMenuLabel>Log Operations</DropdownMenuLabel>
+              <DropdownMenuItem onClick={() => fetchLogs(page)} disabled={loading}>
+                <RotateCcw className={`w-4 h-4 text-sky-600 dark:text-sky-400 ${loading ? "animate-spin" : ""}`} />
+                <span>Refresh Logs</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel>Export</DropdownMenuLabel>
+              <DropdownMenuItem onClick={handleExport} disabled={isExporting}>
+                {isExporting ? (
+                  <Loader2 className="w-4 h-4 animate-spin text-emerald-600" />
+                ) : (
+                  <FileSpreadsheet className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                )}
+                <span>Export to Excel</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       {/* Filter Bar */}

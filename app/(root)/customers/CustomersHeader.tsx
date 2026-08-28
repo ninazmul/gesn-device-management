@@ -3,11 +3,7 @@
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
-  Server,
-  Radio,
-  Wifi,
-  Router as RouterIcon,
-  Network,
+  Users,
   Plus,
   FileSpreadsheet,
   Download,
@@ -24,121 +20,85 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { DeviceFormDialog } from "@/components/devices/DeviceFormDialog";
+import { CustomerFormDialog } from "@/components/customers/CustomerFormDialog";
 import { BulkImportDialog } from "@/components/shared/BulkImportDialog";
 import { usePermissions } from "@/components/providers/PermissionContext";
-import { getAllDevicesForExport, importDevicesBulk } from "@/lib/actions/device.actions";
+import { getAllCustomersForExport, importCustomersBulk } from "@/lib/actions/customer.actions";
 import { exportToExcel, downloadTemplate } from "@/lib/excel";
 import { toast } from "react-hot-toast";
 
-function getDeviceIcon(type: string) {
-  switch (type?.toLowerCase()) {
-    case "server":
-      return Server;
-    case "antenna":
-      return Radio;
-    case "access-point":
-      return Wifi;
-    case "router":
-      return RouterIcon;
-    case "switch":
-      return Network;
-    default:
-      return Network;
-  }
-}
-
-const DEVICE_EXPORT_HEADERS = [
-  "SL",
-  "Device Name",
-  "Device Type",
-  "Brand",
-  "Model",
-  "IP Address",
-  "MAC Address",
-  "Serial Number",
+const CUSTOMER_EXPORT_HEADERS = [
+  "Customer ID",
+  "Customer Name",
+  "Contact Person",
+  "Phone",
+  "Email",
+  "Address",
+  "Monthly Bill",
+  "Billing Day",
   "Status",
-  "Total Ports",
-  "Online Link",
-  "Description",
 ];
 
-const DEVICE_TEMPLATE_HEADERS = [
-  "Device Name",
-  "Device Type",
-  "Brand",
-  "Model",
-  "IP Address",
-  "MAC Address",
-  "Serial Number",
+const CUSTOMER_TEMPLATE_HEADERS = [
+  "Customer Name",
+  "Contact Person",
+  "Phone",
+  "Email",
+  "Address",
+  "Monthly Bill",
+  "Billing Day",
   "Status",
-  "Total Ports",
-  "Online Link",
-  "Description",
 ];
 
-interface DeviceSectionHeaderProps {
-  typeSlug: string;
-  typeName: string;
+interface CustomersHeaderProps {
   total: number;
 }
 
-export function DeviceSectionHeader({
-  typeSlug,
-  typeName,
-  total,
-}: DeviceSectionHeaderProps) {
+export function CustomersHeader({ total }: CustomersHeaderProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
 
-  const Icon = getDeviceIcon(typeSlug);
   const { canWrite } = usePermissions();
-  const canWriteDevices = canWrite("devices");
+  const canWriteCustomers = canWrite("customers");
 
   const handleExport = async () => {
     try {
       setIsExporting(true);
-      const devices = await getAllDevicesForExport({
-        deviceType: typeSlug,
+      const customers = await getAllCustomersForExport({
         status: searchParams.get("status") || undefined,
-        brand: searchParams.get("brand") || undefined,
-        model: searchParams.get("model") || undefined,
         search: searchParams.get("search") || undefined,
       });
 
-      if (devices.length === 0) {
-        toast.error("No devices available to export.");
+      if (customers.length === 0) {
+        toast.error("No customers available to export.");
         return;
       }
 
-      const rows = devices.map((d) => ({
-        "SL": d.sl,
-        "Device Name": d.deviceName,
-        "Device Type": d.deviceType,
-        "Brand": d.brand,
-        "Model": d.model,
-        "IP Address": d.ipAddress || "",
-        "MAC Address": d.macAddress || "",
-        "Serial Number": d.serialNumber || "",
-        "Status": d.status,
-        "Total Ports": d.totalPorts || "",
-        "Online Link": d.onlineLink || "",
-        "Description": d.description || "",
+      const rows = customers.map((c) => ({
+        "Customer ID": c.customerId,
+        "Customer Name": c.name,
+        "Contact Person": c.contactPerson || "",
+        "Phone": c.phone || "",
+        "Email": c.email || "",
+        "Address": c.address || "",
+        "Monthly Bill": c.monthlyBill || 0,
+        "Billing Day": c.billingDay || 1,
+        "Status": c.status,
       }));
 
       const dateStr = new Date().toISOString().slice(0, 10);
       exportToExcel(
         rows,
-        DEVICE_EXPORT_HEADERS,
-        typeName,
-        `${typeSlug}-inventory-${dateStr}.xlsx`
+        CUSTOMER_EXPORT_HEADERS,
+        "Customers",
+        `customers-directory-${dateStr}.xlsx`
       );
-      toast.success(`Exported ${devices.length} ${typeName.toLowerCase()} records!`);
+      toast.success(`Exported ${customers.length} customer records!`);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to export devices");
+      toast.error(err instanceof Error ? err.message : "Failed to export customers");
     } finally {
       setIsExporting(false);
     }
@@ -146,21 +106,18 @@ export function DeviceSectionHeader({
 
   const handleDownloadTemplate = () => {
     downloadTemplate(
-      DEVICE_TEMPLATE_HEADERS,
+      CUSTOMER_TEMPLATE_HEADERS,
       {
-        "Device Name": `${typeName} Main Node`,
-        "Device Type": typeSlug,
-        "Brand": "MikroTik",
-        "Model": "CCR1036",
-        "IP Address": "192.168.1.1",
-        "MAC Address": "48:8F:5A:11:22:33",
-        "Serial Number": "SN-98234719",
+        "Customer Name": "Green Enterprise Ltd",
+        "Contact Person": "Rahim Ahmed",
+        "Phone": "+8801711223344",
+        "Email": "info@greenenterprise.com",
+        "Address": "Plot 12, Road 4, Sector 7, Uttara, Dhaka",
+        "Monthly Bill": 2500,
+        "Billing Day": 1,
         "Status": "Active",
-        "Total Ports": typeSlug === "switch" ? 24 : "",
-        "Online Link": "https://192.168.1.1",
-        "Description": "Installed at Core Rack",
       },
-      `${typeSlug}-import-template.xlsx`
+      "customers-import-template.xlsx"
     );
     toast.success("Excel template downloaded!");
   };
@@ -170,14 +127,17 @@ export function DeviceSectionHeader({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
         <div className="flex items-center gap-3.5">
           <div className="p-3 rounded-2xl bg-sky-50 dark:bg-sky-950/50 text-sky-600 dark:text-sky-400 border border-sky-200/50 dark:border-sky-800/50">
-            <Icon className="w-6 h-6" />
+            <Users className="w-6 h-6" />
           </div>
           <div>
             <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">
-              {typeName}s
+              Customer Management
             </h1>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Active inventory: <span className="font-bold text-slate-800 dark:text-slate-200">{total.toLocaleString()}</span> units deployed
+              Total registered subscriber clients:{" "}
+              <span className="font-bold text-slate-800 dark:text-slate-200">
+                {total.toLocaleString()}
+              </span>
             </p>
           </div>
         </div>
@@ -194,12 +154,12 @@ export function DeviceSectionHeader({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
-              {canWriteDevices && (
+              {canWriteCustomers && (
                 <>
-                  <DropdownMenuLabel>Inventory Management</DropdownMenuLabel>
+                  <DropdownMenuLabel>Customer Management</DropdownMenuLabel>
                   <DropdownMenuItem onClick={() => setIsAddOpen(true)}>
                     <Plus className="w-4 h-4 text-sky-600 dark:text-sky-400" />
-                    <span>Add {typeName}</span>
+                    <span>Add New Customer</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setIsImportOpen(true)}>
                     <UploadCloud className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
@@ -227,11 +187,10 @@ export function DeviceSectionHeader({
         </div>
       </div>
 
-      {/* Add Device Dialog */}
-      <DeviceFormDialog
+      {/* Add Customer Dialog */}
+      <CustomerFormDialog
         open={isAddOpen}
         onOpenChange={setIsAddOpen}
-        defaultDeviceType={typeSlug}
         onSuccess={() => {
           setIsAddOpen(false);
           router.refresh();
@@ -242,24 +201,21 @@ export function DeviceSectionHeader({
       <BulkImportDialog
         open={isImportOpen}
         onOpenChange={setIsImportOpen}
-        title={`Bulk Import ${typeName}s`}
-        description={`Upload an Excel or CSV file to register multiple ${typeName.toLowerCase()} units at once.`}
-        templateHeaders={DEVICE_TEMPLATE_HEADERS}
+        title="Bulk Import Customers"
+        description="Upload an Excel or CSV file to register multiple client subscriber accounts at once."
+        templateHeaders={CUSTOMER_TEMPLATE_HEADERS}
         sampleRow={{
-          "Device Name": `${typeName} Alpha-1`,
-          "Device Type": typeSlug,
-          "Brand": "MikroTik",
-          "Model": "CCR2004",
-          "IP Address": "10.0.10.5",
-          "MAC Address": "BC:24:11:44:88:99",
-          "Serial Number": "SN-884210",
+          "Customer Name": "Apex IT Solutions",
+          "Contact Person": "Mahmudul Hasan",
+          "Phone": "+8801819998877",
+          "Email": "support@apex-it.com",
+          "Address": "Dhanmondi 27, Dhaka",
+          "Monthly Bill": 3500,
+          "Billing Day": 1,
           "Status": "Active",
-          "Total Ports": typeSlug === "switch" ? 24 : "",
-          "Online Link": "https://10.0.10.5",
-          "Description": "Tower Node 1",
         }}
-        templateFilename={`${typeSlug}-import-template.xlsx`}
-        onImport={async (rows) => importDevicesBulk(rows, typeSlug)}
+        templateFilename="customers-import-template.xlsx"
+        onImport={importCustomersBulk}
         onSuccess={() => router.refresh()}
       />
     </>

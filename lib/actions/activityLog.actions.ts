@@ -80,3 +80,58 @@ export async function getActivityLogs(params?: GetActivityLogsParams) {
     totalPages: Math.ceil(total / limit) || 1,
   };
 }
+
+/**
+ * Get all activity logs matching filter criteria for Excel export.
+ */
+export async function getAllLogsForExport(params?: GetActivityLogsParams) {
+  await requirePermission("activity_logs", "read");
+  await connectToDatabase();
+
+  const {
+    module,
+    action,
+    actorEmail,
+    search = "",
+    startDate,
+    endDate,
+  } = params || {};
+
+  const query: FilterQuery<typeof ActivityLog> = {};
+
+  if (module && module !== "all") {
+    query.module = module;
+  }
+  if (action && action !== "all") {
+    query.action = action;
+  }
+  if (actorEmail && actorEmail !== "all") {
+    query.actorEmail = actorEmail.toLowerCase().trim();
+  }
+  if (search && search.trim()) {
+    const term = search.trim();
+    const regex = new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+    query.$or = [
+      { details: regex },
+      { actorEmail: regex },
+      { resourceName: regex },
+      { resourceId: regex },
+      { action: regex },
+    ];
+  }
+  if (startDate || endDate) {
+    query.createdAt = {};
+    if (startDate) {
+      query.createdAt.$gte = new Date(startDate);
+    }
+    if (endDate) {
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      query.createdAt.$lte = end;
+    }
+  }
+
+  const logs = await ActivityLog.find(query).sort({ createdAt: -1 }).limit(1000).lean();
+  return JSON.parse(JSON.stringify(logs)) as IActivityLog[];
+}
+

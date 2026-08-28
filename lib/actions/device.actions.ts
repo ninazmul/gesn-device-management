@@ -519,3 +519,141 @@ export async function getDeviceFilterOptions(deviceType?: string) {
     models: JSON.parse(JSON.stringify(models)),
   };
 }
+
+// ==========================================
+// GET ALL DEVICES FOR EXCEL EXPORT
+// ==========================================
+export async function getAllDevicesForExport(params?: {
+  deviceType?: string;
+  status?: string;
+  brand?: string;
+  model?: string;
+  search?: string;
+}) {
+  await requirePermission("devices", "read");
+  await connectToDatabase();
+
+  const query: FilterQuery<typeof Device> = {};
+  if (params?.deviceType && params.deviceType !== "all") {
+    query.deviceType = params.deviceType;
+  }
+  if (params?.status && params.status !== "all") {
+    query.status = params.status;
+  }
+  if (params?.brand && params.brand !== "all") {
+    query.brand = params.brand;
+  }
+  if (params?.model && params.model !== "all") {
+    query.model = params.model;
+  }
+  if (params?.search && params.search.trim()) {
+    const term = params.search.trim();
+    const regex = new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+    query.$or = [
+      { sl: regex },
+      { deviceName: regex },
+      { brand: regex },
+      { model: regex },
+      { ipAddress: regex },
+      { macAddress: regex },
+      { serialNumber: regex },
+      { description: regex },
+    ];
+  }
+
+  const devices = await Device.find(query).sort({ sl: 1 }).lean();
+  return JSON.parse(JSON.stringify(devices)) as IDevice[];
+}
+
+// ==========================================
+// BULK IMPORT DEVICES FROM EXCEL
+// ==========================================
+export async function importDevicesBulk(
+  rows: Record<string, unknown>[],
+  defaultDeviceType?: string
+) {
+  const actor = await requirePermission("devices", "write");
+  await connectToDatabase();
+
+  if (!rows || rows.length === 0) {
+    throw new Error("No data rows provided for import.");
+  }
+
+  let createdCount = 0;
+  const errors: string[] = [];
+
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
+    const rowNum = i + 2;
+
+    const rawType = String(r["Device Type"] || r["Type"] || r["deviceType"] || defaultType(defaultDeviceType) || "antenna").trim().toLowerCase();
+    const deviceType = ["switch", "router", "antenna", "access-point", "server"].includes(rawType)
+      ? rawType
+      : (defaultType(defaultDeviceType) || "antenna");
+
+    const brand = String(r["Brand"] || r["brand"] || "Generic").trim();
+    const model = String(r["Model"] || r["model"] || "Standard").trim();
+    const deviceName = String(r["Device Name"] || r["Name"] || r["deviceName"] || `${brand} ${model}`).trim();
+    const ipAddress = String(r["IP Address"] || r["IP"] || r["ipAddress"] || "").trim();
+    const macAddress = String(r["MAC Address"] || r["MAC"] || r["macAddress"] || "").trim().toUpperCase();
+    const serialNumber = String(r["Serial Number"] || r["Serial"] || r["serialNumber"] || r["SN"] || "").trim();
+    const rawPorts = r["Total Ports"] || r["Ports"] || r["totalPorts"] || 0;
+    const totalPorts = deviceType === "switch" ? Math.max(1, Number(rawPorts) || 8) : undefined;
+    const rawStatus = String(r["Status"] || r["status"] || "Active").trim();
+    const status: DeviceStatus = ["Active", "Inactive", "Maintenance", "Decommissioned"].includes(rawStatus)
+      ? (rawStatus as DeviceStatus)
+      : "Active";
+    const description = String(r["Description"] || r["Notes"] || r["description"] || "").trim();
+    const onlineLink = String(r["Online Link"] || r["Portal"] || r["onlineLink"] || "").trim();
+
+    try {
+      await createDevice({
+        deviceType,
+        brand,
+        model,
+        deviceName,
+        ipAddress,
+        macAddress,
+        serialNumber,
+        totalPorts,
+        status,
+        description,
+        onlineLink,
+      });
+      createdCount++;
+    } catch (err) {
+      errors.push(`Row ${rowNum} (${deviceName}): ${err instanceof Error ? err.message : "Failed to import"}`);
+    }
+  }
+
+  if (createdCount > 0) {
+    await logActivityAndNotify({
+      actor,
+      action: "CREATE_DEVICE",
+      module: "devices",
+      resourceId: "BULK_IMPORT",
+      resourceName: `${createdCount} Devices`,
+      details: `Bulk imported ${createdCount} devices from Excel file`,
+      link: "/devices",
+    });
+
+    revalidatePath("/");
+    revalidatePath("/devices");
+    if (defaultDeviceType) {
+      revalidatePath(`/devices/${defaultDeviceType}`);
+    }
+  }
+
+  return {
+    success: true,
+    createdCount,
+    totalRows: rows.length,
+    errors,
+  };
+}
+
+function defaultType(input?: string): string {
+  if (!input || input === "all") return "antenna";
+  return input;
+}
+
