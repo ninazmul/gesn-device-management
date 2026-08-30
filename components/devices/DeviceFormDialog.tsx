@@ -422,7 +422,7 @@ export function DeviceFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[95vw] sm:max-w-2xl max-h-[92vh] overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl">
         <DialogHeader className="border-b border-slate-100 dark:border-slate-800 pb-3 sm:pb-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+          <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
               <DialogTitle className="text-lg sm:text-xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2 sm:gap-2.5">
                 <span className="p-1.5 sm:p-2 rounded-xl bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400 shrink-0">
@@ -438,20 +438,6 @@ export function DeviceFormDialog({
                   : "Register infrastructure hardware into the device inventory."}
               </p>
             </div>
-
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setScannerTargetField("Device Back Sticker");
-                setScannerOpen(true);
-              }}
-              className="w-full sm:w-auto shrink-0 h-9 px-3 text-xs font-semibold rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 shadow-sm transition-all flex items-center justify-center gap-1.5"
-            >
-              <ScanBarcode className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-              <span>Live Scan Barcode</span>
-            </Button>
           </div>
         </DialogHeader>
 
@@ -583,6 +569,48 @@ export function DeviceFormDialog({
                   onChange={(e) => setDeviceName(e.target.value)}
                   className="rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm"
                 />
+              </div>
+
+              {/* MAC Address (Required - with Scan camera/barcode button) */}
+              <div className="space-y-1.5 sm:col-span-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    MAC Address <span className="text-rose-500">*</span>
+                  </Label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setScannerTargetField("MAC Address");
+                      setScannerOpen(true);
+                    }}
+                    className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 inline-flex items-center gap-1 transition-colors"
+                  >
+                    <Camera className="w-3.5 h-3.5" /> Scan
+                  </button>
+                </div>
+                <div
+                  className={`relative transition-all${
+                    scannedFields.has("macAddress") ? " scan-field-highlight" : ""
+                  }`}
+                >
+                  <Input
+                    placeholder="AA:BB:CC:DD:EE:FF"
+                    value={macAddress}
+                    onChange={(e) => setMacAddress(e.target.value)}
+                    className="rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 font-mono text-sm uppercase pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setScannerTargetField("MAC Address");
+                      setScannerOpen(true);
+                    }}
+                    title="Live Scan MAC Address"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-emerald-500 transition-colors"
+                  >
+                    <ScanBarcode className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -867,51 +895,13 @@ export function DeviceFormDialog({
             </div>
           )}
 
-          {/* Group 2: Hardware Identifiers & Connectivity */}
+          {/* Group 2: Network & Connectivity */}
           <div className="space-y-3 pt-2 border-t border-slate-100 dark:border-slate-800">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-              2. Hardware Identifiers & Connectivity
+              2. Network & Connectivity
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-              {/* MAC Address */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                    MAC Address <span className="text-rose-500">*</span>
-                  </Label>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setScannerTargetField("MAC Address");
-                      setScannerOpen(true);
-                    }}
-                    className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 inline-flex items-center gap-1 transition-colors"
-                  >
-                    <Camera className="w-3.5 h-3.5" /> Scan
-                  </button>
-                </div>
-                <div className={`relative transition-all${scannedFields.has("macAddress") ? " scan-field-highlight" : ""}`}>
-                  <Input
-                    placeholder="AA:BB:CC:DD:EE:FF"
-                    value={macAddress}
-                    onChange={(e) => setMacAddress(e.target.value)}
-                    className="rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 font-mono text-sm uppercase pr-10"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setScannerTargetField("MAC Address");
-                      setScannerOpen(true);
-                    }}
-                    title="Live Scan MAC Address"
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-emerald-500 transition-colors"
-                  >
-                    <ScanBarcode className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-
               {/* IPv4 Address */}
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
@@ -921,21 +911,24 @@ export function DeviceFormDialog({
                   placeholder="192.168.1.100"
                   value={ipAddress}
                   onChange={(e) => setIpAddress(e.target.value)}
-                  className={`rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 font-mono text-sm${scannedFields.has("ipAddress") ? " scan-field-highlight" : ""}`}
+                  className={`rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 font-mono text-sm${
+                    scannedFields.has("ipAddress") ? " scan-field-highlight" : ""
+                  }`}
                 />
               </div>
-            </div>
 
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                Online Management Link
-              </Label>
-              <Input
-                placeholder="https://192.168.1.100 or management portal URL"
-                value={onlineLink}
-                onChange={(e) => setOnlineLink(e.target.value)}
-                className="rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm"
-              />
+              {/* Online Management Link */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  Online Management Link
+                </Label>
+                <Input
+                  placeholder="https://192.168.1.100 or portal URL"
+                  value={onlineLink}
+                  onChange={(e) => setOnlineLink(e.target.value)}
+                  className="rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm"
+                />
+              </div>
             </div>
           </div>
 
