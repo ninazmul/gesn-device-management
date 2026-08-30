@@ -28,6 +28,7 @@ import { BarcodeScannerModal } from "./BarcodeScannerModal";
 import { useBarcodeGun } from "@/hooks/useBarcodeGun";
 import type { ParsedBarcodeResult } from "@/lib/barcode";
 import { usePermissions } from "@/components/providers/PermissionContext";
+import { formatDisplaySL } from "@/lib/utils";
 
 interface DeviceFormDialogProps {
   open: boolean;
@@ -429,7 +430,7 @@ export function DeviceFormDialog({
                   <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
                 </span>
                 <span className="truncate">
-                  {isEditing ? `Edit Device #${deviceToEdit?.sl}` : `Add New ${getTypeName(deviceType)}`}
+                  {isEditing ? `Edit Device #${formatDisplaySL(deviceToEdit?.sl)}` : `Add New ${getTypeName(deviceType)}`}
                 </span>
               </DialogTitle>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">

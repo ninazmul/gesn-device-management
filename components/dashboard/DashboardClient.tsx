@@ -23,6 +23,7 @@ import { DeviceStatusBadge } from "@/components/devices/DeviceStatusBadge";
 import { GlobalSearchModal } from "@/components/shared/GlobalSearchModal";
 import type { DashboardStats } from "@/types";
 import { usePermissions } from "@/components/providers/PermissionContext";
+import { formatDisplaySL } from "@/lib/utils";
 
 // ==========================================
 // CUSTOM ICONS TAILORED TO DASHBOARD THEME
@@ -615,7 +616,7 @@ export function DashboardClient({ stats }: DashboardClientProps) {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-mono text-xs font-bold text-sky-600 dark:text-sky-400">
-                          #{d.sl}
+                          #{formatDisplaySL(d.sl)}
                         </span>
                         <span className="font-bold text-xs sm:text-sm text-slate-900 dark:text-slate-100 truncate">
                           {d.deviceName}

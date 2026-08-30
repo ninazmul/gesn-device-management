@@ -18,7 +18,7 @@ async function getNextSL(): Promise<string> {
     { $inc: { seq: 1 } },
     { new: true, upsert: true }
   );
-  return formatSL(counter.seq, 6);
+  return formatSL(counter.seq, 3);
 }
 
 // ==========================================

@@ -27,7 +27,7 @@ import { DeviceStatusDialog } from "./DeviceStatusDialog";
 import { DeviceFormDialog } from "./DeviceFormDialog";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { deleteDevice, toggleDeviceActive } from "@/lib/actions/device.actions";
-import { formatDate, formatDateTime } from "@/lib/utils";
+import { formatDate, formatDateTime, formatDisplaySL } from "@/lib/utils";
 import { toast } from "react-hot-toast";
 import type { IDevice } from "@/types";
 import { usePermissions } from "@/components/providers/PermissionContext";
@@ -118,7 +118,7 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
           <span>Back to {device.deviceType.charAt(0).toUpperCase() + device.deviceType.slice(1)}s</span>
         </Link>
         <span className="font-mono text-xs font-bold text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-950/50 px-2.5 py-1 rounded-lg border border-sky-200/50 dark:border-sky-900/50">
-          SL: #{device.sl}
+          SL: #{formatDisplaySL(device.sl)}
         </span>
       </div>
 
@@ -799,7 +799,7 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
       <DeleteConfirmDialog
         open={isDeleteOpen}
         onOpenChange={setIsDeleteOpen}
-        title={`Delete Device #${device.sl}?`}
+        title={`Delete Device #${formatDisplaySL(device.sl)}?`}
         description={`Are you sure you want to permanently delete ${device.deviceName} (${device.brand})? This action cannot be undone.`}
         onConfirm={handleDeleteConfirm}
         isLoading={isDeleting}

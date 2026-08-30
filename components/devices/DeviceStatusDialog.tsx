@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { DEVICE_STATUSES, STATUS_CONFIG } from "@/lib/constants";
 import { updateDeviceStatus } from "@/lib/actions/device.actions";
+import { formatDisplaySL } from "@/lib/utils";
 import { toast } from "react-hot-toast";
 import { usePermissions } from "@/components/providers/PermissionContext";
 import { Loader2, Lock } from "lucide-react";
@@ -45,7 +46,7 @@ export function DeviceStatusDialog({
     try {
       setIsLoading(true);
       await updateDeviceStatus(device._id, selectedStatus);
-      toast.success(`Updated status for #${device.sl} to ${selectedStatus}`);
+      toast.success(`Updated status for #${formatDisplaySL(device.sl)} to ${selectedStatus}`);
       onOpenChange(false);
       if (onSuccess) onSuccess();
     } catch (error) {
@@ -65,7 +66,7 @@ export function DeviceStatusDialog({
             Update Device Status
           </DialogTitle>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Set operational state for <span className="font-semibold text-slate-800 dark:text-slate-200">#{device.sl} — {device.deviceName}</span>
+            Set operational state for <span className="font-semibold text-slate-800 dark:text-slate-200">#{formatDisplaySL(device.sl)} — {device.deviceName}</span>
           </p>
         </DialogHeader>
 

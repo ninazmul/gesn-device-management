@@ -23,6 +23,7 @@ import { DeviceStatusDialog } from "./DeviceStatusDialog";
 import { DeviceFormDialog } from "./DeviceFormDialog";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { deleteDevice, toggleDeviceActive } from "@/lib/actions/device.actions";
+import { formatDisplaySL } from "@/lib/utils";
 import { toast } from "react-hot-toast";
 import type { IDevice } from "@/types";
 import { usePermissions } from "@/components/providers/PermissionContext";
@@ -148,12 +149,12 @@ export function DeviceMobileCards({
                     )}
                     {device.deviceType !== "server" && device.server && typeof device.server === "object" && (
                       <span className="inline-flex items-center px-1.5 py-0.2 rounded bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 font-medium text-[10px]">
-                        Server: #{(device.server as IDevice).sl}
+                        Server: #{formatDisplaySL((device.server as IDevice).sl)}
                       </span>
                     )}
                     {["antenna", "access-point", "router"].includes(device.deviceType) && device.uplinkSwitch && typeof device.uplinkSwitch === "object" && (
                       <span className="inline-flex items-center px-1.5 py-0.2 rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:indigo-400 font-medium text-[10px]">
-                        UpLink: #{(device.uplinkSwitch as IDevice).sl}
+                        UpLink: #{formatDisplaySL((device.uplinkSwitch as IDevice).sl)}
                       </span>
                     )}
                   </div>
@@ -162,7 +163,7 @@ export function DeviceMobileCards({
 
               <div className="flex flex-col items-end gap-1.5 shrink-0">
                 <span className="font-mono text-xs font-bold text-sky-600 dark:text-sky-400">
-                  #{device.sl}
+                  #{formatDisplaySL(device.sl)}
                 </span>
                 <div className="flex items-center gap-1.5">
                   <button

@@ -39,10 +39,23 @@ export function formatDateTime(date: Date | string | undefined | null): string {
 }
 
 /**
- * Format sequence number to standard 6-digit SL e.g. "000124"
+ * Format sequence number to standard SL e.g. "001", "002"
  */
-export function formatSL(seq: number, length: number = 6): string {
+export function formatSL(seq: number, length: number = 3): string {
   return String(seq).padStart(length, "0");
+}
+
+/**
+ * Format serial / SL number for polished UI display (e.g. "000002" -> "002")
+ */
+export function formatDisplaySL(sl: string | number | undefined | null): string {
+  if (sl === undefined || sl === null || sl === "") return "";
+  const s = String(sl).trim();
+  const num = parseInt(s, 10);
+  if (!isNaN(num)) {
+    return String(num).padStart(Math.max(3, String(num).length), "0");
+  }
+  return s;
 }
 
 /**
