@@ -98,7 +98,7 @@ export function BarcodeScannerModal({
 
   // ── Shared state ───────────────────────────────────────────────────────────
   const [isScanning, setIsScanning] = useState(false);
-  const [isMirrored, setIsMirrored] = useState(true);
+  const [isMirrored, setIsMirrored] = useState(false);
   const [cameras, setCameras] = useState<Array<{ id: string; label: string }>>([]);
   const [selectedCameraId, setSelectedCameraId] = useState("");
   const [torchOn, setTorchOn] = useState(false);
