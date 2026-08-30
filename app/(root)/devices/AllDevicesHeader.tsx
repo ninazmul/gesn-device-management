@@ -93,7 +93,6 @@ export function AllDevicesHeader({ total }: AllDevicesHeaderProps) {
         "Model": d.model,
         "IP Address": d.ipAddress || "",
         "MAC Address": d.macAddress || "",
-        "Serial Number": d.serialNumber || "",
         "Status": d.status,
         "Total Ports": d.totalPorts || "",
         "Online Link": d.onlineLink || "",

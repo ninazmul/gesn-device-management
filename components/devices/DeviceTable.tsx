@@ -259,11 +259,7 @@ export function DeviceTable({
                           ) : (
                             <span className="text-slate-300 dark:text-slate-600 text-xs">—</span>
                           )}
-                          {device.serialNumber && (
-                            <div className="text-[10px] font-mono text-slate-400 font-medium">
-                              SN: {device.serialNumber}
-                            </div>
-                          )}
+
                         </div>
                       </TableCell>
 

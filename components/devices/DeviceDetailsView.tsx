@@ -192,17 +192,7 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
           </div>
 
           <div className="space-y-4">
-            {device.serialNumber && (
-              <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50">
-                <div>
-                  <span className="text-xs text-slate-400 block">Serial Number (S/N)</span>
-                  <span className="font-mono text-sm font-bold text-slate-900 dark:text-slate-100">
-                    {device.serialNumber}
-                  </span>
-                </div>
-                <CopyButton text={device.serialNumber} label="Serial Number" />
-              </div>
-            )}
+
 
             <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50">
               <div>
@@ -262,6 +252,61 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
                 {formatDate(device.activationDate)}
               </span>
             </div>
+
+            {/* Access Point specific: AP Number */}
+            {device.deviceType === "access-point" && device.apNumber && (
+              <div className="flex items-center justify-between p-3.5 rounded-2xl bg-violet-50 dark:bg-violet-950/30">
+                <div>
+                  <span className="text-xs text-violet-500 dark:text-violet-400 block">AP Number</span>
+                  <span className="font-mono text-sm font-bold text-violet-900 dark:text-violet-100">
+                    {device.apNumber}
+                  </span>
+                </div>
+                <CopyButton text={device.apNumber} label="AP Number" />
+              </div>
+            )}
+
+            {/* Access Point / Router: Customer Name */}
+            {["access-point", "router"].includes(device.deviceType) && device.customerName && (
+              <div className="flex items-center justify-between p-3.5 rounded-2xl bg-violet-50 dark:bg-violet-950/30">
+                <div>
+                  <span className="text-xs text-violet-500 dark:text-violet-400 block">Customer Name</span>
+                  <span className="text-sm font-bold text-violet-900 dark:text-violet-100">
+                    {device.customerName}
+                  </span>
+                </div>
+                <CopyButton text={device.customerName} label="Customer Name" />
+              </div>
+            )}
+
+            {/* Access Point / Router: Mobile Number */}
+            {["access-point", "router"].includes(device.deviceType) && device.customerMobile && (
+              <div className="flex items-center justify-between p-3.5 rounded-2xl bg-violet-50 dark:bg-violet-950/30">
+                <div>
+                  <span className="text-xs text-violet-500 dark:text-violet-400 block">Mobile Number</span>
+                  <span className="font-mono text-sm font-bold text-violet-900 dark:text-violet-100">
+                    {device.customerMobile}
+                  </span>
+                </div>
+                <CopyButton text={device.customerMobile} label="Mobile Number" />
+              </div>
+            )}
+
+            {/* Access Point / Router: GPS Link */}
+            {["access-point", "router"].includes(device.deviceType) && device.gpsLink && (
+              <div className="p-3.5 rounded-2xl bg-violet-50 dark:bg-violet-950/30">
+                <span className="text-xs text-violet-500 dark:text-violet-400 block">GPS Link</span>
+                <a
+                  href={device.gpsLink.startsWith("http") ? device.gpsLink : `https://${device.gpsLink}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-mono text-xs font-semibold text-violet-700 dark:text-violet-300 hover:underline break-all inline-flex items-center gap-1.5 mt-1"
+                >
+                  <span>{device.gpsLink}</span>
+                  <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+                </a>
+              </div>
+            )}
 
             <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50">
               <div className="flex items-center justify-between">

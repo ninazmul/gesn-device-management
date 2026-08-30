@@ -73,7 +73,6 @@ export function DeviceFormDialog({
   );
   const [description, setDescription] = useState(deviceToEdit?.description || "");
   const [onlineLink, setOnlineLink] = useState(deviceToEdit?.onlineLink || "");
-  const [serialNumber, setSerialNumber] = useState(deviceToEdit?.serialNumber || "");
   const [macAddress, setMacAddress] = useState(deviceToEdit?.macAddress || "");
   const [ipAddress, setIpAddress] = useState(deviceToEdit?.ipAddress || "");
   const [activationDate, setActivationDate] = useState(
@@ -90,6 +89,11 @@ export function DeviceFormDialog({
   const [status, setStatus] = useState<DeviceStatus>(
     (deviceToEdit?.status as DeviceStatus) || "Active"
   );
+  // Access Point / Router specific fields
+  const [apNumber, setApNumber] = useState(deviceToEdit?.apNumber || "");
+  const [customerName, setCustomerName] = useState(deviceToEdit?.customerName || "");
+  const [customerMobile, setCustomerMobile] = useState(deviceToEdit?.customerMobile || "");
+  const [gpsLink, setGpsLink] = useState(deviceToEdit?.gpsLink || "");
 
   // Catalog, Switch & Server Options
   const [availableTypes, setAvailableTypes] = useState<IDeviceType[]>([]);
@@ -110,13 +114,9 @@ export function DeviceFormDialog({
   const [scanPendingResult, setScanPendingResult] = useState<{ raw: string; parsed: import("@/lib/barcode").ParsedBarcodeResult } | null>(null);
 
   // Assign a confirmed scan value to a specific field
-  const assignScanToField = (value: string, field: "serialNumber" | "macAddress" | "ipAddress" | "deviceName") => {
+  const assignScanToField = (value: string, field: "macAddress" | "ipAddress" | "deviceName") => {
     const highlighted = new Set<string>();
-    if (field === "serialNumber") {
-      setSerialNumber(value.toUpperCase());
-      highlighted.add("serialNumber");
-      toast.success(`S/N set to: ${value.toUpperCase()}`);
-    } else if (field === "macAddress") {
+    if (field === "macAddress") {
       setMacAddress(value.toUpperCase());
       highlighted.add("macAddress");
       toast.success(`MAC set to: ${value.toUpperCase()}`);
@@ -172,22 +172,10 @@ export function DeviceFormDialog({
       highlighted.add("brand");
     }
 
-    // Serial number: if it came from an explicit key-value label (e.g. "SN:xxx") auto-fill;
-    // if it was inferred as a fallback from a short alphanumeric string, ask the user.
-    if (result.serialNumber) {
-      const isExplicitLabel = /(?:s\/?n|serial|sn)\s*[:=-]/i.test(result.raw);
-      if (isExplicitLabel) {
-        setSerialNumber(result.serialNumber);
-        filledFields.push(`S/N: ${result.serialNumber}`);
-        highlighted.add("serialNumber");
-      } else {
-        // Ambiguous – could be S/N, WiFi PW, part number, etc. Let the user decide.
-        hasAmbiguous = true;
-      }
-    }
+    // Serial number handling removed – skip any serial-related scan results
 
     // Fallback: raw value wasn't categorised at all (pure alphanumeric / hex blob)
-    if (!result.macAddress && !result.serialNumber && !result.ipAddress && !result.model && result.raw) {
+    if (!result.macAddress && !result.ipAddress && !result.model && result.raw) {
       const rawText = result.raw.trim();
       // Could be an unformatted MAC
       if (/^[0-9A-Fa-f:.-]{12,17}$/.test(rawText)) {
@@ -208,7 +196,7 @@ export function DeviceFormDialog({
 
     // If there is an ambiguous value, pause and ask the user which field to assign it to
     if (hasAmbiguous) {
-      const ambiguousValue = result.serialNumber || result.raw.trim();
+      const ambiguousValue = result.raw.trim();
       setScanPendingResult({ raw: ambiguousValue, parsed: result });
     }
 
@@ -248,7 +236,6 @@ export function DeviceFormDialog({
       setBrand(deviceToEdit.brand);
       setModel(deviceToEdit.model);
       setDeviceName(deviceToEdit.deviceName || deviceToEdit.model || "");
-      setSerialNumber(deviceToEdit.serialNumber || "");
       setTotalPorts(
         deviceToEdit.totalPorts !== undefined ? String(deviceToEdit.totalPorts) : "8"
       );
@@ -282,13 +269,16 @@ export function DeviceFormDialog({
         deviceToEdit.gps?.longitude !== undefined ? String(deviceToEdit.gps.longitude) : ""
       );
       setStatus(deviceToEdit.status || "Active");
+      setApNumber(deviceToEdit.apNumber || "");
+      setCustomerName(deviceToEdit.customerName || "");
+      setCustomerMobile(deviceToEdit.customerMobile || "");
+      setGpsLink(deviceToEdit.gpsLink || "");
     } else if (justOpened) {
       // Only clear fields when the dialog is freshly opened for a new device
       setDeviceType(defaultDeviceType);
       setBrand("");
       setModel("");
       setDeviceName("");
-      setSerialNumber("");
       setTotalPorts(defaultDeviceType === "switch" ? "8" : "");
       setUplinkSwitch("");
       setServer("");
@@ -300,6 +290,10 @@ export function DeviceFormDialog({
       setLatitude("");
       setLongitude("");
       setStatus("Active");
+      setApNumber("");
+      setCustomerName("");
+      setCustomerMobile("");
+      setGpsLink("");
     }
   }, [deviceToEdit, defaultDeviceType, open]);
 
@@ -390,7 +384,6 @@ export function DeviceFormDialog({
         brand,
         model: model.trim(),
         deviceName: deviceName.trim(),
-        serialNumber: serialNumber.trim().toUpperCase(),
         totalPorts: deviceType === "switch" && totalPorts ? Number(totalPorts) : undefined,
         uplinkSwitch: ["antenna", "access-point", "router"].includes(deviceType) && uplinkSwitch ? uplinkSwitch : null,
         server: deviceType !== "server" && server ? server : null,
@@ -399,6 +392,10 @@ export function DeviceFormDialog({
         macAddress,
         ipAddress,
         activationDate: activationDate ? new Date(activationDate) : new Date(),
+        apNumber: ["access-point"].includes(deviceType) ? apNumber.trim() : undefined,
+        customerName: ["access-point", "router"].includes(deviceType) ? customerName.trim() : undefined,
+        customerMobile: ["access-point", "router"].includes(deviceType) ? customerMobile.trim() : undefined,
+        gpsLink: ["access-point", "router"].includes(deviceType) ? gpsLink.trim() : undefined,
         gps: {
           latitude: latitude ? parseFloat(latitude) : undefined,
           longitude: longitude ? parseFloat(longitude) : undefined,
@@ -885,45 +882,8 @@ export function DeviceFormDialog({
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
               2. Hardware Identifiers & Connectivity
             </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-              {/* Serial Number (S/N) */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                    Serial Number (S/N)
-                  </Label>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setScannerTargetField("Serial Number (S/N)");
-                      setScannerOpen(true);
-                    }}
-                    className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 inline-flex items-center gap-1 transition-colors"
-                  >
-                    <Camera className="w-3.5 h-3.5" /> Scan
-                  </button>
-                </div>
-                <div className={`relative transition-all${scannedFields.has("serialNumber") ? " scan-field-highlight" : ""}`}>
-                  <Input
-                    placeholder="e.g. SN123456789"
-                    value={serialNumber}
-                    onChange={(e) => setSerialNumber(e.target.value)}
-                    className="rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 font-mono text-sm uppercase pr-10"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setScannerTargetField("Serial Number (S/N)");
-                      setScannerOpen(true);
-                    }}
-                    title="Live Scan Serial Number"
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-emerald-500 transition-colors"
-                  >
-                    <ScanBarcode className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
 
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               {/* MAC Address */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
@@ -994,6 +954,74 @@ export function DeviceFormDialog({
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
               3. Deployment & Location
             </h3>
+
+            {/* Access Point / Router: Customer & GPS Link fields */}
+            {["access-point", "router"].includes(deviceType) && (
+              <div className="space-y-3 p-4 rounded-2xl bg-violet-50/40 dark:bg-violet-950/20 border border-violet-100 dark:border-violet-900/40">
+                <div className="flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-violet-600 dark:text-violet-400" />
+                  <Label className="text-xs font-bold uppercase tracking-wider text-violet-900 dark:text-violet-300">
+                    Customer & Location Info
+                  </Label>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  {/* AP Number – only for Access Point */}
+                  {deviceType === "access-point" && (
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                        AP Number
+                      </Label>
+                      <Input
+                        placeholder="e.g. AP-001"
+                        value={apNumber}
+                        onChange={(e) => setApNumber(e.target.value)}
+                        className="rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm font-mono"
+                      />
+                    </div>
+                  )}
+
+                  {/* Customer Name */}
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                      Customer Name
+                    </Label>
+                    <Input
+                      placeholder="e.g. Md. Rahim Uddin"
+                      value={customerName}
+                      onChange={(e) => setCustomerName(e.target.value)}
+                      className="rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm"
+                    />
+                  </div>
+
+                  {/* Mobile Number */}
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                      Mobile Number
+                    </Label>
+                    <Input
+                      placeholder="e.g. 01700000000"
+                      value={customerMobile}
+                      onChange={(e) => setCustomerMobile(e.target.value)}
+                      className="rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm"
+                    />
+                  </div>
+
+                  {/* GPS Share Link */}
+                  <div className={`space-y-1.5 ${deviceType === "access-point" ? "sm:col-span-2" : ""}`}>
+                    <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                      GPS Link
+                    </Label>
+                    <Input
+                      placeholder="e.g. https://maps.google.com/?q=23.8103,90.4125"
+                      value={gpsLink}
+                      onChange={(e) => setGpsLink(e.target.value)}
+                      className="rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
@@ -1151,15 +1179,6 @@ export function DeviceFormDialog({
 
                 {/* Field assignment buttons */}
                 <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => assignScanToField(scanPendingResult.raw, "serialNumber")}
-                    className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800/60 text-sky-700 dark:text-sky-300 text-xs font-semibold hover:bg-sky-100 dark:hover:bg-sky-900/50 transition-colors text-left"
-                  >
-                    <Hash className="w-3.5 h-3.5 shrink-0" />
-                    Serial Number
-                  </button>
-
                   <button
                     type="button"
                     onClick={() => assignScanToField(scanPendingResult.raw, "macAddress")}

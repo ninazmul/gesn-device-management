@@ -144,7 +144,6 @@ export async function getDevices(params?: GetDevicesParams) {
     query.$or = [
       { sl: regex },
       { deviceName: regex },
-      { serialNumber: regex },
       { brand: regex },
       { model: regex },
       { ipAddress: regex },
@@ -298,7 +297,6 @@ export async function createDevice(data: {
   brand: string;
   model: string;
   deviceName?: string;
-  serialNumber?: string;
   totalPorts?: number;
   uplinkSwitch?: string | null;
   server?: string | null;
@@ -307,6 +305,10 @@ export async function createDevice(data: {
   macAddress?: string;
   ipAddress?: string;
   activationDate?: string | Date;
+  apNumber?: string;
+  customerName?: string;
+  customerMobile?: string;
+  gpsLink?: string;
   gps?: {
     latitude?: number;
     longitude?: number;
@@ -334,7 +336,6 @@ export async function createDevice(data: {
     brand: data.brand.trim(),
     model: data.model.trim(),
     deviceName,
-    serialNumber: data.serialNumber?.trim().toUpperCase() || "",
     totalPorts: data.totalPorts !== undefined && !isNaN(Number(data.totalPorts)) ? Number(data.totalPorts) : undefined,
     uplinkSwitch: data.uplinkSwitch ? data.uplinkSwitch : null,
     server: data.deviceType.toLowerCase().trim() !== "server" && data.server ? data.server : null,
@@ -343,6 +344,10 @@ export async function createDevice(data: {
     macAddress: data.macAddress?.trim().toUpperCase() || "",
     ipAddress: data.ipAddress?.trim() || "",
     activationDate: data.activationDate ? new Date(data.activationDate) : new Date(),
+    apNumber: data.apNumber?.trim() || "",
+    customerName: data.customerName?.trim() || "",
+    customerMobile: data.customerMobile?.trim() || "",
+    gpsLink: data.gpsLink?.trim() || "",
     gps: {
       latitude: data.gps?.latitude !== undefined && !isNaN(Number(data.gps.latitude)) ? Number(data.gps.latitude) : undefined,
       longitude: data.gps?.longitude !== undefined && !isNaN(Number(data.gps.longitude)) ? Number(data.gps.longitude) : undefined,
@@ -383,7 +388,6 @@ export async function updateDevice(
     brand?: string;
     model?: string;
     deviceName?: string;
-    serialNumber?: string;
     totalPorts?: number;
     uplinkSwitch?: string | null;
     server?: string | null;
@@ -392,6 +396,10 @@ export async function updateDevice(
     macAddress?: string;
     ipAddress?: string;
     activationDate?: string | Date;
+    apNumber?: string;
+    customerName?: string;
+    customerMobile?: string;
+    gpsLink?: string;
     gps?: {
       latitude?: number;
       longitude?: number;
@@ -415,7 +423,6 @@ export async function updateDevice(
   if (data.brand) updatePayload.brand = data.brand.trim();
   if (data.model) updatePayload.model = data.model.trim();
   if (data.deviceName) updatePayload.deviceName = data.deviceName.trim();
-  if (data.serialNumber !== undefined) updatePayload.serialNumber = data.serialNumber.trim().toUpperCase();
   if (data.totalPorts !== undefined) {
     updatePayload.totalPorts = !isNaN(Number(data.totalPorts)) ? Number(data.totalPorts) : undefined;
   }
@@ -438,6 +445,10 @@ export async function updateDevice(
   if (data.macAddress !== undefined) updatePayload.macAddress = data.macAddress.trim().toUpperCase();
   if (data.ipAddress !== undefined) updatePayload.ipAddress = data.ipAddress.trim();
   if (data.activationDate) updatePayload.activationDate = new Date(data.activationDate);
+  if (data.apNumber !== undefined) updatePayload.apNumber = data.apNumber.trim();
+  if (data.customerName !== undefined) updatePayload.customerName = data.customerName.trim();
+  if (data.customerMobile !== undefined) updatePayload.customerMobile = data.customerMobile.trim();
+  if (data.gpsLink !== undefined) updatePayload.gpsLink = data.gpsLink.trim();
   if (data.gps) {
     updatePayload.gps = {
       latitude: data.gps.latitude !== undefined && !isNaN(Number(data.gps.latitude)) ? Number(data.gps.latitude) : undefined,
@@ -610,7 +621,6 @@ export async function getAllDevicesForExport(params?: {
       { model: regex },
       { ipAddress: regex },
       { macAddress: regex },
-      { serialNumber: regex },
       { description: regex },
     ];
   }
@@ -650,7 +660,6 @@ export async function importDevicesBulk(
     const deviceName = String(r["Device Name"] || r["Name"] || r["deviceName"] || `${brand} ${model}`).trim();
     const ipAddress = String(r["IP Address"] || r["IP"] || r["ipAddress"] || "").trim();
     const macAddress = String(r["MAC Address"] || r["MAC"] || r["macAddress"] || "").trim().toUpperCase();
-    const serialNumber = String(r["Serial Number"] || r["Serial"] || r["serialNumber"] || r["SN"] || "").trim();
     const rawPorts = r["Total Ports"] || r["Ports"] || r["totalPorts"] || 0;
     const totalPorts = deviceType === "switch" ? Math.max(1, Number(rawPorts) || 8) : undefined;
     const rawStatus = String(r["Status"] || r["status"] || "Active").trim();
@@ -668,7 +677,6 @@ export async function importDevicesBulk(
         deviceName,
         ipAddress,
         macAddress,
-        serialNumber,
         totalPorts,
         status,
         description,

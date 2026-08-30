@@ -7,7 +7,6 @@ export interface IDeviceDoc {
   brand: string;
   model: string;
   deviceName: string;
-  serialNumber?: string;
   totalPorts?: number;
   uplinkSwitch?: Schema.Types.ObjectId | IDeviceDoc | null;
   server?: Schema.Types.ObjectId | IDeviceDoc | null;
@@ -16,6 +15,10 @@ export interface IDeviceDoc {
   macAddress?: string;
   ipAddress?: string;
   activationDate?: Date;
+  apNumber?: string;
+  customerName?: string;
+  customerMobile?: string;
+  gpsLink?: string;
   gps?: {
     latitude?: number;
     longitude?: number;
@@ -56,12 +59,6 @@ const DeviceSchema = new Schema(
     deviceName: {
       type: String,
       required: true,
-      trim: true,
-      index: true,
-    },
-    serialNumber: {
-      type: String,
-      default: "",
       trim: true,
       index: true,
     },
@@ -111,6 +108,28 @@ const DeviceSchema = new Schema(
       latitude: { type: Number },
       longitude: { type: Number },
     },
+    apNumber: {
+      type: String,
+      default: "",
+      trim: true,
+      index: true,
+    },
+    customerName: {
+      type: String,
+      default: "",
+      trim: true,
+      index: true,
+    },
+    customerMobile: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    gpsLink: {
+      type: String,
+      default: "",
+      trim: true,
+    },
     status: {
       type: String,
       enum: DEVICE_STATUSES,
@@ -131,7 +150,6 @@ DeviceSchema.index({ brand: 1, model: 1 });
 DeviceSchema.index({
   deviceName: "text",
   sl: "text",
-  serialNumber: "text",
   ipAddress: "text",
   macAddress: "text",
   description: "text",

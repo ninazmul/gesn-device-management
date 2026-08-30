@@ -53,7 +53,6 @@ export interface IDevice {
   brand: string;
   model: string;
   deviceName: string;
-  serialNumber?: string;
   totalPorts?: number;
   uplinkSwitch?: IDevice | string | null;
   server?: IDevice | string | null;
@@ -65,6 +64,11 @@ export interface IDevice {
   macAddress?: string;
   ipAddress?: string;
   activationDate?: string | Date;
+  // Access Point / Router specific fields
+  apNumber?: string;
+  customerName?: string;
+  customerMobile?: string;
+  gpsLink?: string;
   gps?: {
     latitude?: number;
     longitude?: number;
