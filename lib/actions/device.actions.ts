@@ -294,8 +294,8 @@ export async function getDeviceById(id: string) {
 // ==========================================
 export async function createDevice(data: {
   deviceType: string;
-  brand: string;
-  model: string;
+  brand?: string;
+  model?: string;
   deviceName?: string;
   totalPorts?: number;
   uplinkSwitch?: string | null;
@@ -327,14 +327,14 @@ export async function createDevice(data: {
     throw new Error("Invalid IPv4 Address format. Example: 192.168.1.100");
   }
 
-  const deviceName = data.deviceName?.trim() || data.model.trim();
+  const deviceName = data.deviceName?.trim() || data.model?.trim() || "";
   const sl = await getNextSL();
 
   const device = await Device.create({
     sl,
     deviceType: data.deviceType.toLowerCase().trim(),
-    brand: data.brand.trim(),
-    model: data.model.trim(),
+    brand: data.brand?.trim() || "",
+    model: data.model?.trim() || "",
     deviceName,
     totalPorts: data.totalPorts !== undefined && !isNaN(Number(data.totalPorts)) ? Number(data.totalPorts) : undefined,
     uplinkSwitch: data.uplinkSwitch ? data.uplinkSwitch : null,

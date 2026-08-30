@@ -46,19 +46,19 @@ const DeviceSchema = new Schema(
     },
     brand: {
       type: String,
-      required: true,
+      default: "",
       trim: true,
       index: true,
     },
     model: {
       type: String,
-      required: true,
+      default: "",
       trim: true,
       index: true,
     },
     deviceName: {
       type: String,
-      required: true,
+      default: "",
       trim: true,
       index: true,
     },

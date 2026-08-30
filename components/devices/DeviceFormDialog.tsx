@@ -360,20 +360,8 @@ export function DeviceFormDialog({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!brand) {
-      toast.error("Please select a brand");
-      return;
-    }
-    if (!model.trim()) {
-      toast.error("Please select or enter a model");
-      return;
-    }
-    if (!deviceName.trim()) {
-      toast.error("Please enter a device name");
-      return;
-    }
-    if (deviceType === "switch" && (!totalPorts || isNaN(Number(totalPorts)) || Number(totalPorts) < 1)) {
-      toast.error("Please enter valid total ports for the switch");
+    if (!macAddress.trim()) {
+      toast.error("Please enter a MAC Address");
       return;
     }
 
@@ -511,7 +499,7 @@ export function DeviceFormDialog({
               {/* Brand (Dependent) */}
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Brand <span className="text-rose-500">*</span>
+                  Brand
                 </Label>
                 <Select
                   value={brand}
@@ -539,7 +527,7 @@ export function DeviceFormDialog({
               {/* Model (Dependent) */}
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Model <span className="text-rose-500">*</span>
+                  Model
                 </Label>
                 {availableModels.length > 0 ? (
                   <Select
@@ -585,7 +573,7 @@ export function DeviceFormDialog({
               {/* Device Name */}
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Device Name <span className="text-rose-500">*</span>
+                  Device Name
                 </Label>
                 <Input
                   placeholder="e.g. Tower North Sector 1 or Rocket Prism 5AC"
@@ -694,7 +682,7 @@ export function DeviceFormDialog({
                 <div className="flex items-center gap-2">
                   <Network className="w-4 h-4 text-sky-600 dark:text-sky-400" />
                   <Label className="text-xs font-bold uppercase tracking-wider text-sky-900 dark:text-sky-300">
-                    Switch Port Capacity <span className="text-rose-500">*</span>
+                    Switch Port Capacity
                   </Label>
                 </div>
                 <span className="text-[11px] text-sky-600 dark:text-sky-400 font-medium">
@@ -888,7 +876,7 @@ export function DeviceFormDialog({
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                    MAC Address
+                    MAC Address <span className="text-rose-500">*</span>
                   </Label>
                   <button
                     type="button"
@@ -1069,7 +1057,7 @@ export function DeviceFormDialog({
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
               <div className="space-y-1.5 sm:col-span-1">
                 <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Status <span className="text-rose-500">*</span>
+                  Status
                 </Label>
                 <Select value={status} onValueChange={(val) => setStatus(val as DeviceStatus)}>
                   <SelectTrigger className="rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950">
@@ -1113,7 +1101,7 @@ export function DeviceFormDialog({
             </Button>
             <Button
               type="submit"
-              disabled={submitting || !brand || !model.trim() || !deviceName.trim()}
+              disabled={submitting || !macAddress.trim()}
               className="rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-semibold shadow-md shadow-sky-600/10"
             >
               {submitting ? (
