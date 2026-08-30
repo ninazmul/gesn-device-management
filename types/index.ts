@@ -1,6 +1,7 @@
 export type DeviceStatus =
-  | "Available"
+  | "Pending"
   | "Active"
+  | "Available"
   | "Offline"
   | "Maintenance"
   | "Inactive"

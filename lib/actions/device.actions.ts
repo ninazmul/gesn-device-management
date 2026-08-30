@@ -5,7 +5,7 @@ import Device from "@/lib/database/models/device.model";
 import Counter from "@/lib/database/models/counter.model";
 import Brand from "@/lib/database/models/brand.model";
 import DeviceModel from "@/lib/database/models/model.model";
-import { formatSL, isValidIPv4, isValidMAC, normalizeMAC } from "@/lib/utils";
+import { formatSL, isValidIPv4, normalizeMAC } from "@/lib/utils";
 import { revalidatePath } from "next/cache";
 import type { FilterQuery } from "mongoose";
 import type { DeviceStatus, GetDevicesParams, IDevice, ISwitchOption, IServerOption } from "@/types";
@@ -342,6 +342,10 @@ export async function createDevice(data: {
   const deviceName = data.deviceName?.trim() || data.model?.trim() || data.brand?.trim() || `${data.deviceType.toUpperCase()} ${normalizedMAC.slice(-5)}`;
   const sl = await getNextSL();
 
+  const isSuperAdmin = actor.role === "super_admin";
+  // Non-super-admins cannot activate devices directly; status is forced to "Pending"
+  const finalStatus: DeviceStatus = isSuperAdmin ? (data.status || "Active") : "Pending";
+
   const device = await Device.create({
     sl,
     deviceType: data.deviceType.toLowerCase().trim(),
@@ -364,8 +368,12 @@ export async function createDevice(data: {
       latitude: data.gps?.latitude !== undefined && !isNaN(Number(data.gps.latitude)) ? Number(data.gps.latitude) : undefined,
       longitude: data.gps?.longitude !== undefined && !isNaN(Number(data.gps.longitude)) ? Number(data.gps.longitude) : undefined,
     },
-    status: data.status || "Active",
+    status: finalStatus,
   });
+
+  const logDetails = isSuperAdmin
+    ? `Added new ${data.deviceType} device: ${deviceName} (SL: ${sl}, IP: ${rawIp || "N/A"}, Status: ${finalStatus})`
+    : `Added new ${data.deviceType} device: ${deviceName} (SL: ${sl}, MAC: ${normalizedMAC}) - Pending Super Admin activation approval.`;
 
   await logActivityAndNotify({
     actor,
@@ -373,7 +381,7 @@ export async function createDevice(data: {
     module: "devices",
     resourceId: sl,
     resourceName: `${deviceName} (${sl})`,
-    details: `Added new ${data.deviceType} device: ${deviceName} (SL: ${sl}, IP: ${rawIp || "N/A"})`,
+    details: logDetails,
     link: `/devices/${data.deviceType.toLowerCase().trim()}`,
   });
 
@@ -427,6 +435,7 @@ export async function updateDevice(
     throw new Error("Device not found");
   }
 
+  const isSuperAdmin = actor.role === "super_admin";
   const updatePayload: Record<string, unknown> = {};
 
   if (data.deviceType) updatePayload.deviceType = data.deviceType.toLowerCase().trim();
@@ -482,7 +491,12 @@ export async function updateDevice(
     };
   }
 
-  if (data.status) updatePayload.status = data.status;
+  if (data.status) {
+    if (data.status === "Active" && !isSuperAdmin && device.status !== "Active") {
+      throw new Error("Only Super Admins can activate devices or approve pending devices.");
+    }
+    updatePayload.status = data.status;
+  }
 
   const updatedDevice = await Device.findByIdAndUpdate(id, updatePayload, {
     new: true,
@@ -522,6 +536,12 @@ export async function updateDevice(
 export async function updateDeviceStatus(id: string, status: DeviceStatus) {
   const actor = await requirePermission("devices", "write");
   await connectToDatabase();
+
+  const isSuperAdmin = actor.role === "super_admin";
+  if (status === "Active" && !isSuperAdmin) {
+    throw new Error("Only Super Admins can activate devices or approve pending devices.");
+  }
+
   const device = (await Device.findByIdAndUpdate(id, { status }, { new: true }).lean()) as IDevice | null;
   if (!device) throw new Error("Device not found");
 
@@ -540,6 +560,41 @@ export async function updateDeviceStatus(id: string, status: DeviceStatus) {
   revalidatePath(`/devices/${device.deviceType}`);
 
   return JSON.parse(JSON.stringify(device));
+}
+
+// ==========================================
+// TOGGLE DEVICE ACTIVE (SUPER ADMIN ONLY QUICK TOGGLE)
+// ==========================================
+export async function toggleDeviceActive(id: string) {
+  const actor = await requirePermission("devices", "write");
+  await connectToDatabase();
+
+  if (actor.role !== "super_admin") {
+    throw new Error("Only Super Admins can toggle device activation.");
+  }
+
+  const device = await Device.findById(id);
+  if (!device) throw new Error("Device not found");
+
+  const newStatus: DeviceStatus = device.status === "Active" ? "Pending" : "Active";
+  device.status = newStatus;
+  await device.save();
+
+  await logActivityAndNotify({
+    actor,
+    action: "STATUS_CHANGE",
+    module: "devices",
+    resourceId: device.sl,
+    resourceName: `${device.deviceName} (${device.sl})`,
+    details: `Super Admin toggled device #${device.sl} (${device.deviceName}) to ${newStatus}`,
+    link: `/devices/${device.deviceType}`,
+  });
+
+  revalidatePath("/");
+  revalidatePath("/devices");
+  revalidatePath(`/devices/${device.deviceType}`);
+
+  return { success: true, newStatus };
 }
 
 // ==========================================
@@ -831,11 +886,15 @@ export async function importDevicesBulk(
         }
       }
 
-      // 8. Verification: Optional Status
-      const rawStatus = String(r["Status"] || r["status"] || "Active").trim();
-      const status: DeviceStatus = ["Active", "Inactive", "Maintenance", "Decommissioned"].includes(rawStatus)
-        ? (rawStatus as DeviceStatus)
-        : "Active";
+      // 8. Verification: Status (Forced to "Pending" for non-super-admins)
+      const isSuperAdmin = actor.role === "super_admin";
+      const rawStatus = String(r["Status"] || r["status"] || "").trim();
+      let status: DeviceStatus = "Pending";
+      if (isSuperAdmin) {
+        status = ["Pending", "Active", "Available", "Offline", "Maintenance", "Inactive", "Retired"].includes(rawStatus)
+          ? (rawStatus as DeviceStatus)
+          : "Active";
+      }
 
       // 9. Verification: Optional Server lookup
       const rawServer = String(

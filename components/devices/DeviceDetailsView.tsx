@@ -26,11 +26,12 @@ import { CopyButton } from "@/components/shared/CopyButton";
 import { DeviceStatusDialog } from "./DeviceStatusDialog";
 import { DeviceFormDialog } from "./DeviceFormDialog";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
-import { deleteDevice } from "@/lib/actions/device.actions";
+import { deleteDevice, toggleDeviceActive } from "@/lib/actions/device.actions";
 import { formatDate, formatDateTime } from "@/lib/utils";
 import { toast } from "react-hot-toast";
 import type { IDevice } from "@/types";
 import { usePermissions } from "@/components/providers/PermissionContext";
+import { CheckCircle2, Loader2 } from "lucide-react";
 
 function getDeviceIcon(type: string) {
   switch (type?.toLowerCase()) {
@@ -56,13 +57,31 @@ interface DeviceDetailsViewProps {
 export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
   const router = useRouter();
   const Icon = getDeviceIcon(device.deviceType);
-  const { canWrite } = usePermissions();
+  const { canWrite, isSuperAdmin } = usePermissions();
   const canWriteDevices = canWrite("devices");
 
   const [isStatusOpen, setIsStatusOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isToggling, setIsToggling] = useState(false);
+
+  const handleToggleActive = async () => {
+    if (!isSuperAdmin) {
+      toast.error("Only Super Admins can activate or toggle devices.");
+      return;
+    }
+    try {
+      setIsToggling(true);
+      const res = await toggleDeviceActive(device._id);
+      toast.success(`Device ${res.newStatus === "Active" ? "activated" : "set to Pending"}`);
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to toggle status");
+    } finally {
+      setIsToggling(false);
+    }
+  };
 
   const handleDeleteConfirm = async () => {
     try {
@@ -125,6 +144,26 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
 
           {/* Action Buttons */}
           <div className="flex items-center gap-2.5 flex-wrap">
+            {isSuperAdmin && (
+              <Button
+                type="button"
+                disabled={isToggling}
+                onClick={handleToggleActive}
+                className={`rounded-xl text-xs font-semibold shadow-sm ${
+                  device.status === "Active"
+                    ? "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700"
+                    : "bg-emerald-600 hover:bg-emerald-700 text-white"
+                }`}
+              >
+                {isToggling ? (
+                  <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                ) : (
+                  <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />
+                )}
+                {device.status === "Active" ? "Set to Pending" : "Approve & Activate"}
+              </Button>
+            )}
+
             {canWriteDevices && (
               <Button
                 type="button"

@@ -31,7 +31,7 @@ import { CopyButton } from "@/components/shared/CopyButton";
 import { DeviceStatusDialog } from "./DeviceStatusDialog";
 import { DeviceFormDialog } from "./DeviceFormDialog";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
-import { deleteDevice } from "@/lib/actions/device.actions";
+import { deleteDevice, toggleDeviceActive } from "@/lib/actions/device.actions";
 import { toast } from "react-hot-toast";
 import type { IDevice } from "@/types";
 import { usePermissions } from "@/components/providers/PermissionContext";
@@ -75,7 +75,7 @@ export function DeviceTable({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { canWrite } = usePermissions();
+  const { canWrite, isSuperAdmin } = usePermissions();
   const canWriteDevices = canWrite("devices");
 
   // Modals state
@@ -84,11 +84,30 @@ export function DeviceTable({
   const [deletingDevice, setDeletingDevice] = useState<IDevice | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
 
   const navigatePage = (newPage: number) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set("page", String(newPage));
     router.push(`${pathname}?${params.toString()}`);
+  };
+
+  const handleToggleActive = async (e: React.MouseEvent, deviceId: string) => {
+    e.stopPropagation();
+    if (!isSuperAdmin) {
+      toast.error("Only Super Admins can activate or toggle devices.");
+      return;
+    }
+    try {
+      setTogglingId(deviceId);
+      const res = await toggleDeviceActive(deviceId);
+      toast.success(`Device ${res.newStatus === "Active" ? "activated" : "set to Pending"}`);
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to update device");
+    } finally {
+      setTogglingId(null);
+    }
   };
 
   const handleDeleteConfirm = async () => {
@@ -284,20 +303,46 @@ export function DeviceTable({
                         )}
                       </TableCell>
 
-                      {/* Status */}
+                      {/* Status & Super Admin Activation Toggle */}
                       <TableCell className="whitespace-nowrap">
-                        {canWriteDevices ? (
-                          <button
-                            type="button"
-                            onClick={() => setStatusDevice(device)}
-                            className="cursor-pointer hover:opacity-85 transition-opacity"
-                            title="Click to update status"
-                          >
+                        <div className="flex items-center gap-2">
+                          {canWriteDevices ? (
+                            <button
+                              type="button"
+                              onClick={() => setStatusDevice(device)}
+                              className="cursor-pointer hover:opacity-85 transition-opacity"
+                              title="Click to change status"
+                            >
+                              <DeviceStatusBadge status={device.status} />
+                            </button>
+                          ) : (
                             <DeviceStatusBadge status={device.status} />
-                          </button>
-                        ) : (
-                          <DeviceStatusBadge status={device.status} />
-                        )}
+                          )}
+
+                          {isSuperAdmin && (
+                            <button
+                              type="button"
+                              disabled={togglingId === device._id}
+                              onClick={(e) => handleToggleActive(e, device._id)}
+                              className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                                device.status === "Active"
+                                  ? "bg-emerald-500"
+                                  : "bg-slate-200 dark:bg-slate-700"
+                              } ${togglingId === device._id ? "opacity-50 cursor-wait" : ""}`}
+                              title={
+                                device.status === "Active"
+                                  ? "Super Admin: Click to deactivate (set to Pending)"
+                                  : "Super Admin: Click to activate device"
+                              }
+                            >
+                              <span
+                                className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
+                                  device.status === "Active" ? "translate-x-4" : "translate-x-0"
+                                }`}
+                              />
+                            </button>
+                          )}
+                        </div>
                       </TableCell>
 
                       {/* Row Actions */}

@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Loader2, Plus, Network, Server, X, ScanBarcode, Camera, Hash, Wifi, Fingerprint, MapPin } from "lucide-react";
+import { Loader2, Plus, Network, Server, X, ScanBarcode, Camera, Wifi, Fingerprint, MapPin } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { createDevice, updateDevice, getAvailableSwitches, getAvailableServers } from "@/lib/actions/device.actions";
 import { getBrands, getModels, getDeviceTypes } from "@/lib/actions/catalog.actions";
@@ -27,6 +27,7 @@ import type { DeviceStatus, IDevice, IDeviceType, IBrand, IModel, ISwitchOption,
 import { BarcodeScannerModal } from "./BarcodeScannerModal";
 import { useBarcodeGun } from "@/hooks/useBarcodeGun";
 import type { ParsedBarcodeResult } from "@/lib/barcode";
+import { usePermissions } from "@/components/providers/PermissionContext";
 
 interface DeviceFormDialogProps {
   open: boolean;
@@ -45,7 +46,8 @@ export function DeviceFormDialog({
   deviceToEdit,
   onSuccess,
 }: DeviceFormDialogProps) {
-  const isEditing = Boolean(deviceToEdit);
+  const { isSuperAdmin } = usePermissions();
+  const isEditing = !!deviceToEdit;
 
   // Form State
   const [deviceType, setDeviceType] = useState(
@@ -87,7 +89,7 @@ export function DeviceFormDialog({
     deviceToEdit?.gps?.longitude !== undefined ? String(deviceToEdit.gps.longitude) : ""
   );
   const [status, setStatus] = useState<DeviceStatus>(
-    (deviceToEdit?.status as DeviceStatus) || "Active"
+    (deviceToEdit?.status as DeviceStatus) || "Pending"
   );
   // Access Point / Router specific fields
   const [apNumber, setApNumber] = useState(deviceToEdit?.apNumber || "");
@@ -268,7 +270,7 @@ export function DeviceFormDialog({
       setLongitude(
         deviceToEdit.gps?.longitude !== undefined ? String(deviceToEdit.gps.longitude) : ""
       );
-      setStatus(deviceToEdit.status || "Active");
+      setStatus(deviceToEdit.status || "Pending");
       setApNumber(deviceToEdit.apNumber || "");
       setCustomerName(deviceToEdit.customerName || "");
       setCustomerMobile(deviceToEdit.customerMobile || "");
@@ -289,7 +291,7 @@ export function DeviceFormDialog({
       setActivationDate(new Date().toISOString().split("T")[0]);
       setLatitude("");
       setLongitude("");
-      setStatus("Active");
+      setStatus("Pending");
       setApNumber("");
       setCustomerName("");
       setCustomerMobile("");
@@ -1064,13 +1066,18 @@ export function DeviceFormDialog({
                     <SelectValue placeholder="Select Status" />
                   </SelectTrigger>
                   <SelectContent className="dark:bg-slate-900 dark:border-slate-800">
-                    {DEVICE_STATUSES.map((st) => (
+                    {DEVICE_STATUSES.filter((st) => isSuperAdmin || st !== "Active").map((st) => (
                       <SelectItem key={st} value={st}>
                         {st}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                {!isSuperAdmin && (
+                  <p className="text-[10px] text-amber-600 dark:text-amber-400 font-medium mt-1">
+                    Activation requires Super Admin approval.
+                  </p>
+                )}
               </div>
 
               <div className="space-y-1.5 sm:col-span-2">

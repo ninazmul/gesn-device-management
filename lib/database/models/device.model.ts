@@ -133,7 +133,7 @@ const DeviceSchema = new Schema(
     status: {
       type: String,
       enum: DEVICE_STATUSES,
-      default: "Active",
+      default: "Pending",
       index: true,
     },
   },

@@ -7,8 +7,9 @@ export const PRIMARY_DEVICE_TYPES = [
 ] as const;
 
 export const DEVICE_STATUSES = [
-  "Available",
+  "Pending",
   "Active",
+  "Available",
   "Offline",
   "Maintenance",
   "Inactive",
@@ -63,6 +64,14 @@ export const STATUS_CONFIG: Record<
   string,
   { label: string; bg: string; text: string; dot: string; border: string; darkBg: string }
 > = {
+  Pending: {
+    label: "Pending",
+    bg: "bg-amber-50 text-amber-700 border-amber-200",
+    text: "text-amber-700 dark:text-amber-400",
+    dot: "bg-amber-500 animate-pulse",
+    border: "border-amber-200 dark:border-amber-800/50",
+    darkBg: "dark:bg-amber-950/40",
+  },
   Active: {
     label: "Active",
     bg: "bg-emerald-50 text-emerald-700 border-emerald-200",

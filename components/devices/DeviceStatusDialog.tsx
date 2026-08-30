@@ -12,7 +12,8 @@ import { Button } from "@/components/ui/button";
 import { DEVICE_STATUSES, STATUS_CONFIG } from "@/lib/constants";
 import { updateDeviceStatus } from "@/lib/actions/device.actions";
 import { toast } from "react-hot-toast";
-import { Loader2 } from "lucide-react";
+import { usePermissions } from "@/components/providers/PermissionContext";
+import { Loader2, Lock } from "lucide-react";
 import type { DeviceStatus, IDevice } from "@/types";
 
 interface DeviceStatusDialogProps {
@@ -28,8 +29,9 @@ export function DeviceStatusDialog({
   onOpenChange,
   onSuccess,
 }: DeviceStatusDialogProps) {
+  const { isSuperAdmin } = usePermissions();
   const [selectedStatus, setSelectedStatus] = useState<DeviceStatus>(
-    (device?.status as DeviceStatus) || "Active"
+    (device?.status as DeviceStatus) || "Pending"
   );
   const [isLoading, setIsLoading] = useState(false);
 
@@ -71,19 +73,31 @@ export function DeviceStatusDialog({
           {DEVICE_STATUSES.map((status) => {
             const isSelected = selectedStatus === status;
             const config = STATUS_CONFIG[status];
+            const isRestricted = status === "Active" && !isSuperAdmin;
+
             return (
               <button
                 key={status}
                 type="button"
-                onClick={() => setSelectedStatus(status)}
-                className={`flex items-center gap-2.5 p-3 rounded-xl border text-sm font-semibold transition-all ${
-                  isSelected
+                disabled={isRestricted}
+                onClick={() => !isRestricted && setSelectedStatus(status)}
+                className={`flex items-center justify-between p-3 rounded-xl border text-sm font-semibold transition-all ${
+                  isRestricted
+                    ? "opacity-45 bg-slate-50 dark:bg-slate-900/40 border-dashed border-slate-200 dark:border-slate-800 cursor-not-allowed text-slate-400"
+                    : isSelected
                     ? "border-sky-500 bg-sky-50/70 dark:bg-sky-950/40 text-sky-900 dark:text-sky-100 ring-2 ring-sky-500/20"
                     : "border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-slate-700 dark:text-slate-300"
                 }`}
               >
-                <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${config.dot}`} />
-                <span>{status}</span>
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${config.dot}`} />
+                  <span className="truncate">{status}</span>
+                </div>
+                {isRestricted && (
+                  <span className="flex items-center gap-1 text-[10px] text-amber-600 dark:text-amber-400 font-medium shrink-0 ml-1">
+                    <Lock className="w-3 h-3" />
+                  </span>
+                )}
               </button>
             );
           })}
