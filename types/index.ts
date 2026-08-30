@@ -56,6 +56,7 @@ export interface IDevice {
   serialNumber?: string;
   totalPorts?: number;
   uplinkSwitch?: IDevice | string | null;
+  server?: IDevice | string | null;
   activePortsCount?: number;
   availablePorts?: number;
   connectedDevices?: IDevice[];
@@ -84,6 +85,16 @@ export interface ISwitchOption {
   totalPorts: number;
   activePortsCount: number;
   availablePorts: number;
+}
+
+export interface IServerOption {
+  _id: string;
+  sl: string;
+  deviceName: string;
+  brand: string;
+  model: string;
+  ipAddress?: string;
+  status: DeviceStatus;
 }
 
 export interface ICustomer {

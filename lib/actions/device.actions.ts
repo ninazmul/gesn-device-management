@@ -8,7 +8,7 @@ import DeviceModel from "@/lib/database/models/model.model";
 import { formatSL, isValidIPv4, isValidMAC } from "@/lib/utils";
 import { revalidatePath } from "next/cache";
 import type { FilterQuery } from "mongoose";
-import type { DeviceStatus, GetDevicesParams, IDevice, ISwitchOption } from "@/types";
+import type { DeviceStatus, GetDevicesParams, IDevice, ISwitchOption, IServerOption } from "@/types";
 import { requirePermission, logActivityAndNotify } from "@/lib/auth-guard";
 
 // Helper to generate next sequential SL (e.g. "000001")
@@ -81,6 +81,24 @@ export async function getAvailableSwitches(): Promise<ISwitchOption[]> {
   });
 
   return JSON.parse(JSON.stringify(result));
+}
+
+// ==========================================
+// GET AVAILABLE SERVERS
+// ==========================================
+export async function getAvailableServers(): Promise<IServerOption[]> {
+  await requirePermission("devices", "read");
+  await connectToDatabase();
+
+  const servers = await Device.find({
+    deviceType: "server",
+    status: { $nin: ["Retired"] },
+  })
+    .select("sl deviceName brand model ipAddress status")
+    .sort({ deviceName: 1 })
+    .lean();
+
+  return JSON.parse(JSON.stringify(servers));
 }
 
 // ==========================================
@@ -165,6 +183,7 @@ export async function getDevices(params?: GetDevicesParams) {
   const [rawDevices, total] = await Promise.all([
     Device.find(query)
       .populate("uplinkSwitch", "sl deviceName brand model totalPorts ipAddress status")
+      .populate("server", "sl deviceName brand model ipAddress status")
       .sort(sortObj)
       .skip(skip)
       .limit(limit)
@@ -228,6 +247,7 @@ export async function getDeviceById(id: string) {
   await connectToDatabase();
   const device = (await Device.findById(id)
     .populate("uplinkSwitch", "sl deviceName brand model totalPorts ipAddress status")
+    .populate("server", "sl deviceName brand model ipAddress status")
     .lean()) as unknown as IDevice | null;
   if (!device) return null;
 
@@ -252,6 +272,21 @@ export async function getDeviceById(id: string) {
     );
   }
 
+  // If the device is a server, fetch all devices hosted/assigned to this server
+  if (device.deviceType === "server") {
+    const connectedDevices = (await Device.find({ server: id })
+      .select("sl deviceName deviceType brand model ipAddress macAddress status")
+      .sort({ sl: 1 })
+      .lean()) as unknown as IDevice[];
+
+    return JSON.parse(
+      JSON.stringify({
+        ...device,
+        connectedDevices,
+      })
+    );
+  }
+
   return JSON.parse(JSON.stringify(device));
 }
 
@@ -266,6 +301,7 @@ export async function createDevice(data: {
   serialNumber?: string;
   totalPorts?: number;
   uplinkSwitch?: string | null;
+  server?: string | null;
   description?: string;
   onlineLink?: string;
   macAddress?: string;
@@ -301,6 +337,7 @@ export async function createDevice(data: {
     serialNumber: data.serialNumber?.trim().toUpperCase() || "",
     totalPorts: data.totalPorts !== undefined && !isNaN(Number(data.totalPorts)) ? Number(data.totalPorts) : undefined,
     uplinkSwitch: data.uplinkSwitch ? data.uplinkSwitch : null,
+    server: data.deviceType.toLowerCase().trim() !== "server" && data.server ? data.server : null,
     description: data.description?.trim() || "",
     onlineLink: data.onlineLink?.trim() || "",
     macAddress: data.macAddress?.trim().toUpperCase() || "",
@@ -329,6 +366,9 @@ export async function createDevice(data: {
   if (data.uplinkSwitch) {
     revalidatePath(`/devices/switch/${data.uplinkSwitch}`);
   }
+  if (data.server) {
+    revalidatePath(`/devices/server/${data.server}`);
+  }
 
   return JSON.parse(JSON.stringify(device));
 }
@@ -346,6 +386,7 @@ export async function updateDevice(
     serialNumber?: string;
     totalPorts?: number;
     uplinkSwitch?: string | null;
+    server?: string | null;
     description?: string;
     onlineLink?: string;
     macAddress?: string;
@@ -381,7 +422,17 @@ export async function updateDevice(
   if (data.uplinkSwitch !== undefined) {
     updatePayload.uplinkSwitch = data.uplinkSwitch ? data.uplinkSwitch : null;
   }
-  if (data.deviceType) updatePayload.deviceType = data.deviceType.toLowerCase().trim();
+  if (data.server !== undefined) {
+    const isServer = (data.deviceType || "").toLowerCase().trim() === "server";
+    updatePayload.server = isServer ? null : data.server ? data.server : null;
+  }
+  if (data.deviceType) {
+    const normalizedType = data.deviceType.toLowerCase().trim();
+    updatePayload.deviceType = normalizedType;
+    if (normalizedType === "server") {
+      updatePayload.server = null;
+    }
+  }
   if (data.description !== undefined) updatePayload.description = data.description.trim();
   if (data.onlineLink !== undefined) updatePayload.onlineLink = data.onlineLink.trim();
   if (data.macAddress !== undefined) updatePayload.macAddress = data.macAddress.trim().toUpperCase();
@@ -412,6 +463,9 @@ export async function updateDevice(
   revalidatePath("/devices");
   revalidatePath(`/devices/${device.deviceType}`);
   revalidatePath(`/devices/${device.deviceType}/${device._id}`);
+  if (data.server) {
+    revalidatePath(`/devices/server/${data.server}`);
+  }
 
   return JSON.parse(JSON.stringify(device));
 }

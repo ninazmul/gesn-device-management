@@ -18,12 +18,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Loader2, Plus, Network, X, ScanBarcode, Camera, Hash, Wifi, Fingerprint, MapPin } from "lucide-react";
+import { Loader2, Plus, Network, Server, X, ScanBarcode, Camera, Hash, Wifi, Fingerprint, MapPin } from "lucide-react";
 import { toast } from "react-hot-toast";
-import { createDevice, updateDevice, getAvailableSwitches } from "@/lib/actions/device.actions";
+import { createDevice, updateDevice, getAvailableSwitches, getAvailableServers } from "@/lib/actions/device.actions";
 import { getBrands, getModels, getDeviceTypes } from "@/lib/actions/catalog.actions";
 import { PRIMARY_DEVICE_TYPES, DEVICE_STATUSES } from "@/lib/constants";
-import type { DeviceStatus, IDevice, IDeviceType, IBrand, IModel, ISwitchOption } from "@/types";
+import type { DeviceStatus, IDevice, IDeviceType, IBrand, IModel, ISwitchOption, IServerOption } from "@/types";
 import { BarcodeScannerModal } from "./BarcodeScannerModal";
 import { useBarcodeGun } from "@/hooks/useBarcodeGun";
 import type { ParsedBarcodeResult } from "@/lib/barcode";
@@ -64,6 +64,13 @@ export function DeviceFormDialog({
       ? deviceToEdit.uplinkSwitch
       : ""
   );
+  const [server, setServer] = useState<string>(
+    typeof deviceToEdit?.server === "object" && deviceToEdit.server
+      ? (deviceToEdit.server as IDevice)._id
+      : typeof deviceToEdit?.server === "string"
+      ? deviceToEdit.server
+      : ""
+  );
   const [description, setDescription] = useState(deviceToEdit?.description || "");
   const [onlineLink, setOnlineLink] = useState(deviceToEdit?.onlineLink || "");
   const [serialNumber, setSerialNumber] = useState(deviceToEdit?.serialNumber || "");
@@ -84,14 +91,16 @@ export function DeviceFormDialog({
     (deviceToEdit?.status as DeviceStatus) || "Active"
   );
 
-  // Catalog & Switch Options
+  // Catalog, Switch & Server Options
   const [availableTypes, setAvailableTypes] = useState<IDeviceType[]>([]);
   const [availableBrands, setAvailableBrands] = useState<IBrand[]>([]);
   const [availableModels, setAvailableModels] = useState<IModel[]>([]);
   const [availableSwitches, setAvailableSwitches] = useState<ISwitchOption[]>([]);
+  const [availableServers, setAvailableServers] = useState<IServerOption[]>([]);
   const [loadingBrands, setLoadingBrands] = useState(false);
   const [loadingModels, setLoadingModels] = useState(false);
   const [loadingSwitches, setLoadingSwitches] = useState(false);
+  const [loadingServers, setLoadingServers] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [scannerOpen, setScannerOpen] = useState(false);
   const [scannerTargetField, setScannerTargetField] = useState<string>("Barcode / QR / MAC");
@@ -250,6 +259,13 @@ export function DeviceFormDialog({
           ? deviceToEdit.uplinkSwitch
           : ""
       );
+      setServer(
+        typeof deviceToEdit.server === "object" && deviceToEdit.server
+          ? (deviceToEdit.server as IDevice)._id
+          : typeof deviceToEdit.server === "string"
+          ? deviceToEdit.server
+          : ""
+      );
       setDescription(deviceToEdit.description || "");
       setOnlineLink(deviceToEdit.onlineLink || "");
       setMacAddress(deviceToEdit.macAddress || "");
@@ -275,6 +291,7 @@ export function DeviceFormDialog({
       setSerialNumber("");
       setTotalPorts(defaultDeviceType === "switch" ? "8" : "");
       setUplinkSwitch("");
+      setServer("");
       setDescription("");
       setOnlineLink("");
       setMacAddress("");
@@ -286,7 +303,7 @@ export function DeviceFormDialog({
     }
   }, [deviceToEdit, defaultDeviceType, open]);
 
-  // Load Device Types and Available Switches on open
+  // Load Device Types, Available Switches, and Available Servers on open
   useEffect(() => {
     if (open) {
       getDeviceTypes(true).then((types) => {
@@ -311,6 +328,13 @@ export function DeviceFormDialog({
           setAvailableSwitches(switches);
         })
         .finally(() => setLoadingSwitches(false));
+
+      setLoadingServers(true);
+      getAvailableServers()
+        .then((servers) => {
+          setAvailableServers(servers);
+        })
+        .finally(() => setLoadingServers(false));
     }
   }, [open]);
 
@@ -369,6 +393,7 @@ export function DeviceFormDialog({
         serialNumber: serialNumber.trim().toUpperCase(),
         totalPorts: deviceType === "switch" && totalPorts ? Number(totalPorts) : undefined,
         uplinkSwitch: ["antenna", "access-point", "router"].includes(deviceType) && uplinkSwitch ? uplinkSwitch : null,
+        server: deviceType !== "server" && server ? server : null,
         description,
         onlineLink,
         macAddress,
@@ -404,6 +429,7 @@ export function DeviceFormDialog({
   };
 
   const selectedSwitchData = availableSwitches.find((s) => s._id === uplinkSwitch);
+  const selectedServerData = availableServers.find((s) => s._id === server);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -465,6 +491,9 @@ export function DeviceFormDialog({
                     }
                     if (!["antenna", "access-point", "router"].includes(val)) {
                       setUplinkSwitch("");
+                    }
+                    if (val === "server") {
+                      setServer("");
                     }
                   }}
                   disabled={isEditing}
@@ -570,6 +599,96 @@ export function DeviceFormDialog({
               </div>
             </div>
           </div>
+
+          {/* Server Infrastructure Selection (For all devices EXCEPT Server itself) */}
+          {deviceType !== "server" && (
+            <div className="space-y-3 p-4 rounded-2xl bg-sky-50/40 dark:bg-sky-950/20 border border-sky-100 dark:border-sky-900/40">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Server className="w-4 h-4 text-sky-600 dark:text-sky-400" />
+                  <Label className="text-xs font-bold uppercase tracking-wider text-sky-900 dark:text-sky-300">
+                    Hosting / Connected Server
+                  </Label>
+                </div>
+                {server && (
+                  <button
+                    type="button"
+                    onClick={() => setServer("")}
+                    className="text-xs text-rose-500 hover:text-rose-700 dark:hover:text-rose-400 font-medium inline-flex items-center gap-1 transition-colors"
+                  >
+                    <X className="w-3.5 h-3.5" /> Detach Server
+                  </button>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Select
+                  value={server}
+                  onValueChange={setServer}
+                  disabled={loadingServers}
+                >
+                  <SelectTrigger className="rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950">
+                    <SelectValue
+                      placeholder={
+                        loadingServers
+                          ? "Loading available servers..."
+                          : availableServers.length === 0
+                          ? "No active servers found in inventory"
+                          : "Select Server (Optional)"
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent className="dark:bg-slate-900 dark:border-slate-800 max-h-60">
+                    {availableServers.map((srv) => (
+                      <SelectItem
+                        key={srv._id}
+                        value={srv._id}
+                        className="py-2 cursor-pointer"
+                      >
+                        <div className="flex items-center justify-between w-full gap-4">
+                          <span className="font-semibold text-slate-900 dark:text-slate-100">
+                            #{srv.sl} — {srv.deviceName} ({srv.brand} {srv.model})
+                          </span>
+                          {srv.ipAddress && (
+                            <span className="text-xs font-mono text-slate-500 dark:text-slate-400 ml-auto">
+                              {srv.ipAddress}
+                            </span>
+                          )}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Selected Server Preview Card */}
+              {selectedServerData && (
+                <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-sky-100/80 dark:border-sky-900/60 shadow-sm flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="p-1.5 rounded-lg bg-sky-50 dark:bg-sky-950 text-sky-600 dark:text-sky-400 shrink-0">
+                      <Server className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5 truncate">
+                        <span>{selectedServerData.deviceName}</span>
+                        <span className="text-[10px] font-mono text-slate-400">
+                          #{selectedServerData.sl}
+                        </span>
+                      </h4>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                        {selectedServerData.brand} • {selectedServerData.model}
+                        {selectedServerData.ipAddress && ` • ${selectedServerData.ipAddress}`}
+                      </p>
+                    </div>
+                  </div>
+
+                  <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-sky-50 dark:bg-sky-950/50 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800 shrink-0">
+                    {selectedServerData.status}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Switch Port Capacity Configuration (When Switch) */}
           {deviceType === "switch" && (

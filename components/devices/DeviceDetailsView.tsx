@@ -503,6 +503,141 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
           </div>
         )}
 
+        {/* SECTION FOR SERVER: Hosted Infrastructure Devices */}
+        {device.deviceType === "server" && (
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4 md:col-span-2">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2 text-slate-900 dark:text-slate-100 font-bold text-base">
+                <Server className="w-5 h-5 text-sky-500" />
+                <h2>Hosted Devices & Infrastructure ({device.connectedDevices?.length || 0})</h2>
+              </div>
+              <span className="text-xs font-bold px-3 py-1 rounded-full bg-sky-50 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800">
+                {device.connectedDevices?.length || 0} Connected
+              </span>
+            </div>
+
+            {device.connectedDevices && device.connectedDevices.length > 0 ? (
+              <div className="overflow-x-auto rounded-2xl border border-slate-200/80 dark:border-slate-800">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200/80 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-semibold">
+                    <tr>
+                      <th className="py-3 px-4">SL #</th>
+                      <th className="py-3 px-4">Device Name</th>
+                      <th className="py-3 px-4">Type</th>
+                      <th className="py-3 px-4">Brand & Model</th>
+                      <th className="py-3 px-4">IP Address</th>
+                      <th className="py-3 px-4">Status</th>
+                      <th className="py-3 px-4 text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {device.connectedDevices.map((downlink) => (
+                      <tr
+                        key={downlink._id}
+                        className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors"
+                      >
+                        <td className="py-3 px-4 font-mono font-bold text-sky-600 dark:text-sky-400">
+                          #{downlink.sl}
+                        </td>
+                        <td className="py-3 px-4 font-bold text-slate-900 dark:text-slate-100">
+                          {downlink.deviceName}
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className="capitalize font-semibold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                            {downlink.deviceType}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-slate-600 dark:text-slate-400">
+                          {downlink.brand} • {downlink.model}
+                        </td>
+                        <td className="py-3 px-4 font-mono text-slate-700 dark:text-slate-300">
+                          {downlink.ipAddress || "—"}
+                        </td>
+                        <td className="py-3 px-4">
+                          <DeviceStatusBadge status={downlink.status} size="sm" />
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          <Link
+                            href={`/devices/${downlink.deviceType}/${downlink._id}`}
+                            className="inline-flex items-center gap-1 font-semibold text-sky-600 dark:text-sky-400 hover:underline"
+                          >
+                            <span>View</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </Link>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="p-8 text-center rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-dashed border-slate-200 dark:border-slate-800 space-y-2">
+                <Server className="w-8 h-8 mx-auto text-slate-300 dark:text-slate-600" />
+                <p className="text-xs font-semibold text-slate-600 dark:text-slate-400">
+                  No devices currently linked to this server
+                </p>
+                <p className="text-[11px] text-slate-400 dark:text-slate-500 max-w-sm mx-auto">
+                  When devices select this server as their Hosting / Connected Server, they will appear here automatically.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* SECTION FOR DEVICES: Connected/Hosting Server */}
+        {device.deviceType !== "server" && device.server && (
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4 md:col-span-2">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2 text-slate-900 dark:text-slate-100 font-bold text-base">
+                <Server className="w-5 h-5 text-sky-500" />
+                <h2>Hosting Server Infrastructure</h2>
+              </div>
+              <span className="text-xs font-semibold text-slate-400">Assigned Server</span>
+            </div>
+
+            {typeof device.server === "object" && device.server ? (
+              <div className="p-4 rounded-2xl bg-sky-50/30 dark:bg-sky-950/20 border border-sky-100 dark:border-sky-900/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-start gap-3.5">
+                  <div className="p-3 rounded-xl bg-sky-100 dark:bg-sky-900/60 text-sky-600 dark:text-sky-400 shrink-0">
+                    <Server className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-mono text-xs font-bold text-sky-600 dark:text-sky-400">
+                        #{(device.server as IDevice).sl}
+                      </span>
+                      <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                        {(device.server as IDevice).deviceName}
+                      </h3>
+                      <DeviceStatusBadge
+                        status={(device.server as IDevice).status}
+                        size="sm"
+                      />
+                    </div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                      {(device.server as IDevice).brand} • {(device.server as IDevice).model}
+                      {(device.server as IDevice).ipAddress &&
+                        ` • IP: ${(device.server as IDevice).ipAddress}`}
+                    </p>
+                  </div>
+                </div>
+
+                <Link
+                  href={`/devices/server/${(device.server as IDevice)._id}`}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-semibold transition-colors shrink-0 self-start sm:self-center shadow-sm"
+                >
+                  <span>View Server Details</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+            ) : (
+              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 text-xs text-slate-500">
+                Connected to Server ID: {String(device.server)}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* SECTION FOR DOWNLINK DEVICES: UpLink Switch Infrastructure */}
         {["antenna", "access-point", "router"].includes(device.deviceType) && device.uplinkSwitch && (
           <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4 md:col-span-2">

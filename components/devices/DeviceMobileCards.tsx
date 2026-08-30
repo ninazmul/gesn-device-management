@@ -127,6 +127,11 @@ export function DeviceMobileCards({
                         {device.activePortsCount || 0}/{device.totalPorts} Ports
                       </span>
                     )}
+                    {device.deviceType !== "server" && device.server && typeof device.server === "object" && (
+                      <span className="inline-flex items-center px-1.5 py-0.2 rounded bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 font-medium text-[10px]">
+                        Server: #{(device.server as IDevice).sl}
+                      </span>
+                    )}
                     {["antenna", "access-point", "router"].includes(device.deviceType) && device.uplinkSwitch && typeof device.uplinkSwitch === "object" && (
                       <span className="inline-flex items-center px-1.5 py-0.2 rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:indigo-400 font-medium text-[10px]">
                         UpLink: #{(device.uplinkSwitch as IDevice).sl}
