@@ -31,8 +31,10 @@ export function useBarcodeGun({
     if (!enabled) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't capture modifier combos (Ctrl+C, Cmd+V, etc.)
+      if (e.ctrlKey || e.altKey || e.metaKey) return;
+
       const target = e.target as HTMLElement | null;
-      // If user is actively typing in a standard input/textarea (not a scanner field), we still check timing
       const isInput = target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable);
 
       const currentTime = Date.now();
@@ -45,9 +47,11 @@ export function useBarcodeGun({
           const scannedText = bufferRef.current;
           bufferRef.current = "";
 
-          // Prevent default if it was captured as a rapid scanner burst
-          e.preventDefault();
-          e.stopPropagation();
+          // Only prevent default if it's NOT an active multi-line textarea or standard submit
+          if (!isInput || target.tagName !== "TEXTAREA") {
+            e.preventDefault();
+            e.stopPropagation();
+          }
 
           const parsed = parseScannedBarcode(scannedText);
           playScanBeep();
@@ -62,7 +66,7 @@ export function useBarcodeGun({
       // If key is a printable single character
       if (e.key.length === 1) {
         if (interval > maxIntervalMs) {
-          // If too slow, reset buffer and start fresh
+          // If too slow (human typing speed), reset buffer and start fresh
           bufferRef.current = e.key;
         } else {
           bufferRef.current += e.key;
@@ -70,9 +74,9 @@ export function useBarcodeGun({
       }
     };
 
-    window.addEventListener("keydown", handleKeyDown, true);
+    window.addEventListener("keydown", handleKeyDown, false);
     return () => {
-      window.removeEventListener("keydown", handleKeyDown, true);
+      window.removeEventListener("keydown", handleKeyDown, false);
     };
   }, [enabled, minChars, maxIntervalMs]);
 }

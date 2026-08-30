@@ -110,7 +110,7 @@ export function BarcodeScannerModal({
   const [flashKey, setFlashKey] = useState(0);
 
   // Native-mode only
-  const [detectedCodes, setDetectedCodes] = useState<NativeDetectedBarcode[]>([]);
+  const [detectedCount, setDetectedCount] = useState(0);
   const [videoAspect, setVideoAspect] = useState("4/3");
 
   // ── Refs ───────────────────────────────────────────────────────────────────
@@ -127,6 +127,9 @@ export function BarcodeScannerModal({
   const detectorRef = useRef<{
     detect(src: HTMLVideoElement): Promise<NativeDetectedBarcode[]>;
   } | null>(null);
+  const detectedCodesRef = useRef<NativeDetectedBarcode[]>([]);
+  const lastDetectTimeRef = useRef<number>(0);
+  const isDetectingRef = useRef<boolean>(false);
   const animFrameRef = useRef<number | null>(null);
   const singleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSingleRef = useRef<string | null>(null);
@@ -152,26 +155,41 @@ export function BarcodeScannerModal({
   // ── Stop scanner (both modes) ──────────────────────────────────────────────
   const stopScanner = useCallback(async () => {
     isStoppingRef.current = true;
+    isDetectingRef.current = false;
+
+    if (animFrameRef.current) {
+      cancelAnimationFrame(animFrameRef.current);
+      animFrameRef.current = null;
+    }
+    if (singleTimerRef.current) {
+      clearTimeout(singleTimerRef.current);
+      singleTimerRef.current = null;
+    }
+    lastSingleRef.current = null;
+    detectedCodesRef.current = [];
+    setDetectedCount(0);
 
     if (supportsNative) {
-      if (animFrameRef.current) {
-        cancelAnimationFrame(animFrameRef.current);
-        animFrameRef.current = null;
+      if (videoRef.current) {
+        try {
+          videoRef.current.pause();
+          videoRef.current.srcObject = null;
+        } catch {
+          // ignore
+        }
       }
-      if (singleTimerRef.current) {
-        clearTimeout(singleTimerRef.current);
-        singleTimerRef.current = null;
-      }
-      lastSingleRef.current = null;
       if (streamRef.current) {
-        streamRef.current.getTracks().forEach((t) => t.stop());
+        try {
+          streamRef.current.getTracks().forEach((t) => t.stop());
+        } catch {
+          // ignore
+        }
         streamRef.current = null;
       }
       const canvas = canvasRef.current;
       if (canvas) {
         canvas.getContext("2d")?.clearRect(0, 0, canvas.width, canvas.height);
       }
-      setDetectedCodes([]);
     } else {
       if (html5QrCodeRef.current?.isScanning) {
         try {
@@ -330,7 +348,7 @@ export function BarcodeScannerModal({
     }
   }, []);
 
-  // ── Native detection loop (rAF-based) ──────────────────────────────────────
+  // ── Native detection loop (rAF-based with 80ms throttling ~12 FPS) ───────────
   const runDetectLoop = useCallback(() => {
     if (isStoppingRef.current) return;
 
@@ -340,12 +358,17 @@ export function BarcodeScannerModal({
       const detector = detectorRef.current;
       if (!video || !detector) return;
 
-      if (video.readyState >= 2) {
+      const now = performance.now();
+      if (video.readyState >= 2 && !isDetectingRef.current && now - lastDetectTimeRef.current >= 80) {
+        lastDetectTimeRef.current = now;
+        isDetectingRef.current = true;
+
         detector
           .detect(video)
           .then((codes) => {
             if (isStoppingRef.current) return;
-            setDetectedCodes(codes);
+            detectedCodesRef.current = codes;
+            setDetectedCount((prev) => (prev !== codes.length ? codes.length : prev));
             drawOverlay(codes);
 
             if (codes.length === 1) {
@@ -353,12 +376,12 @@ export function BarcodeScannerModal({
               if (lastSingleRef.current !== val) {
                 lastSingleRef.current = val;
                 if (singleTimerRef.current) clearTimeout(singleTimerRef.current);
-                // Auto-select single barcode after 700ms stable detection
+                // Auto-select single barcode after 650ms stable detection
                 singleTimerRef.current = setTimeout(() => {
                   if (lastSingleRef.current === val && !isStoppingRef.current) {
                     handleSuccessfulScanRef.current(val);
                   }
-                }, 700);
+                }, 650);
               }
             } else {
               if (singleTimerRef.current) {
@@ -368,14 +391,17 @@ export function BarcodeScannerModal({
               if (codes.length === 0) lastSingleRef.current = null;
             }
           })
-          .catch(() => { /* ignore per-frame errors */ })
+          .catch(() => { /* ignore per-frame detection errors */ })
           .finally(() => {
+            isDetectingRef.current = false;
             if (!isStoppingRef.current) {
               animFrameRef.current = requestAnimationFrame(loop);
             }
           });
       } else {
-        animFrameRef.current = requestAnimationFrame(loop);
+        if (!isStoppingRef.current) {
+          animFrameRef.current = requestAnimationFrame(loop);
+        }
       }
     };
 
@@ -388,7 +414,8 @@ export function BarcodeScannerModal({
       if (isStoppingRef.current) return;
       setErrorMessage(null);
       setLastScannedValue(null);
-      setDetectedCodes([]);
+      detectedCodesRef.current = [];
+      setDetectedCount(0);
 
       if (supportsNative) {
         // ── Native path: getUserMedia + BarcodeDetector ─────────────────────
@@ -557,7 +584,8 @@ export function BarcodeScannerModal({
     (clientX: number, clientY: number) => {
       const canvas = canvasRef.current;
       const video = videoRef.current;
-      if (!canvas || !video || detectedCodes.length === 0) return;
+      const codes = detectedCodesRef.current;
+      if (!canvas || !video || codes.length === 0) return;
 
       const rect = canvas.getBoundingClientRect();
       const scaleX = video.videoWidth / rect.width;
@@ -571,7 +599,7 @@ export function BarcodeScannerModal({
       }
 
       const EXTRA = 20; // generous tap target padding
-      const hit = detectedCodes.find((code) => {
+      const hit = codes.find((code) => {
         const { x, y, width, height } = code.boundingBox;
         return (
           hitX >= x - EXTRA &&
@@ -583,7 +611,7 @@ export function BarcodeScannerModal({
 
       if (hit) { handleSuccessfulScanRef.current(hit.rawValue); }
     },
-    [detectedCodes]
+    []
   );
 
   // ── Open/close lifecycle ───────────────────────────────────────────────────
@@ -624,7 +652,7 @@ export function BarcodeScannerModal({
       <div className="px-3 py-1 rounded-lg bg-slate-900/80 border border-emerald-500/40 text-emerald-300 font-mono text-xs sm:text-sm font-semibold max-w-[95%] truncate animate-in slide-in-from-bottom-2">
         {lastScannedValue}
       </div>
-      <p className="text-[10px] text-emerald-400/70 mt-2 animate-in fade-in">Filling form fields\u2026</p>
+      <p className="text-[10px] text-emerald-400/70 mt-2 animate-in fade-in">Filling form fields…</p>
     </div>
   );
 
@@ -663,9 +691,9 @@ export function BarcodeScannerModal({
             </div>
           </div>
           <DialogDescription className="text-[11px] sm:text-xs mt-1">
-            {supportsNative && detectedCodes.length > 1 ? (
+            {supportsNative && detectedCount > 1 ? (
               <span className="text-amber-300 font-semibold animate-pulse">
-                {detectedCodes.length} barcodes detected \u2014 tap the one you want
+                {detectedCount} barcodes detected — tap the one you want
               </span>
             ) : (
               <span className="text-slate-400">{description}</span>
@@ -692,7 +720,7 @@ export function BarcodeScannerModal({
             <canvas
               ref={canvasRef}
               className="absolute inset-0 w-full h-full"
-              style={{ cursor: detectedCodes.length > 0 ? "pointer" : "default" }}
+              style={{ cursor: detectedCount > 0 ? "pointer" : "default" }}
               onClick={(e) => handleCanvasInteraction(e.clientX, e.clientY)}
               onTouchEnd={(e) => {
                 e.preventDefault();
@@ -701,7 +729,7 @@ export function BarcodeScannerModal({
               }}
             />
 
-            {isScanning && !errorMessage && !lastScannedValue && detectedCodes.length === 0 && <ScanReticle />}
+            {isScanning && !errorMessage && !lastScannedValue && detectedCount === 0 && <ScanReticle />}
             {showFlash && <div key={flashKey} className="scan-flash-overlay rounded-none" />}
             {lastScannedValue && <SuccessOverlay />}
             {errorMessage && <ErrorOverlay />}
