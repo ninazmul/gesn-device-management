@@ -5,7 +5,7 @@ import Device from "@/lib/database/models/device.model";
 import Counter from "@/lib/database/models/counter.model";
 import Brand from "@/lib/database/models/brand.model";
 import DeviceModel from "@/lib/database/models/model.model";
-import { formatSL, isValidIPv4, isValidMAC } from "@/lib/utils";
+import { formatSL, isValidIPv4, isValidMAC, normalizeMAC } from "@/lib/utils";
 import { revalidatePath } from "next/cache";
 import type { FilterQuery } from "mongoose";
 import type { DeviceStatus, GetDevicesParams, IDevice, ISwitchOption, IServerOption } from "@/types";
@@ -318,16 +318,28 @@ export async function createDevice(data: {
   const actor = await requirePermission("devices", "write");
   await connectToDatabase();
 
-  // Validate MAC & IP if provided
-  if (data.macAddress && !isValidMAC(data.macAddress)) {
+  if (!data.deviceType || !data.deviceType.trim()) {
+    throw new Error("Device Type is required");
+  }
+
+  // MAC Address is required
+  const rawMac = data.macAddress?.trim() || "";
+  if (!rawMac) {
+    throw new Error("MAC Address is required");
+  }
+
+  const normalizedMAC = normalizeMAC(rawMac);
+  if (!normalizedMAC) {
     throw new Error("Invalid MAC Address format. Example: AA:BB:CC:DD:EE:FF");
   }
 
-  if (data.ipAddress && !isValidIPv4(data.ipAddress)) {
+  // IP Address is optional
+  const rawIp = data.ipAddress?.trim() || "";
+  if (rawIp && !isValidIPv4(rawIp)) {
     throw new Error("Invalid IPv4 Address format. Example: 192.168.1.100");
   }
 
-  const deviceName = data.deviceName?.trim() || data.model?.trim() || "";
+  const deviceName = data.deviceName?.trim() || data.model?.trim() || data.brand?.trim() || `${data.deviceType.toUpperCase()} ${normalizedMAC.slice(-5)}`;
   const sl = await getNextSL();
 
   const device = await Device.create({
@@ -341,8 +353,8 @@ export async function createDevice(data: {
     server: data.deviceType.toLowerCase().trim() !== "server" && data.server ? data.server : null,
     description: data.description?.trim() || "",
     onlineLink: data.onlineLink?.trim() || "",
-    macAddress: data.macAddress?.trim().toUpperCase() || "",
-    ipAddress: data.ipAddress?.trim() || "",
+    macAddress: normalizedMAC,
+    ipAddress: rawIp,
     activationDate: data.activationDate ? new Date(data.activationDate) : new Date(),
     apNumber: data.apNumber?.trim() || "",
     customerName: data.customerName?.trim() || "",
@@ -361,7 +373,7 @@ export async function createDevice(data: {
     module: "devices",
     resourceId: sl,
     resourceName: `${deviceName} (${sl})`,
-    details: `Added new ${data.deviceType} device: ${deviceName} (SL: ${sl}, IP: ${data.ipAddress || "N/A"})`,
+    details: `Added new ${data.deviceType} device: ${deviceName} (SL: ${sl}, IP: ${rawIp || "N/A"})`,
     link: `/devices/${data.deviceType.toLowerCase().trim()}`,
   });
 
@@ -375,7 +387,7 @@ export async function createDevice(data: {
     revalidatePath(`/devices/server/${data.server}`);
   }
 
-  return JSON.parse(JSON.stringify(device));
+  return JSON.parse(JSON.stringify(device)) as IDevice;
 }
 
 // ==========================================
@@ -410,75 +422,98 @@ export async function updateDevice(
   const actor = await requirePermission("devices", "write");
   await connectToDatabase();
 
-  if (data.macAddress && !isValidMAC(data.macAddress)) {
-    throw new Error("Invalid MAC Address format. Example: AA:BB:CC:DD:EE:FF");
-  }
-
-  if (data.ipAddress && !isValidIPv4(data.ipAddress)) {
-    throw new Error("Invalid IPv4 Address format. Example: 192.168.1.100");
+  const device = await Device.findById(id);
+  if (!device) {
+    throw new Error("Device not found");
   }
 
   const updatePayload: Record<string, unknown> = {};
 
-  if (data.brand) updatePayload.brand = data.brand.trim();
-  if (data.model) updatePayload.model = data.model.trim();
-  if (data.deviceName) updatePayload.deviceName = data.deviceName.trim();
+  if (data.deviceType) updatePayload.deviceType = data.deviceType.toLowerCase().trim();
+  if (data.brand !== undefined) updatePayload.brand = data.brand.trim();
+  if (data.model !== undefined) updatePayload.model = data.model.trim();
+  if (data.deviceName !== undefined) updatePayload.deviceName = data.deviceName.trim();
   if (data.totalPorts !== undefined) {
     updatePayload.totalPorts = !isNaN(Number(data.totalPorts)) ? Number(data.totalPorts) : undefined;
   }
   if (data.uplinkSwitch !== undefined) {
-    updatePayload.uplinkSwitch = data.uplinkSwitch ? data.uplinkSwitch : null;
+    updatePayload.uplinkSwitch = data.uplinkSwitch || null;
   }
   if (data.server !== undefined) {
-    const isServer = (data.deviceType || "").toLowerCase().trim() === "server";
-    updatePayload.server = isServer ? null : data.server ? data.server : null;
-  }
-  if (data.deviceType) {
-    const normalizedType = data.deviceType.toLowerCase().trim();
-    updatePayload.deviceType = normalizedType;
-    if (normalizedType === "server") {
-      updatePayload.server = null;
-    }
+    updatePayload.server = data.server || null;
   }
   if (data.description !== undefined) updatePayload.description = data.description.trim();
   if (data.onlineLink !== undefined) updatePayload.onlineLink = data.onlineLink.trim();
-  if (data.macAddress !== undefined) updatePayload.macAddress = data.macAddress.trim().toUpperCase();
-  if (data.ipAddress !== undefined) updatePayload.ipAddress = data.ipAddress.trim();
-  if (data.activationDate) updatePayload.activationDate = new Date(data.activationDate);
+  
+  if (data.macAddress !== undefined) {
+    const rawMac = data.macAddress.trim();
+    if (rawMac) {
+      const normalized = normalizeMAC(rawMac);
+      if (!normalized) {
+        throw new Error("Invalid MAC Address format. Example: AA:BB:CC:DD:EE:FF");
+      }
+      updatePayload.macAddress = normalized;
+    } else {
+      updatePayload.macAddress = "";
+    }
+  }
+
+  if (data.ipAddress !== undefined) {
+    const rawIp = data.ipAddress.trim();
+    if (rawIp && !isValidIPv4(rawIp)) {
+      throw new Error("Invalid IPv4 Address format. Example: 192.168.1.100");
+    }
+    updatePayload.ipAddress = rawIp;
+  }
+
+  if (data.activationDate !== undefined) {
+    updatePayload.activationDate = data.activationDate ? new Date(data.activationDate) : undefined;
+  }
+
   if (data.apNumber !== undefined) updatePayload.apNumber = data.apNumber.trim();
   if (data.customerName !== undefined) updatePayload.customerName = data.customerName.trim();
   if (data.customerMobile !== undefined) updatePayload.customerMobile = data.customerMobile.trim();
   if (data.gpsLink !== undefined) updatePayload.gpsLink = data.gpsLink.trim();
-  if (data.gps) {
+
+  if (data.gps !== undefined) {
     updatePayload.gps = {
       latitude: data.gps.latitude !== undefined && !isNaN(Number(data.gps.latitude)) ? Number(data.gps.latitude) : undefined,
       longitude: data.gps.longitude !== undefined && !isNaN(Number(data.gps.longitude)) ? Number(data.gps.longitude) : undefined,
     };
   }
+
   if (data.status) updatePayload.status = data.status;
 
-  const device = (await Device.findByIdAndUpdate(id, updatePayload, { new: true }).lean()) as IDevice | null;
-  if (!device) throw new Error("Device not found");
+  const updatedDevice = await Device.findByIdAndUpdate(id, updatePayload, {
+    new: true,
+    runValidators: true,
+  });
+
+  if (!updatedDevice) {
+    throw new Error("Device could not be updated");
+  }
 
   await logActivityAndNotify({
     actor,
     action: "UPDATE_DEVICE",
     module: "devices",
-    resourceId: device.sl,
-    resourceName: `${device.deviceName} (${device.sl})`,
-    details: `Updated device parameters for ${device.deviceName} (SL: ${device.sl})`,
-    link: `/devices/${device.deviceType}`,
+    resourceId: updatedDevice.sl,
+    resourceName: `${updatedDevice.deviceName} (${updatedDevice.sl})`,
+    details: `Updated device details for SL: ${updatedDevice.sl}`,
+    link: `/devices/${updatedDevice.deviceType.toLowerCase().trim()}`,
   });
 
   revalidatePath("/");
   revalidatePath("/devices");
-  revalidatePath(`/devices/${device.deviceType}`);
-  revalidatePath(`/devices/${device.deviceType}/${device._id}`);
-  if (data.server) {
-    revalidatePath(`/devices/server/${data.server}`);
+  revalidatePath(`/devices/${updatedDevice.deviceType.toLowerCase().trim()}`);
+  if (updatedDevice.uplinkSwitch) {
+    revalidatePath(`/devices/switch/${updatedDevice.uplinkSwitch}`);
+  }
+  if (updatedDevice.server) {
+    revalidatePath(`/devices/server/${updatedDevice.server}`);
   }
 
-  return JSON.parse(JSON.stringify(device));
+  return JSON.parse(JSON.stringify(updatedDevice)) as IDevice;
 }
 
 // ==========================================
@@ -513,21 +548,44 @@ export async function updateDeviceStatus(id: string, status: DeviceStatus) {
 export async function deleteDevice(id: string) {
   const actor = await requirePermission("devices", "write");
   await connectToDatabase();
-  const device = (await Device.findByIdAndDelete(id).lean()) as IDevice | null;
-  if (device) {
-    await logActivityAndNotify({
-      actor,
-      action: "DELETE_DEVICE",
-      module: "devices",
-      resourceId: device.sl,
-      resourceName: `${device.deviceName} (${device.sl})`,
-      details: `Deleted ${device.deviceType} device: ${device.deviceName} (SL: ${device.sl})`,
-    });
 
-    revalidatePath("/");
-    revalidatePath("/devices");
-    revalidatePath(`/devices/${device.deviceType}`);
+  const device = await Device.findById(id);
+  if (!device) {
+    throw new Error("Device not found");
   }
+
+  // Check if any devices are connected to this device as an uplink switch
+  const connectedCount = await Device.countDocuments({ uplinkSwitch: id });
+  if (connectedCount > 0) {
+    throw new Error(
+      `Cannot delete this switch. It is currently acting as an uplink switch for ${connectedCount} connected device(s). Reassign them first.`
+    );
+  }
+
+  // Check if any devices are connected to this device as a server
+  const serverClientsCount = await Device.countDocuments({ server: id });
+  if (serverClientsCount > 0) {
+    throw new Error(
+      `Cannot delete this server. It is linked to ${serverClientsCount} client device(s). Reassign them first.`
+    );
+  }
+
+  await Device.findByIdAndDelete(id);
+
+  await logActivityAndNotify({
+    actor,
+    action: "DELETE_DEVICE",
+    module: "devices",
+    resourceId: device.sl,
+    resourceName: `${device.deviceName} (${device.sl})`,
+    details: `Deleted ${device.deviceType} device: ${device.deviceName} (SL: ${device.sl})`,
+    link: "/devices",
+  });
+
+  revalidatePath("/");
+  revalidatePath("/devices");
+  revalidatePath(`/devices/${device.deviceType.toLowerCase().trim()}`);
+
   return { success: true };
 }
 
@@ -621,11 +679,18 @@ export async function getAllDevicesForExport(params?: {
       { model: regex },
       { ipAddress: regex },
       { macAddress: regex },
+      { apNumber: regex },
+      { customerName: regex },
+      { customerMobile: regex },
       { description: regex },
     ];
   }
 
-  const devices = await Device.find(query).sort({ sl: 1 }).lean();
+  const devices = await Device.find(query)
+    .populate("server", "sl deviceName brand model")
+    .populate("uplinkSwitch", "sl deviceName brand model")
+    .sort({ sl: 1 })
+    .lean();
   return JSON.parse(JSON.stringify(devices)) as IDevice[];
 }
 
@@ -643,33 +708,204 @@ export async function importDevicesBulk(
     throw new Error("No data rows provided for import.");
   }
 
+  // Pre-fetch servers and switches for fast relation resolution
+  const [servers, switches] = await Promise.all([
+    Device.find({ deviceType: "server" }, { _id: 1, sl: 1, deviceName: 1 }).lean(),
+    Device.find({ deviceType: "switch" }, { _id: 1, sl: 1, deviceName: 1 }).lean(),
+  ]);
+
   let createdCount = 0;
   const errors: string[] = [];
+  const seenMacsInBatch = new Set<string>();
 
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i];
-    const rowNum = i + 2;
+    const rowNum = i + 2; // Row 1 is header in Excel, data starts at Row 2
 
-    const rawType = String(r["Device Type"] || r["Type"] || r["deviceType"] || defaultType(defaultDeviceType) || "antenna").trim().toLowerCase();
-    const deviceType = ["switch", "router", "antenna", "access-point", "server"].includes(rawType)
-      ? rawType
-      : (defaultType(defaultDeviceType) || "antenna");
-
-    const brand = String(r["Brand"] || r["brand"] || "Generic").trim();
-    const model = String(r["Model"] || r["model"] || "Standard").trim();
-    const deviceName = String(r["Device Name"] || r["Name"] || r["deviceName"] || `${brand} ${model}`).trim();
-    const ipAddress = String(r["IP Address"] || r["IP"] || r["ipAddress"] || "").trim();
-    const macAddress = String(r["MAC Address"] || r["MAC"] || r["macAddress"] || "").trim().toUpperCase();
-    const rawPorts = r["Total Ports"] || r["Ports"] || r["totalPorts"] || 0;
-    const totalPorts = deviceType === "switch" ? Math.max(1, Number(rawPorts) || 8) : undefined;
-    const rawStatus = String(r["Status"] || r["status"] || "Active").trim();
-    const status: DeviceStatus = ["Active", "Inactive", "Maintenance", "Decommissioned"].includes(rawStatus)
-      ? (rawStatus as DeviceStatus)
-      : "Active";
-    const description = String(r["Description"] || r["Notes"] || r["description"] || "").trim();
-    const onlineLink = String(r["Online Link"] || r["Portal"] || r["onlineLink"] || "").trim();
+    // 1. Verification: Skip completely blank rows
+    const hasAnyValue = Object.values(r).some(
+      (v) => v !== null && v !== undefined && String(v).trim() !== ""
+    );
+    if (!hasAnyValue) {
+      continue;
+    }
 
     try {
+      // 2. Verification: Device Type (Required)
+      const rawType = String(
+        r["Device Type"] ||
+          r["Type"] ||
+          r["deviceType"] ||
+          defaultType(defaultDeviceType) ||
+          ""
+      )
+        .trim()
+        .toLowerCase();
+
+      const validTypes = ["switch", "router", "antenna", "access-point", "server"];
+      if (!rawType) {
+        errors.push(`Row ${rowNum}: Device Type is required.`);
+        continue;
+      }
+      if (!validTypes.includes(rawType)) {
+        errors.push(
+          `Row ${rowNum}: Invalid Device Type "${rawType}". Must be one of: switch, router, antenna, access-point, server.`
+        );
+        continue;
+      }
+      const deviceType = rawType;
+
+      // 3. Verification: MAC Address (Required)
+      const rawMac = String(
+        r["MAC Address"] ||
+          r["MAC"] ||
+          r["macAddress"] ||
+          r["Mac Address"] ||
+          r["mac"] ||
+          ""
+      ).trim();
+
+      if (!rawMac) {
+        errors.push(`Row ${rowNum}: MAC Address is required.`);
+        continue;
+      }
+
+      const macAddress = normalizeMAC(rawMac);
+      if (!macAddress) {
+        errors.push(
+          `Row ${rowNum}: Invalid MAC Address "${rawMac}". Must be a valid 12-hex MAC address (e.g. AA:BB:CC:DD:EE:FF).`
+        );
+        continue;
+      }
+
+      // 4. Verification: Duplicate MAC check within uploaded spreadsheet batch
+      if (seenMacsInBatch.has(macAddress)) {
+        errors.push(
+          `Row ${rowNum}: Duplicate MAC Address "${macAddress}" found within the uploaded spreadsheet.`
+        );
+        continue;
+      }
+      seenMacsInBatch.add(macAddress);
+
+      // 5. Verification: Optional IPv4 Address
+      const rawIp = String(
+        r["IP Address"] || r["IP"] || r["ipAddress"] || r["Ip Address"] || ""
+      ).trim();
+      let ipAddress = "";
+      if (rawIp) {
+        if (!isValidIPv4(rawIp)) {
+          errors.push(
+            `Row ${rowNum}: Invalid IPv4 format "${rawIp}". Example: 192.168.1.100`
+          );
+          continue;
+        }
+        ipAddress = rawIp;
+      }
+
+      // 6. Optional text fields (Brand, Model, Device Name, Notes, Online Link)
+      const brand = String(r["Brand"] || r["brand"] || "").trim();
+      const model = String(r["Model"] || r["model"] || "").trim();
+      const rawName = String(
+        r["Device Name"] || r["Name"] || r["deviceName"] || ""
+      ).trim();
+      const deviceName =
+        rawName || model || brand || `${deviceType.toUpperCase()} ${macAddress.slice(-5)}`;
+      const description = String(r["Description"] || r["Notes"] || r["description"] || "").trim();
+      const onlineLink = String(
+        r["Online Link"] || r["Portal"] || r["Management URL"] || r["onlineLink"] || ""
+      ).trim();
+
+      // 7. Verification: Optional Switch Ports
+      const rawPorts = r["Total Ports"] || r["Ports"] || r["totalPorts"];
+      let totalPorts: number | undefined = undefined;
+      if (deviceType === "switch") {
+        if (rawPorts !== undefined && rawPorts !== null && rawPorts !== "") {
+          const numPorts = Number(rawPorts);
+          if (!isNaN(numPorts) && numPorts > 0) {
+            totalPorts = Math.floor(numPorts);
+          } else {
+            totalPorts = 8;
+          }
+        } else {
+          totalPorts = 8;
+        }
+      }
+
+      // 8. Verification: Optional Status
+      const rawStatus = String(r["Status"] || r["status"] || "Active").trim();
+      const status: DeviceStatus = ["Active", "Inactive", "Maintenance", "Decommissioned"].includes(rawStatus)
+        ? (rawStatus as DeviceStatus)
+        : "Active";
+
+      // 9. Verification: Optional Server lookup
+      const rawServer = String(
+        r["Server"] || r["Connected Server"] || r["Server SL"] || r["server"] || ""
+      ).trim();
+      let serverId: string | null = null;
+      if (rawServer && deviceType !== "server") {
+        const found = (servers as Array<{ _id: unknown; sl?: string; deviceName?: string }>).find(
+          (s) =>
+            s.sl?.toLowerCase() === rawServer.toLowerCase() ||
+            s.deviceName?.toLowerCase() === rawServer.toLowerCase() ||
+            String(s._id) === rawServer
+        );
+        if (found) serverId = String(found._id);
+      }
+
+      // 10. Verification: Optional Uplink Switch lookup
+      const rawSwitch = String(
+        r["Uplink Switch"] || r["Switch"] || r["Switch SL"] || r["uplinkSwitch"] || ""
+      ).trim();
+      let switchId: string | null = null;
+      if (rawSwitch && ["antenna", "access-point", "router"].includes(deviceType)) {
+        const found = (switches as Array<{ _id: unknown; sl?: string; deviceName?: string }>).find(
+          (sw) =>
+            sw.sl?.toLowerCase() === rawSwitch.toLowerCase() ||
+            sw.deviceName?.toLowerCase() === rawSwitch.toLowerCase() ||
+            String(sw._id) === rawSwitch
+        );
+        if (found) switchId = String(found._id);
+      }
+
+      // 11. Optional AP & Customer fields
+      const apNumber = String(r["AP Number"] || r["AP"] || r["apNumber"] || "").trim();
+      const customerName = String(r["Customer Name"] || r["Customer"] || r["customerName"] || "").trim();
+      const customerMobile = String(
+        r["Customer Mobile"] || r["Mobile Number"] || r["Mobile"] || r["Phone"] || r["customerMobile"] || ""
+      ).trim();
+      const gpsLink = String(r["GPS Link"] || r["Map Link"] || r["gpsLink"] || "").trim();
+
+      // 12. Verification: Optional GPS Coordinates
+      const rawLat = r["GPS Latitude"] ?? r["Latitude"] ?? r["Lat"] ?? r["gpsLatitude"];
+      const rawLng = r["GPS Longitude"] ?? r["Longitude"] ?? r["Lng"] ?? r["Long"] ?? r["gpsLongitude"];
+      let latNum: number | undefined = undefined;
+      let lngNum: number | undefined = undefined;
+      if (rawLat !== undefined && rawLat !== null && rawLat !== "" && !isNaN(Number(rawLat))) {
+        const parsedLat = Number(rawLat);
+        if (parsedLat >= -90 && parsedLat <= 90) latNum = parsedLat;
+      }
+      if (rawLng !== undefined && rawLng !== null && rawLng !== "" && !isNaN(Number(rawLng))) {
+        const parsedLng = Number(rawLng);
+        if (parsedLng >= -180 && parsedLng <= 180) lngNum = parsedLng;
+      }
+      const gps =
+        latNum !== undefined || lngNum !== undefined
+          ? { latitude: latNum, longitude: lngNum }
+          : undefined;
+
+      // 13. Verification: Optional Activation Date
+      const rawActDate = r["Activation Date"] ?? r["Date of Activation"] ?? r["activationDate"];
+      let activationDate: Date | undefined;
+      if (rawActDate) {
+        if (rawActDate instanceof Date && !isNaN(rawActDate.getTime())) {
+          activationDate = rawActDate;
+        } else if (typeof rawActDate === "string" || typeof rawActDate === "number") {
+          const parsed = new Date(rawActDate);
+          if (!isNaN(parsed.getTime())) activationDate = parsed;
+        }
+      }
+
+      // Execute createDevice in isolated row try/catch
       await createDevice({
         deviceType,
         brand,
@@ -678,16 +914,28 @@ export async function importDevicesBulk(
         ipAddress,
         macAddress,
         totalPorts,
+        server: serverId,
+        uplinkSwitch: switchId,
+        apNumber: ["access-point"].includes(deviceType) ? apNumber : undefined,
+        customerName: ["access-point", "router"].includes(deviceType) ? customerName : undefined,
+        customerMobile: ["access-point", "router"].includes(deviceType) ? customerMobile : undefined,
+        gpsLink: ["access-point", "router"].includes(deviceType) ? gpsLink : undefined,
+        gps,
+        activationDate,
         status,
         description,
         onlineLink,
       });
+
       createdCount++;
     } catch (err) {
-      errors.push(`Row ${rowNum} (${deviceName}): ${err instanceof Error ? err.message : "Failed to import"}`);
+      // Individual row failure never stops the remaining batch
+      const errMsg = err instanceof Error ? err.message : "Unknown error creating device";
+      errors.push(`Row ${rowNum}: ${errMsg}`);
     }
   }
 
+  // If any devices were created, log activity and revalidate paths
   if (createdCount > 0) {
     await logActivityAndNotify({
       actor,
@@ -695,15 +943,12 @@ export async function importDevicesBulk(
       module: "devices",
       resourceId: "BULK_IMPORT",
       resourceName: `${createdCount} Devices`,
-      details: `Bulk imported ${createdCount} devices from Excel file`,
+      details: `Bulk imported ${createdCount} devices from Excel file (${errors.length} skipped/failed)`,
       link: "/devices",
     });
 
     revalidatePath("/");
     revalidatePath("/devices");
-    if (defaultDeviceType) {
-      revalidatePath(`/devices/${defaultDeviceType}`);
-    }
   }
 
   return {
@@ -718,4 +963,3 @@ function defaultType(input?: string): string {
   if (!input || input === "all") return "antenna";
   return input;
 }
-

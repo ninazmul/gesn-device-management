@@ -55,6 +55,30 @@ export function isValidMAC(mac: string): boolean {
 }
 
 /**
+ * Normalizes various MAC formats (dashed, dotted, unseparated 12-char hex)
+ * into standard uppercase colon-separated format (AA:BB:CC:DD:EE:FF).
+ * Returns null if the format is invalid.
+ */
+export function normalizeMAC(raw: string): string | null {
+  if (!raw) return null;
+  const trimmed = raw.trim().toUpperCase();
+  // If already standard colon format
+  if (/^([0-9A-F]{2}:){5}[0-9A-F]{2}$/.test(trimmed)) {
+    return trimmed;
+  }
+  // If dashed format AA-BB-CC-DD-EE-FF
+  if (/^([0-9A-F]{2}-){5}[0-9A-F]{2}$/.test(trimmed)) {
+    return trimmed.replace(/-/g, ":");
+  }
+  // If raw 12 hex characters (e.g. AABBCCDDEEFF or aabb.ccdd.eeff)
+  const cleaned = trimmed.replace(/[^0-9A-F]/g, "");
+  if (cleaned.length === 12) {
+    return (cleaned.match(/.{1,2}/g) || []).join(":");
+  }
+  return null;
+}
+
+/**
  * Validates IPv4 Address format
  */
 export function isValidIPv4(ip: string): boolean {

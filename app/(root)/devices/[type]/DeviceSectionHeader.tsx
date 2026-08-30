@@ -54,11 +54,19 @@ const DEVICE_EXPORT_HEADERS = [
   "Device Type",
   "Brand",
   "Model",
-  "IP Address",
   "MAC Address",
-  "Serial Number",
+  "IP Address",
   "Status",
+  "Server",
+  "Uplink Switch",
   "Total Ports",
+  "AP Number",
+  "Customer Name",
+  "Customer Mobile",
+  "GPS Link",
+  "GPS Latitude",
+  "GPS Longitude",
+  "Activation Date",
   "Online Link",
   "Description",
 ];
@@ -68,14 +76,46 @@ const DEVICE_TEMPLATE_HEADERS = [
   "Device Type",
   "Brand",
   "Model",
-  "IP Address",
   "MAC Address",
-  "Serial Number",
+  "IP Address",
   "Status",
+  "Server",
+  "Uplink Switch",
   "Total Ports",
+  "AP Number",
+  "Customer Name",
+  "Customer Mobile",
+  "GPS Link",
+  "GPS Latitude",
+  "GPS Longitude",
+  "Activation Date",
   "Online Link",
   "Description",
 ];
+
+function getSectionSampleRow(typeSlug: string, typeName: string): Record<string, string | number> {
+  return {
+    "Device Name": `${typeName} Node 1`,
+    "Device Type": typeSlug,
+    "Brand": typeSlug === "switch" ? "Cisco" : typeSlug === "server" ? "Dell" : typeSlug === "antenna" ? "Ubiquiti" : "MikroTik",
+    "Model": typeSlug === "switch" ? "Catalyst 2960" : typeSlug === "server" ? "PowerEdge R740" : typeSlug === "antenna" ? "LiteBeam 5AC" : "CCR2004",
+    "MAC Address": "48:8F:5A:11:22:33",
+    "IP Address": "192.168.1.10",
+    "Status": "Active",
+    "Server": typeSlug === "server" ? "" : "Main Gateway Server",
+    "Uplink Switch": ["antenna", "access-point", "router"].includes(typeSlug) ? "Core Switch 1" : "",
+    "Total Ports": typeSlug === "switch" ? 24 : "",
+    "AP Number": typeSlug === "access-point" ? "AP-001" : "",
+    "Customer Name": ["access-point", "router"].includes(typeSlug) ? "Md. Rahim Uddin" : "",
+    "Customer Mobile": ["access-point", "router"].includes(typeSlug) ? "01700000000" : "",
+    "GPS Link": ["access-point", "router"].includes(typeSlug) ? "https://maps.google.com/?q=23.8103,90.4125" : "",
+    "GPS Latitude": 23.8103,
+    "GPS Longitude": 90.4125,
+    "Activation Date": new Date().toISOString().split("T")[0],
+    "Online Link": "https://192.168.1.10",
+    "Description": `${typeName} installed at main site`,
+  };
+}
 
 interface DeviceSectionHeaderProps {
   typeSlug: string;
@@ -114,19 +154,47 @@ export function DeviceSectionHeader({
         return;
       }
 
-      const rows = devices.map((d) => ({
-        "SL": d.sl,
-        "Device Name": d.deviceName,
-        "Device Type": d.deviceType,
-        "Brand": d.brand,
-        "Model": d.model,
-        "IP Address": d.ipAddress || "",
-        "MAC Address": d.macAddress || "",
-        "Status": d.status,
-        "Total Ports": d.totalPorts || "",
-        "Online Link": d.onlineLink || "",
-        "Description": d.description || "",
-      }));
+      const rows = devices.map((d) => {
+        const srv =
+          d.server && typeof d.server === "object"
+            ? (d.server as { sl?: string; deviceName?: string }).deviceName ||
+              (d.server as { sl?: string; deviceName?: string }).sl ||
+              ""
+            : d.server
+            ? String(d.server)
+            : "";
+        const sw =
+          d.uplinkSwitch && typeof d.uplinkSwitch === "object"
+            ? (d.uplinkSwitch as { sl?: string; deviceName?: string }).deviceName ||
+              (d.uplinkSwitch as { sl?: string; deviceName?: string }).sl ||
+              ""
+            : d.uplinkSwitch
+            ? String(d.uplinkSwitch)
+            : "";
+
+        return {
+          "SL": d.sl,
+          "Device Name": d.deviceName,
+          "Device Type": d.deviceType,
+          "Brand": d.brand,
+          "Model": d.model,
+          "MAC Address": d.macAddress || "",
+          "IP Address": d.ipAddress || "",
+          "Status": d.status,
+          "Server": srv,
+          "Uplink Switch": sw,
+          "Total Ports": d.totalPorts || "",
+          "AP Number": d.apNumber || "",
+          "Customer Name": d.customerName || "",
+          "Customer Mobile": d.customerMobile || "",
+          "GPS Link": d.gpsLink || "",
+          "GPS Latitude": d.gps?.latitude !== undefined ? d.gps.latitude : "",
+          "GPS Longitude": d.gps?.longitude !== undefined ? d.gps.longitude : "",
+          "Activation Date": d.activationDate ? new Date(d.activationDate).toISOString().split("T")[0] : "",
+          "Online Link": d.onlineLink || "",
+          "Description": d.description || "",
+        };
+      });
 
       const dateStr = new Date().toISOString().slice(0, 10);
       exportToExcel(
@@ -146,19 +214,7 @@ export function DeviceSectionHeader({
   const handleDownloadTemplate = () => {
     downloadTemplate(
       DEVICE_TEMPLATE_HEADERS,
-      {
-        "Device Name": `${typeName} Main Node`,
-        "Device Type": typeSlug,
-        "Brand": "MikroTik",
-        "Model": "CCR1036",
-        "IP Address": "192.168.1.1",
-        "MAC Address": "48:8F:5A:11:22:33",
-        "Serial Number": "SN-98234719",
-        "Status": "Active",
-        "Total Ports": typeSlug === "switch" ? 24 : "",
-        "Online Link": "https://192.168.1.1",
-        "Description": "Installed at Core Rack",
-      },
+      getSectionSampleRow(typeSlug, typeName),
       `${typeSlug}-import-template.xlsx`
     );
     toast.success("Excel template downloaded!");
@@ -244,19 +300,7 @@ export function DeviceSectionHeader({
         title={`Bulk Import ${typeName}s`}
         description={`Upload an Excel or CSV file to register multiple ${typeName.toLowerCase()} units at once.`}
         templateHeaders={DEVICE_TEMPLATE_HEADERS}
-        sampleRow={{
-          "Device Name": `${typeName} Alpha-1`,
-          "Device Type": typeSlug,
-          "Brand": "MikroTik",
-          "Model": "CCR2004",
-          "IP Address": "10.0.10.5",
-          "MAC Address": "BC:24:11:44:88:99",
-          "Serial Number": "SN-884210",
-          "Status": "Active",
-          "Total Ports": typeSlug === "switch" ? 24 : "",
-          "Online Link": "https://10.0.10.5",
-          "Description": "Tower Node 1",
-        }}
+        sampleRow={getSectionSampleRow(typeSlug, typeName)}
         templateFilename={`${typeSlug}-import-template.xlsx`}
         onImport={async (rows) => importDevicesBulk(rows, typeSlug)}
         onSuccess={() => router.refresh()}

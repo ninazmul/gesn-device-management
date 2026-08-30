@@ -33,11 +33,19 @@ const DEVICE_EXPORT_HEADERS = [
   "Device Type",
   "Brand",
   "Model",
-  "IP Address",
   "MAC Address",
-  "Serial Number",
+  "IP Address",
   "Status",
+  "Server",
+  "Uplink Switch",
   "Total Ports",
+  "AP Number",
+  "Customer Name",
+  "Customer Mobile",
+  "GPS Link",
+  "GPS Latitude",
+  "GPS Longitude",
+  "Activation Date",
   "Online Link",
   "Description",
 ];
@@ -47,11 +55,19 @@ const DEVICE_TEMPLATE_HEADERS = [
   "Device Type",
   "Brand",
   "Model",
-  "IP Address",
   "MAC Address",
-  "Serial Number",
+  "IP Address",
   "Status",
+  "Server",
+  "Uplink Switch",
   "Total Ports",
+  "AP Number",
+  "Customer Name",
+  "Customer Mobile",
+  "GPS Link",
+  "GPS Latitude",
+  "GPS Longitude",
+  "Activation Date",
   "Online Link",
   "Description",
 ];
@@ -85,19 +101,47 @@ export function AllDevicesHeader({ total }: AllDevicesHeaderProps) {
         return;
       }
 
-      const rows = devices.map((d) => ({
-        "SL": d.sl,
-        "Device Name": d.deviceName,
-        "Device Type": d.deviceType,
-        "Brand": d.brand,
-        "Model": d.model,
-        "IP Address": d.ipAddress || "",
-        "MAC Address": d.macAddress || "",
-        "Status": d.status,
-        "Total Ports": d.totalPorts || "",
-        "Online Link": d.onlineLink || "",
-        "Description": d.description || "",
-      }));
+      const rows = devices.map((d) => {
+        const srv =
+          d.server && typeof d.server === "object"
+            ? (d.server as { sl?: string; deviceName?: string }).deviceName ||
+              (d.server as { sl?: string; deviceName?: string }).sl ||
+              ""
+            : d.server
+            ? String(d.server)
+            : "";
+        const sw =
+          d.uplinkSwitch && typeof d.uplinkSwitch === "object"
+            ? (d.uplinkSwitch as { sl?: string; deviceName?: string }).deviceName ||
+              (d.uplinkSwitch as { sl?: string; deviceName?: string }).sl ||
+              ""
+            : d.uplinkSwitch
+            ? String(d.uplinkSwitch)
+            : "";
+
+        return {
+          "SL": d.sl,
+          "Device Name": d.deviceName,
+          "Device Type": d.deviceType,
+          "Brand": d.brand,
+          "Model": d.model,
+          "MAC Address": d.macAddress || "",
+          "IP Address": d.ipAddress || "",
+          "Status": d.status,
+          "Server": srv,
+          "Uplink Switch": sw,
+          "Total Ports": d.totalPorts || "",
+          "AP Number": d.apNumber || "",
+          "Customer Name": d.customerName || "",
+          "Customer Mobile": d.customerMobile || "",
+          "GPS Link": d.gpsLink || "",
+          "GPS Latitude": d.gps?.latitude !== undefined ? d.gps.latitude : "",
+          "GPS Longitude": d.gps?.longitude !== undefined ? d.gps.longitude : "",
+          "Activation Date": d.activationDate ? new Date(d.activationDate).toISOString().split("T")[0] : "",
+          "Online Link": d.onlineLink || "",
+          "Description": d.description || "",
+        };
+      });
 
       const dateStr = new Date().toISOString().slice(0, 10);
       exportToExcel(
@@ -118,17 +162,25 @@ export function AllDevicesHeader({ total }: AllDevicesHeaderProps) {
     downloadTemplate(
       DEVICE_TEMPLATE_HEADERS,
       {
-        "Device Name": "Core Switch 1",
-        "Device Type": "switch",
-        "Brand": "Cisco",
-        "Model": "Catalyst 2960",
-        "IP Address": "192.168.1.2",
+        "Device Name": "Access Point North 1",
+        "Device Type": "access-point",
+        "Brand": "Ubiquiti",
+        "Model": "UniFi 6 Pro",
         "MAC Address": "48:8F:5A:11:22:33",
-        "Serial Number": "SN-98234719",
+        "IP Address": "192.168.1.50",
         "Status": "Active",
-        "Total Ports": 24,
-        "Online Link": "https://192.168.1.2",
-        "Description": "Core Distribution Switch",
+        "Server": "Main Gateway Server",
+        "Uplink Switch": "Core Switch 1",
+        "Total Ports": "",
+        "AP Number": "AP-001",
+        "Customer Name": "Md. Rahim Uddin",
+        "Customer Mobile": "01700000000",
+        "GPS Link": "https://maps.google.com/?q=23.8103,90.4125",
+        "GPS Latitude": 23.8103,
+        "GPS Longitude": 90.4125,
+        "Activation Date": new Date().toISOString().split("T")[0],
+        "Online Link": "https://192.168.1.50",
+        "Description": "Sector Access Point",
       },
       `devices-import-template.xlsx`
     );
@@ -220,17 +272,25 @@ export function AllDevicesHeader({ total }: AllDevicesHeaderProps) {
         description="Upload an Excel or CSV file to register multiple devices into inventory at once."
         templateHeaders={DEVICE_TEMPLATE_HEADERS}
         sampleRow={{
-          "Device Name": "Antenna Base 1",
-          "Device Type": "antenna",
+          "Device Name": "Access Point North 1",
+          "Device Type": "access-point",
           "Brand": "Ubiquiti",
-          "Model": "LiteBeam 5AC",
-          "IP Address": "10.0.10.20",
-          "MAC Address": "F4:92:BF:88:99:11",
-          "Serial Number": "SN-552200",
+          "Model": "UniFi 6 Pro",
+          "MAC Address": "48:8F:5A:11:22:33",
+          "IP Address": "192.168.1.50",
           "Status": "Active",
+          "Server": "Main Gateway Server",
+          "Uplink Switch": "Core Switch 1",
           "Total Ports": "",
-          "Online Link": "https://10.0.10.20",
-          "Description": "Base Station Link",
+          "AP Number": "AP-001",
+          "Customer Name": "Md. Rahim Uddin",
+          "Customer Mobile": "01700000000",
+          "GPS Link": "https://maps.google.com/?q=23.8103,90.4125",
+          "GPS Latitude": 23.8103,
+          "GPS Longitude": 90.4125,
+          "Activation Date": new Date().toISOString().split("T")[0],
+          "Online Link": "https://192.168.1.50",
+          "Description": "Sector Access Point",
         }}
         templateFilename="devices-import-template.xlsx"
         onImport={async (rows) => importDevicesBulk(rows)}
