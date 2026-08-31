@@ -126,8 +126,40 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
       <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-200/80 dark:border-slate-800 shadow-sm">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="flex items-start gap-4">
-            <div className="p-4 rounded-2xl bg-gradient-to-br from-sky-500/10 to-blue-600/10 text-sky-600 dark:text-sky-400 border border-sky-200/60 dark:border-sky-800/40 shrink-0">
-              <Icon className="w-8 h-8" />
+            <div className="relative shrink-0">
+              <div className="p-4 rounded-2xl bg-gradient-to-br from-sky-500/10 to-blue-600/10 text-sky-600 dark:text-sky-400 border border-sky-200/60 dark:border-sky-800/40 shrink-0">
+                <Icon className="w-8 h-8" />
+              </div>
+              <span
+                className="absolute -bottom-1 -right-1 flex h-3.5 w-3.5"
+                title={`Status: ${device.status}`}
+              >
+                {(device.status === "Active" || device.status === "Available") && (
+                  <span
+                    className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
+                      device.status === "Active" ? "bg-emerald-400" : "bg-blue-400"
+                    }`}
+                  />
+                )}
+                {(device.status === "Pending" || device.status === "Maintenance") && (
+                  <span className="animate-pulse absolute inline-flex h-full w-full rounded-full opacity-60 bg-amber-400" />
+                )}
+                <span
+                  className={`relative inline-flex rounded-full h-3.5 w-3.5 ${
+                    device.status === "Active"
+                      ? "bg-emerald-500"
+                      : device.status === "Available"
+                      ? "bg-blue-500"
+                      : device.status === "Offline"
+                      ? "bg-rose-500"
+                      : device.status === "Pending" || device.status === "Maintenance"
+                      ? "bg-amber-500"
+                      : device.status === "Retired"
+                      ? "bg-purple-500"
+                      : "bg-slate-400"
+                  } ring-2 ring-white dark:ring-slate-900`}
+                />
+              </span>
             </div>
             <div>
               <div className="flex items-center gap-3 flex-wrap">

@@ -54,6 +54,47 @@ function getDeviceIcon(type: string) {
   }
 }
 
+function getDeviceTypeTheme(type: string) {
+  switch (type?.toLowerCase()) {
+    case "antenna":
+      return {
+        bg: "bg-[#e0f2fe] dark:bg-sky-950/60",
+        border: "border-[#bae6fd] dark:border-sky-800/60",
+        text: "text-[#0284c7] dark:text-sky-400",
+      };
+    case "access-point":
+      return {
+        bg: "bg-[#f3e8ff] dark:bg-purple-950/60",
+        border: "border-[#e9d5ff] dark:border-purple-800/60",
+        text: "text-[#9333ea] dark:text-purple-400",
+      };
+    case "router":
+      return {
+        bg: "bg-[#e0e7ff] dark:bg-indigo-950/60",
+        border: "border-[#c7d2fe] dark:border-indigo-800/60",
+        text: "text-[#4f46e5] dark:text-indigo-400",
+      };
+    case "switch":
+      return {
+        bg: "bg-[#dcfce7] dark:bg-emerald-950/60",
+        border: "border-[#bbf7d0] dark:border-emerald-800/60",
+        text: "text-[#16a34a] dark:text-emerald-400",
+      };
+    case "server":
+      return {
+        bg: "bg-blue-50 dark:bg-blue-950/60",
+        border: "border-blue-200/60 dark:border-blue-800/60",
+        text: "text-blue-600 dark:text-blue-400",
+      };
+    default:
+      return {
+        bg: "bg-sky-50 dark:bg-sky-950/40",
+        border: "border-sky-200/50 dark:border-sky-800/50",
+        text: "text-sky-600 dark:text-sky-400",
+      };
+  }
+}
+
 interface DeviceTableProps {
   devices: IDevice[];
   total: number;
@@ -212,39 +253,80 @@ export function DeviceTable({
 
                       {/* Device Name & Brand */}
                       <TableCell>
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 rounded-xl bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400 shrink-0">
-                            <Icon className="w-4 h-4" />
-                          </div>
-                          <div className="min-w-0">
-                            <Link
-                              href={`/devices/${device.deviceType}/${device._id}`}
-                              className="font-bold text-sm text-slate-900 dark:text-slate-100 hover:text-sky-600 dark:hover:text-sky-400 transition-colors block truncate"
-                            >
-                              {device.deviceName}
-                            </Link>
-                            <div className="flex items-center gap-1.5 flex-wrap text-xs text-slate-400 font-medium">
-                              <span>
-                                {device.brand} • {device.model}
-                              </span>
-                              {device.deviceType === "switch" && device.totalPorts !== undefined && (
-                                <span className="inline-flex items-center px-1.5 py-0.2 rounded bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 font-semibold text-[10px]">
-                                  {device.activePortsCount || 0}/{device.totalPorts} Ports
+                        {(() => {
+                          const devTheme = getDeviceTypeTheme(device.deviceType);
+                          const isOnline = device.status === "Active" || device.status === "Available";
+                          const isPendingOrMaint = device.status === "Pending" || device.status === "Maintenance";
+
+                          const dotColor =
+                            device.status === "Active"
+                              ? "bg-emerald-500"
+                              : device.status === "Available"
+                              ? "bg-blue-500"
+                              : device.status === "Offline"
+                              ? "bg-rose-500"
+                              : device.status === "Pending" || device.status === "Maintenance"
+                              ? "bg-amber-500"
+                              : device.status === "Retired"
+                              ? "bg-purple-500"
+                              : "bg-slate-400";
+
+                          return (
+                            <div className="flex items-center gap-3">
+                              {/* Device Icon Avatar with Online/Offline Beacon */}
+                              <div className="relative shrink-0">
+                                <div className={`p-2 rounded-xl border shrink-0 ${devTheme.bg} ${devTheme.border} ${devTheme.text}`}>
+                                  <Icon className="w-4 h-4" />
+                                </div>
+                                <span
+                                  className="absolute -bottom-0.5 -right-0.5 flex h-2.5 w-2.5"
+                                  title={`Status: ${device.status}`}
+                                >
+                                  {isOnline && (
+                                    <span
+                                      className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
+                                        device.status === "Active" ? "bg-emerald-400" : "bg-blue-400"
+                                      }`}
+                                    />
+                                  )}
+                                  {isPendingOrMaint && (
+                                    <span className="animate-pulse absolute inline-flex h-full w-full rounded-full opacity-60 bg-amber-400" />
+                                  )}
+                                  <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${dotColor} ring-2 ring-white dark:ring-slate-900`} />
                                 </span>
-                              )}
-                              {device.deviceType !== "server" && device.server && typeof device.server === "object" && (
-                                <span className="inline-flex items-center px-1.5 py-0.2 rounded bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 font-medium text-[10px]">
-                                  Server: #{formatDisplaySL((device.server as IDevice).sl)}
-                                </span>
-                              )}
-                              {["antenna", "access-point", "router"].includes(device.deviceType) && device.uplinkSwitch && typeof device.uplinkSwitch === "object" && (
-                                <span className="inline-flex items-center px-1.5 py-0.2 rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-medium text-[10px]">
-                                  UpLink: #{formatDisplaySL((device.uplinkSwitch as IDevice).sl)}
-                                </span>
-                              )}
+                              </div>
+
+                              <div className="min-w-0">
+                                <Link
+                                  href={`/devices/${device.deviceType}/${device._id}`}
+                                  className="font-bold text-sm text-slate-900 dark:text-slate-100 hover:text-sky-600 dark:hover:text-sky-400 transition-colors block truncate"
+                                >
+                                  {device.deviceName}
+                                </Link>
+                                <div className="flex items-center gap-1.5 flex-wrap text-xs text-slate-400 font-medium">
+                                  <span>
+                                    {device.brand} • {device.model}
+                                  </span>
+                                  {device.deviceType === "switch" && device.totalPorts !== undefined && (
+                                    <span className="inline-flex items-center px-1.5 py-0.2 rounded bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 font-semibold text-[10px]">
+                                      {device.activePortsCount || 0}/{device.totalPorts} Ports
+                                    </span>
+                                  )}
+                                  {device.deviceType !== "server" && device.server && typeof device.server === "object" && (
+                                    <span className="inline-flex items-center px-1.5 py-0.2 rounded bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 font-medium text-[10px]">
+                                      Server: #{formatDisplaySL((device.server as IDevice).sl)}
+                                    </span>
+                                  )}
+                                  {["antenna", "access-point", "router"].includes(device.deviceType) && device.uplinkSwitch && typeof device.uplinkSwitch === "object" && (
+                                    <span className="inline-flex items-center px-1.5 py-0.2 rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-medium text-[10px]">
+                                      UpLink: #{formatDisplaySL((device.uplinkSwitch as IDevice).sl)}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
                             </div>
-                          </div>
-                        </div>
+                          );
+                        })()}
                       </TableCell>
 
                       {/* Device Type (if all view) */}

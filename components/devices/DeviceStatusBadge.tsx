@@ -26,12 +26,28 @@ export function DeviceStatusBadge({
     lg: "w-2.5 h-2.5",
   }[size];
 
+  const isOnline = status === "Active" || status === "Available";
+  const isPending = status === "Pending" || status === "Maintenance";
+
   return (
     <span
       className={`inline-flex items-center font-semibold rounded-full border ${config.bg} ${config.border} ${config.darkBg} ${config.text} ${sizeClasses} ${className} shrink-0 transition-colors`}
     >
-      <span className={`rounded-full shrink-0 ${config.dot} ${dotSize}`} />
+      <span className="relative flex items-center justify-center shrink-0">
+        {isOnline && (
+          <span
+            className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
+              status === "Active" ? "bg-emerald-400" : "bg-blue-400"
+            }`}
+          />
+        )}
+        {isPending && (
+          <span className="animate-pulse absolute inline-flex h-full w-full rounded-full opacity-60 bg-amber-400" />
+        )}
+        <span className={`relative rounded-full shrink-0 ${config.dot.replace("animate-pulse", "")} ${dotSize}`} />
+      </span>
       <span>{config.label}</span>
     </span>
   );
 }
+
