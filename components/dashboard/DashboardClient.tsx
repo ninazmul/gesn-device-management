@@ -149,9 +149,20 @@ export function DashboardClient({ stats }: DashboardClientProps) {
   const switchStats = stats.byType.find((t) => t.type === "switch");
 
   const antennaCount = antennaStats?.count ?? 0;
+  const antennaOnline = (antennaStats?.active ?? 0) + (antennaStats?.available ?? 0);
+  const antennaOffline = Math.max(0, antennaCount - antennaOnline);
+
   const apCount = apStats?.count ?? 0;
+  const apOnline = (apStats?.active ?? 0) + (apStats?.available ?? 0);
+  const apOffline = Math.max(0, apCount - apOnline);
+
   const routerCount = routerStats?.count ?? 0;
+  const routerOnline = (routerStats?.active ?? 0) + (routerStats?.available ?? 0);
+  const routerOffline = Math.max(0, routerCount - routerOnline);
+
   const switchCount = switchStats?.count ?? 0;
+  const switchOnline = (switchStats?.active ?? 0) + (switchStats?.available ?? 0);
+  const switchOffline = Math.max(0, switchCount - switchOnline);
 
   // Server & Core Infrastructure actual DB stats
   const totalServers = stats.serverStats?.totalServers ?? 0;
@@ -252,103 +263,207 @@ export function DashboardClient({ stats }: DashboardClientProps) {
         </div>
 
         {/* 2x2 Device Overview Grid */}
-        <div className="grid grid-cols-2 gap-3 sm:gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
           {/* Antenna Card */}
-          <div className="bg-white dark:bg-slate-900/90 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-3.5 sm:p-4.5 flex flex-col justify-between space-y-3 shadow-[0_1px_2px_rgba(0,0,0,0.03)] hover:border-slate-300 dark:hover:border-slate-700 transition-all">
+          <div className="bg-white dark:bg-slate-900/90 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 flex flex-col justify-between space-y-4 shadow-[0_1px_2px_rgba(0,0,0,0.03)] hover:border-slate-300 dark:hover:border-slate-700 transition-all">
             <div className="flex items-start gap-3">
-              <div className="p-2.5 rounded-xl bg-[#e0f2fe] dark:bg-sky-950/60 border border-[#bae6fd] dark:border-sky-800/60 text-[#0284c7] dark:text-sky-400 shrink-0">
+              <div className="p-2.5 rounded-2xl bg-[#e0f2fe] dark:bg-sky-950/60 border border-[#bae6fd] dark:border-sky-800/60 text-[#0284c7] dark:text-sky-400 shrink-0">
                 <AntennaIcon className="w-5 h-5" />
               </div>
               <div className="min-w-0">
-                <span className="text-xs sm:text-sm font-semibold text-slate-500 dark:text-slate-400 block truncate">
+                <span className="text-sm font-bold text-[#0284c7] dark:text-sky-400 block truncate">
                   Antenna
+                </span>
+                <span className="text-xs text-slate-400 dark:text-slate-500 font-medium block">
+                  Total
                 </span>
                 <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight leading-tight mt-0.5">
                   {antennaCount.toLocaleString()}
                 </div>
               </div>
             </div>
+
+            {/* Online / Offline stats */}
+            <div className="grid grid-cols-2 divide-x divide-slate-100 dark:divide-slate-800/80 border-t border-slate-100 dark:border-slate-800/80 pt-3">
+              <div>
+                <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 font-medium">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                  <span>Online</span>
+                </div>
+                <div className="text-lg sm:text-xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5">
+                  {antennaOnline.toLocaleString()}
+                </div>
+              </div>
+              <div className="pl-3 sm:pl-4">
+                <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 font-medium">
+                  <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0" />
+                  <span>Offline</span>
+                </div>
+                <div className="text-lg sm:text-xl font-black text-rose-600 dark:text-rose-400 mt-0.5">
+                  {antennaOffline.toLocaleString()}
+                </div>
+              </div>
+            </div>
+
             <div className="pt-1">
               <Link
                 href="/devices/antenna"
-                className="inline-flex items-center justify-center w-full py-1.5 px-3 rounded-xl border border-sky-200 dark:border-sky-800/80 text-sky-600 dark:text-sky-400 bg-sky-50/40 dark:bg-sky-950/30 hover:bg-sky-100/70 dark:hover:bg-sky-900/40 font-bold text-xs transition-colors text-center"
+                className="inline-flex items-center justify-center w-full py-2 px-3 rounded-2xl border border-sky-200/80 dark:border-sky-800/80 text-sky-600 dark:text-sky-400 bg-sky-50/20 dark:bg-sky-950/20 hover:bg-sky-50 dark:hover:bg-sky-950/50 font-bold text-xs sm:text-sm transition-colors text-center"
               >
-                View
+                View Devices
               </Link>
             </div>
           </div>
 
           {/* Access Point Card */}
-          <div className="bg-white dark:bg-slate-900/90 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-3.5 sm:p-4.5 flex flex-col justify-between space-y-3 shadow-[0_1px_2px_rgba(0,0,0,0.03)] hover:border-slate-300 dark:hover:border-slate-700 transition-all">
+          <div className="bg-white dark:bg-slate-900/90 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 flex flex-col justify-between space-y-4 shadow-[0_1px_2px_rgba(0,0,0,0.03)] hover:border-slate-300 dark:hover:border-slate-700 transition-all">
             <div className="flex items-start gap-3">
-              <div className="p-2.5 rounded-xl bg-[#f3e8ff] dark:bg-purple-950/60 border border-[#e9d5ff] dark:border-purple-800/60 text-[#9333ea] dark:text-purple-400 shrink-0">
+              <div className="p-2.5 rounded-2xl bg-[#f3e8ff] dark:bg-purple-950/60 border border-[#e9d5ff] dark:border-purple-800/60 text-[#9333ea] dark:text-purple-400 shrink-0">
                 <AccessPointIcon className="w-5 h-5" />
               </div>
               <div className="min-w-0">
-                <span className="text-xs sm:text-sm font-semibold text-slate-500 dark:text-slate-400 block truncate">
+                <span className="text-sm font-bold text-[#9333ea] dark:text-purple-400 block truncate">
                   Access Point
+                </span>
+                <span className="text-xs text-slate-400 dark:text-slate-500 font-medium block">
+                  Total
                 </span>
                 <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight leading-tight mt-0.5">
                   {apCount.toLocaleString()}
                 </div>
               </div>
             </div>
+
+            {/* Online / Offline stats */}
+            <div className="grid grid-cols-2 divide-x divide-slate-100 dark:divide-slate-800/80 border-t border-slate-100 dark:border-slate-800/80 pt-3">
+              <div>
+                <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 font-medium">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                  <span>Online</span>
+                </div>
+                <div className="text-lg sm:text-xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5">
+                  {apOnline.toLocaleString()}
+                </div>
+              </div>
+              <div className="pl-3 sm:pl-4">
+                <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 font-medium">
+                  <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0" />
+                  <span>Offline</span>
+                </div>
+                <div className="text-lg sm:text-xl font-black text-rose-600 dark:text-rose-400 mt-0.5">
+                  {apOffline.toLocaleString()}
+                </div>
+              </div>
+            </div>
+
             <div className="pt-1">
               <Link
                 href="/devices/access-point"
-                className="inline-flex items-center justify-center w-full py-1.5 px-3 rounded-xl border border-purple-200 dark:border-purple-800/80 text-purple-600 dark:text-purple-400 bg-purple-50/40 dark:bg-purple-950/30 hover:bg-purple-100/70 dark:hover:bg-purple-900/40 font-bold text-xs transition-colors text-center"
+                className="inline-flex items-center justify-center w-full py-2 px-3 rounded-2xl border border-purple-200/80 dark:border-purple-800/80 text-purple-600 dark:text-purple-400 bg-purple-50/20 dark:bg-purple-950/20 hover:bg-purple-50 dark:hover:bg-purple-950/50 font-bold text-xs sm:text-sm transition-colors text-center"
               >
-                View
+                View Devices
               </Link>
             </div>
           </div>
 
           {/* Router Card */}
-          <div className="bg-white dark:bg-slate-900/90 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-3.5 sm:p-4.5 flex flex-col justify-between space-y-3 shadow-[0_1px_2px_rgba(0,0,0,0.03)] hover:border-slate-300 dark:hover:border-slate-700 transition-all">
+          <div className="bg-white dark:bg-slate-900/90 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 flex flex-col justify-between space-y-4 shadow-[0_1px_2px_rgba(0,0,0,0.03)] hover:border-slate-300 dark:hover:border-slate-700 transition-all">
             <div className="flex items-start gap-3">
-              <div className="p-2.5 rounded-xl bg-[#e0e7ff] dark:bg-indigo-950/60 border border-[#c7d2fe] dark:border-indigo-800/60 text-[#4f46e5] dark:text-indigo-400 shrink-0">
+              <div className="p-2.5 rounded-2xl bg-[#e0e7ff] dark:bg-indigo-950/60 border border-[#c7d2fe] dark:border-indigo-800/60 text-[#4f46e5] dark:text-indigo-400 shrink-0">
                 <CustomRouterIcon className="w-5 h-5" />
               </div>
               <div className="min-w-0">
-                <span className="text-xs sm:text-sm font-semibold text-slate-500 dark:text-slate-400 block truncate">
+                <span className="text-sm font-bold text-[#4f46e5] dark:text-indigo-400 block truncate">
                   Router
+                </span>
+                <span className="text-xs text-slate-400 dark:text-slate-500 font-medium block">
+                  Total
                 </span>
                 <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight leading-tight mt-0.5">
                   {routerCount.toLocaleString()}
                 </div>
               </div>
             </div>
+
+            {/* Online / Offline stats */}
+            <div className="grid grid-cols-2 divide-x divide-slate-100 dark:divide-slate-800/80 border-t border-slate-100 dark:border-slate-800/80 pt-3">
+              <div>
+                <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 font-medium">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                  <span>Online</span>
+                </div>
+                <div className="text-lg sm:text-xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5">
+                  {routerOnline.toLocaleString()}
+                </div>
+              </div>
+              <div className="pl-3 sm:pl-4">
+                <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 font-medium">
+                  <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0" />
+                  <span>Offline</span>
+                </div>
+                <div className="text-lg sm:text-xl font-black text-rose-600 dark:text-rose-400 mt-0.5">
+                  {routerOffline.toLocaleString()}
+                </div>
+              </div>
+            </div>
+
             <div className="pt-1">
               <Link
                 href="/devices/router"
-                className="inline-flex items-center justify-center w-full py-1.5 px-3 rounded-xl border border-indigo-200 dark:border-indigo-800/80 text-indigo-600 dark:text-indigo-400 bg-indigo-50/40 dark:bg-indigo-950/30 hover:bg-indigo-100/70 dark:hover:bg-indigo-900/40 font-bold text-xs transition-colors text-center"
+                className="inline-flex items-center justify-center w-full py-2 px-3 rounded-2xl border border-indigo-200/80 dark:border-indigo-800/80 text-indigo-600 dark:text-indigo-400 bg-indigo-50/20 dark:bg-indigo-950/20 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 font-bold text-xs sm:text-sm transition-colors text-center"
               >
-                View
+                View Devices
               </Link>
             </div>
           </div>
 
           {/* Switch Card */}
-          <div className="bg-white dark:bg-slate-900/90 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-3.5 sm:p-4.5 flex flex-col justify-between space-y-3 shadow-[0_1px_2px_rgba(0,0,0,0.03)] hover:border-slate-300 dark:hover:border-slate-700 transition-all">
+          <div className="bg-white dark:bg-slate-900/90 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 flex flex-col justify-between space-y-4 shadow-[0_1px_2px_rgba(0,0,0,0.03)] hover:border-slate-300 dark:hover:border-slate-700 transition-all">
             <div className="flex items-start gap-3">
-              <div className="p-2.5 rounded-xl bg-[#dcfce7] dark:bg-emerald-950/60 border border-[#bbf7d0] dark:border-emerald-800/60 text-[#16a34a] dark:text-emerald-400 shrink-0">
+              <div className="p-2.5 rounded-2xl bg-[#dcfce7] dark:bg-emerald-950/60 border border-[#bbf7d0] dark:border-emerald-800/60 text-[#16a34a] dark:text-emerald-400 shrink-0">
                 <SwitchIcon className="w-5 h-5" />
               </div>
               <div className="min-w-0">
-                <span className="text-xs sm:text-sm font-semibold text-slate-500 dark:text-slate-400 block truncate">
+                <span className="text-sm font-bold text-[#16a34a] dark:text-emerald-400 block truncate">
                   Switch
+                </span>
+                <span className="text-xs text-slate-400 dark:text-slate-500 font-medium block">
+                  Total
                 </span>
                 <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight leading-tight mt-0.5">
                   {switchCount.toLocaleString()}
                 </div>
               </div>
             </div>
+
+            {/* Online / Offline stats */}
+            <div className="grid grid-cols-2 divide-x divide-slate-100 dark:divide-slate-800/80 border-t border-slate-100 dark:border-slate-800/80 pt-3">
+              <div>
+                <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 font-medium">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                  <span>Online</span>
+                </div>
+                <div className="text-lg sm:text-xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5">
+                  {switchOnline.toLocaleString()}
+                </div>
+              </div>
+              <div className="pl-3 sm:pl-4">
+                <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 font-medium">
+                  <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0" />
+                  <span>Offline</span>
+                </div>
+                <div className="text-lg sm:text-xl font-black text-rose-600 dark:text-rose-400 mt-0.5">
+                  {switchOffline.toLocaleString()}
+                </div>
+              </div>
+            </div>
+
             <div className="pt-1">
               <Link
                 href="/devices/switch"
-                className="inline-flex items-center justify-center w-full py-1.5 px-3 rounded-xl border border-emerald-200 dark:border-emerald-800/80 text-emerald-600 dark:text-emerald-400 bg-emerald-50/40 dark:bg-emerald-950/30 hover:bg-emerald-100/70 dark:hover:bg-emerald-900/40 font-bold text-xs transition-colors text-center"
+                className="inline-flex items-center justify-center w-full py-2 px-3 rounded-2xl border border-emerald-200/80 dark:border-emerald-800/80 text-emerald-600 dark:text-emerald-400 bg-emerald-50/20 dark:bg-emerald-950/20 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 font-bold text-xs sm:text-sm transition-colors text-center"
               >
-                View
+                View Devices
               </Link>
             </div>
           </div>
@@ -359,86 +474,86 @@ export function DashboardClient({ stats }: DashboardClientProps) {
       {/* SECTION 3: SERVERS & INFRASTRUCTURE (super_admin & admin only)            */}
       {/* ========================================================================= */}
       {canViewServerInfra && (
-      <section className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 space-y-3.5 shadow-sm">
-        <div className="flex items-center justify-between gap-2 flex-wrap">
-          <h2 className="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-slate-100">
-            Servers & Infrastructure
-          </h2>
-        </div>
+        <section className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 space-y-3.5 shadow-sm">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <h2 className="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-slate-100">
+              Servers & Infrastructure
+            </h2>
+          </div>
 
-        <div className={`grid ${canWriteDevices ? "grid-cols-2" : "grid-cols-1"} gap-2`}>
-          {/* Top Action: Add Server */}
-          {canWriteDevices && (
-            <button
-              type="button"
-              onClick={() => openCreateFor("server")}
+          <div className={`grid ${canWriteDevices ? "grid-cols-2" : "grid-cols-1"} gap-2`}>
+            {/* Top Action: Add Server */}
+            {canWriteDevices && (
+              <button
+                type="button"
+                onClick={() => openCreateFor("server")}
+                className="w-full py-2.5 px-4 rounded-2xl border border-blue-200/90 dark:border-blue-800/70 bg-blue-50/40 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 font-bold text-xs sm:text-sm hover:bg-blue-100/60 dark:hover:bg-blue-900/40 transition-all flex items-center justify-center gap-2 shadow-xs active:scale-[0.99]"
+              >
+                <ServerStackIcon className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                <span>Add Server</span>
+              </button>
+            )}
+
+            {/* Bottom Action: View Servers */}
+            <Link
+              href="/devices/server"
               className="w-full py-2.5 px-4 rounded-2xl border border-blue-200/90 dark:border-blue-800/70 bg-blue-50/40 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 font-bold text-xs sm:text-sm hover:bg-blue-100/60 dark:hover:bg-blue-900/40 transition-all flex items-center justify-center gap-2 shadow-xs active:scale-[0.99]"
             >
               <ServerStackIcon className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-              <span>Add Server</span>
-            </button>
-          )}
+              <span>View Servers</span>
+            </Link>
+          </div>
 
-          {/* Bottom Action: View Servers */}
-          <Link
-            href="/devices/server"
-            className="w-full py-2.5 px-4 rounded-2xl border border-blue-200/90 dark:border-blue-800/70 bg-blue-50/40 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 font-bold text-xs sm:text-sm hover:bg-blue-100/60 dark:hover:bg-blue-900/40 transition-all flex items-center justify-center gap-2 shadow-xs active:scale-[0.99]"
-          >
-            <ServerStackIcon className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-            <span>View Servers</span>
-          </Link>
-        </div>
-
-        {/* 3-Column Metrics Row */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 sm:gap-3">
-          {/* Total Servers */}
-          <div className="bg-white dark:bg-slate-900/90 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-2.5 sm:p-3.5 flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200/60 dark:border-blue-800/60 text-blue-600 dark:text-blue-400 shrink-0">
-              <ServerStackIcon className="w-4 h-4" />
+          {/* 3-Column Metrics Row */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 sm:gap-3">
+            {/* Total Servers */}
+            <div className="bg-white dark:bg-slate-900/90 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-2.5 sm:p-3.5 flex items-center gap-2.5">
+              <div className="p-2 rounded-xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200/60 dark:border-blue-800/60 text-blue-600 dark:text-blue-400 shrink-0">
+                <ServerStackIcon className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
+                <span className="text-[10px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400 block truncate">
+                  Total Servers
+                </span>
+                <div className="text-base sm:text-xl font-black text-slate-900 dark:text-slate-100 leading-tight">
+                  {totalServers.toLocaleString()}
+                </div>
+              </div>
             </div>
-            <div className="min-w-0">
-              <span className="text-[10px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400 block truncate">
-                Total Servers
-              </span>
-              <div className="text-base sm:text-xl font-black text-slate-900 dark:text-slate-100 leading-tight">
-                {totalServers.toLocaleString()}
+
+            {/* Active Servers */}
+            <div className="bg-white dark:bg-slate-900/90 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-2.5 sm:p-3.5 flex items-center gap-2.5">
+              <div className="p-2 rounded-xl bg-purple-50 dark:bg-purple-950/60 border border-purple-200/60 dark:border-purple-800/60 text-purple-600 dark:text-purple-400 shrink-0">
+                <Activity className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
+                <span className="text-[10px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400 block truncate">
+                  Active Servers
+                </span>
+                <div className="text-base sm:text-xl font-black text-slate-900 dark:text-slate-100 leading-tight">
+                  {activeServers.toLocaleString()}
+                </div>
+              </div>
+            </div>
+
+            {/* Routers */}
+            <div className="bg-white dark:bg-slate-900/90 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-2.5 sm:p-3.5 flex items-center gap-2.5">
+              <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200/60 dark:border-emerald-800/60 text-emerald-600 dark:text-emerald-400 shrink-0">
+                <CustomRouterIcon className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
+                <span className="text-[10px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400 block truncate">
+                  Routers
+                </span>
+                <div className="text-base sm:text-xl font-black text-slate-900 dark:text-slate-100 leading-tight">
+                  {routersCount.toLocaleString()}
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Active Servers */}
-          <div className="bg-white dark:bg-slate-900/90 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-2.5 sm:p-3.5 flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-purple-50 dark:bg-purple-950/60 border border-purple-200/60 dark:border-purple-800/60 text-purple-600 dark:text-purple-400 shrink-0">
-              <Activity className="w-4 h-4" />
-            </div>
-            <div className="min-w-0">
-              <span className="text-[10px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400 block truncate">
-                Active Servers
-              </span>
-              <div className="text-base sm:text-xl font-black text-slate-900 dark:text-slate-100 leading-tight">
-                {activeServers.toLocaleString()}
-              </div>
-            </div>
-          </div>
 
-          {/* Routers */}
-          <div className="bg-white dark:bg-slate-900/90 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-2.5 sm:p-3.5 flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200/60 dark:border-emerald-800/60 text-emerald-600 dark:text-emerald-400 shrink-0">
-              <CustomRouterIcon className="w-4 h-4" />
-            </div>
-            <div className="min-w-0">
-              <span className="text-[10px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400 block truncate">
-                Routers
-              </span>
-              <div className="text-base sm:text-xl font-black text-slate-900 dark:text-slate-100 leading-tight">
-                {routersCount.toLocaleString()}
-              </div>
-            </div>
-          </div>
-        </div>
-
-
-      </section>
+        </section>
       )}
 
       {/* ========================================================================= */}
