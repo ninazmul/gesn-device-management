@@ -125,7 +125,8 @@ interface DashboardClientProps {
 }
 
 export function DashboardClient({ stats }: DashboardClientProps) {
-  const { canRead, canWrite } = usePermissions();
+  const { canRead, canWrite, isSuperAdmin, role } = usePermissions();
+  const canViewServerInfra = isSuperAdmin || role === "admin";
   const canWriteDevices = canWrite("devices");
   const canWriteCustomers = canWrite("customers");
   const canReadCustomers = canRead("customers");
@@ -355,8 +356,9 @@ export function DashboardClient({ stats }: DashboardClientProps) {
       </section>
 
       {/* ========================================================================= */}
-      {/* SECTION 3: SERVERS & INFRASTRUCTURE                                       */}
+      {/* SECTION 3: SERVERS & INFRASTRUCTURE (super_admin & admin only)            */}
       {/* ========================================================================= */}
+      {canViewServerInfra && (
       <section className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 space-y-3.5 shadow-sm">
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <h2 className="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-slate-100">
@@ -437,6 +439,7 @@ export function DashboardClient({ stats }: DashboardClientProps) {
 
 
       </section>
+      )}
 
       {/* ========================================================================= */}
       {/* SECTION 4: CUSTOMERS & BILLING                                            */}
