@@ -70,6 +70,13 @@ export function NotificationDropdown() {
     };
   }, [fetchUnreadCount]);
 
+  // Refresh bell badge immediately when a bulk import completes
+  useEffect(() => {
+    const handleImportComplete = () => fetchNotifications();
+    window.addEventListener("bulk-import-complete", handleImportComplete);
+    return () => window.removeEventListener("bulk-import-complete", handleImportComplete);
+  }, [fetchNotifications]);
+
 
   // Click outside to close
   useEffect(() => {

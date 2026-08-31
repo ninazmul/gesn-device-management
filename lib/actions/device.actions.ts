@@ -5,6 +5,7 @@ import Device from "@/lib/database/models/device.model";
 import Counter from "@/lib/database/models/counter.model";
 import Brand from "@/lib/database/models/brand.model";
 import DeviceModel from "@/lib/database/models/model.model";
+import Notification from "@/lib/database/models/notification.model";
 import { formatSL, isValidIPv4, normalizeMAC } from "@/lib/utils";
 import { revalidatePath } from "next/cache";
 import type { FilterQuery } from "mongoose";
@@ -763,13 +764,29 @@ export async function importDevicesBulk(
     throw new Error("No data rows provided for import.");
   }
 
-  // Pre-fetch servers and switches for fast relation resolution
-  const [servers, switches] = await Promise.all([
+  // Pre-fetch servers, switches, and existing devices for fast resolution
+  const [servers, switches, existingDevices] = await Promise.all([
     Device.find({ deviceType: "server" }, { _id: 1, sl: 1, deviceName: 1 }).lean(),
     Device.find({ deviceType: "switch" }, { _id: 1, sl: 1, deviceName: 1 }).lean(),
+    Device.find(
+      { macAddress: { $ne: "" } },
+      {
+        macAddress: 1, deviceType: 1, brand: 1, model: 1, deviceName: 1,
+        ipAddress: 1, status: 1, totalPorts: 1, apNumber: 1,
+        customerName: 1, customerMobile: 1, description: 1,
+        onlineLink: 1, gpsLink: 1,
+      }
+    ).lean(),
   ]);
 
+  // Build a MAC → existing device map for O(1) duplicate lookups
+  const existingByMac = new Map<string, typeof existingDevices[number]>();
+  for (const d of existingDevices) {
+    if (d.macAddress) existingByMac.set(d.macAddress.toUpperCase(), d);
+  }
+
   let createdCount = 0;
+  let skippedCount = 0;
   const errors: string[] = [];
   const seenMacsInBatch = new Set<string>();
 
@@ -833,7 +850,7 @@ export async function importDevicesBulk(
         continue;
       }
 
-      // 4. Verification: Duplicate MAC check within uploaded spreadsheet batch
+      // 4a. Verification: Duplicate MAC check within uploaded spreadsheet batch
       if (seenMacsInBatch.has(macAddress)) {
         errors.push(
           `Row ${rowNum}: Duplicate MAC Address "${macAddress}" found within the uploaded spreadsheet.`
@@ -841,6 +858,48 @@ export async function importDevicesBulk(
         continue;
       }
       seenMacsInBatch.add(macAddress);
+
+      // 4b. Full-duplicate check against existing DB records
+      const existingDevice = existingByMac.get(macAddress.toUpperCase());
+      if (existingDevice) {
+        // Resolve the status that would be assigned to this row (same logic as step 8)
+        const isSuperAdminForDup = actor.role === "super_admin";
+        const rawStatusForDup = String(r["Status"] || r["status"] || "").trim();
+        const resolvedStatus: DeviceStatus = isSuperAdminForDup
+          ? (["Pending", "Active", "Available", "Offline", "Maintenance", "Inactive", "Retired"].includes(rawStatusForDup)
+              ? (rawStatusForDup as DeviceStatus)
+              : "Active")
+          : "Pending";
+
+        const rawTypeForDup = String(
+          r["Device Type"] || r["Type"] || r["deviceType"] || defaultType(defaultDeviceType) || ""
+        ).trim().toLowerCase();
+
+        const isExactDuplicate =
+          (existingDevice.deviceType || "") === rawTypeForDup &&
+          (existingDevice.brand || "") === String(r["Brand"] || r["brand"] || "").trim() &&
+          (existingDevice.model || "") === String(r["Model"] || r["model"] || "").trim() &&
+          (existingDevice.ipAddress || "") === String(r["IP Address"] || r["IP"] || r["ipAddress"] || r["Ip Address"] || "").trim() &&
+          (existingDevice.status || "") === resolvedStatus &&
+          (existingDevice.description || "") === String(r["Description"] || r["Notes"] || r["description"] || "").trim() &&
+          (existingDevice.onlineLink || "") === String(r["Online Link"] || r["Portal"] || r["Management URL"] || r["onlineLink"] || "").trim() &&
+          (existingDevice.apNumber || "") === String(r["AP Number"] || r["AP"] || r["apNumber"] || "").trim() &&
+          (existingDevice.customerName || "") === String(r["Customer Name"] || r["Customer"] || r["customerName"] || "").trim() &&
+          (existingDevice.customerMobile || "") === String(r["Customer Mobile"] || r["Mobile Number"] || r["Mobile"] || r["Phone"] || r["customerMobile"] || "").trim() &&
+          (existingDevice.gpsLink || "") === String(r["GPS Link"] || r["Map Link"] || r["gpsLink"] || "").trim();
+
+        if (isExactDuplicate) {
+          // Identical record already in DB — skip silently
+          skippedCount++;
+          continue;
+        }
+
+        // MAC exists but data differs — report as conflict
+        errors.push(
+          `Row ${rowNum}: MAC Address "${macAddress}" already exists in the database with different data. Update the existing device instead.`
+        );
+        continue;
+      }
 
       // 5. Verification: Optional IPv4 Address
       const rawIp = String(
@@ -994,7 +1053,7 @@ export async function importDevicesBulk(
     }
   }
 
-  // If any devices were created, log activity and revalidate paths
+  // If any devices were created, log activity and create a notification for everyone
   if (createdCount > 0) {
     await logActivityAndNotify({
       actor,
@@ -1006,6 +1065,21 @@ export async function importDevicesBulk(
       link: "/devices",
     });
 
+    // Always create a notification (logActivityAndNotify skips super_admin)
+    // so the bell badge is updated for every role after bulk import
+    const skippedNote = skippedCount > 0 ? ` · ${skippedCount} duplicate${skippedCount > 1 ? "s" : ""} skipped` : "";
+    const errNote = errors.length > 0 ? ` · ${errors.length} error${errors.length > 1 ? "s" : ""}` : "";
+    await Notification.create({
+      actorEmail: actor.email,
+      actorRole: actor.role,
+      action: "BULK_IMPORT_COMPLETE",
+      module: "devices",
+      title: `Bulk Import Complete — ${createdCount} device${createdCount > 1 ? "s" : ""} added`,
+      message: `${actor.email} imported ${createdCount} device${createdCount > 1 ? "s" : ""}${skippedNote}${errNote} via Excel bulk import.`,
+      link: "/devices",
+      readBy: [],
+    });
+
     revalidatePath("/");
     revalidatePath("/devices");
   }
@@ -1013,6 +1087,7 @@ export async function importDevicesBulk(
   return {
     success: true,
     createdCount,
+    skippedCount,
     totalRows: rows.length,
     errors,
   };

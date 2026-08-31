@@ -24,6 +24,7 @@ interface BulkImportDialogProps {
   onImport: (rows: Record<string, unknown>[]) => Promise<{
     success: boolean;
     createdCount: number;
+    skippedCount?: number;
     totalRows: number;
     errors?: string[];
   }>;
@@ -47,6 +48,7 @@ export function BulkImportDialog({
   const [isUploading, setIsUploading] = useState(false);
   const [importResult, setImportResult] = useState<{
     createdCount: number;
+    skippedCount: number;
     totalRows: number;
     errors?: string[];
   } | null>(null);
@@ -90,22 +92,42 @@ export function BulkImportDialog({
   const handleStartImport = async () => {
     if (parsedRows.length === 0) return;
     setIsUploading(true);
+
+    // Show a persistent loading toast — stays visible even if the modal is closed
+    const loadingToastId = toast.loading(
+      `Importing ${parsedRows.length} row${parsedRows.length > 1 ? "s" : ""}… Please wait.`,
+      { duration: Infinity }
+    );
+
     try {
       const res = await onImport(parsedRows);
+      const skippedCount = res.skippedCount ?? 0;
       setImportResult({
         createdCount: res.createdCount,
+        skippedCount,
         totalRows: res.totalRows,
         errors: res.errors,
       });
 
+      // Dismiss the persistent loader
+      toast.dismiss(loadingToastId);
+
       if (res.createdCount > 0) {
-        toast.success(`Successfully imported ${res.createdCount} records!`);
+        const skippedNote = skippedCount > 0 ? ` (${skippedCount} duplicate${skippedCount > 1 ? "s" : ""} skipped)` : "";
+        toast.success(`Imported ${res.createdCount} record${res.createdCount > 1 ? "s" : ""}!${skippedNote}`, { duration: 5000 });
         onSuccess();
+        // Signal the notification bell to refresh its badge
+        window.dispatchEvent(new CustomEvent("bulk-import-complete"));
+      } else if (skippedCount > 0 && (!res.errors || res.errors.length === 0)) {
+        toast.success(`All ${skippedCount} rows already exist in the database — nothing new to import.`, { duration: 5000 });
+      } else if (skippedCount > 0) {
+        toast(`${skippedCount} duplicate row${skippedCount > 1 ? "s" : ""} skipped. Review errors below.`, { icon: "⚠️", duration: 5000 });
       } else {
-        toast.error("No records could be imported. Please review the errors below.");
+        toast.error("No records could be imported. Please review the errors below.", { duration: 5000 });
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Import failed");
+      toast.dismiss(loadingToastId);
+      toast.error(err instanceof Error ? err.message : "Import failed", { duration: 5000 });
     } finally {
       setIsUploading(false);
     }
@@ -224,13 +246,35 @@ export function BulkImportDialog({
           {/* Import Result & Errors */}
           {importResult && (
             <div className="space-y-2 text-xs">
-              <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-800/40 flex items-center gap-2 text-emerald-800 dark:text-emerald-300 font-semibold">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                <span>
-                  Successfully imported {importResult.createdCount} out of {importResult.totalRows} records!
-                </span>
-              </div>
+              {/* Created banner */}
+              {importResult.createdCount > 0 && (
+                <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-800/40 flex items-center gap-2 text-emerald-800 dark:text-emerald-300 font-semibold">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <span>
+                    Successfully imported {importResult.createdCount} out of {importResult.totalRows} rows.
+                  </span>
+                </div>
+              )}
 
+              {/* Skipped banner */}
+              {importResult.skippedCount > 0 && (
+                <div className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200/60 dark:border-amber-800/40 flex items-center gap-2 text-amber-800 dark:text-amber-300 font-semibold">
+                  <AlertCircle className="w-4 h-4 text-amber-500 dark:text-amber-400 shrink-0" />
+                  <span>
+                    {importResult.skippedCount} row{importResult.skippedCount > 1 ? "s" : ""} already exist{importResult.skippedCount === 1 ? "s" : ""} with identical data — skipped.
+                  </span>
+                </div>
+              )}
+
+              {/* All skipped / nothing created */}
+              {importResult.createdCount === 0 && importResult.skippedCount === 0 && (
+                <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60 flex items-center gap-2 text-slate-600 dark:text-slate-400 font-semibold">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>No records were imported. Please review the errors below.</span>
+                </div>
+              )}
+
+              {/* Errors */}
               {importResult.errors && importResult.errors.length > 0 && (
                 <div className="p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200/60 dark:border-rose-800/40 space-y-1.5">
                   <div className="flex items-center gap-1.5 text-rose-700 dark:text-rose-300 font-bold">
