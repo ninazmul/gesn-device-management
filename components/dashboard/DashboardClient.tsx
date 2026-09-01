@@ -265,21 +265,31 @@ export function DashboardClient({ stats }: DashboardClientProps) {
         {/* 2x2 Device Overview Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
           {/* Antenna Card */}
-          <div className="bg-white dark:bg-slate-900/90 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 flex flex-col justify-between space-y-4 shadow-[0_1px_2px_rgba(0,0,0,0.03)] hover:border-slate-300 dark:hover:border-slate-700 transition-all">
-            <div className="flex items-start gap-3">
-              <div className="p-2.5 rounded-2xl bg-[#e0f2fe] dark:bg-sky-950/60 border border-[#bae6fd] dark:border-sky-800/60 text-[#0284c7] dark:text-sky-400 shrink-0">
-                <AntennaIcon className="w-5 h-5" />
-              </div>
-              <div className="min-w-0">
-                <span className="text-sm font-bold text-[#0284c7] dark:text-sky-400 block truncate">
-                  Antenna
-                </span>
-                <span className="text-xs text-slate-400 dark:text-slate-500 font-medium block">
-                  Total
-                </span>
-                <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight leading-tight mt-0.5">
-                  {antennaCount.toLocaleString()}
+          <div className="relative bg-gradient-to-br from-sky-50/60 via-white to-white dark:from-sky-950/20 dark:via-slate-900/90 dark:to-slate-900/90 rounded-3xl border border-sky-200/70 dark:border-sky-800/50 p-4 sm:p-5 flex flex-col justify-between space-y-4 shadow-[0_2px_8px_rgba(14,165,233,0.08)] hover:shadow-[0_6px_20px_rgba(14,165,233,0.18)] hover:border-sky-300/80 dark:hover:border-sky-700/70 transition-all duration-200 overflow-hidden before:absolute before:inset-y-0 before:left-0 before:w-1 before:rounded-l-3xl before:bg-gradient-to-b before:from-sky-400 before:to-sky-600">
+            <div className="flex flex-wrap justify-between items-start gap-2">
+              <div className="flex items-start gap-3">
+                <div className="p-2.5 rounded-2xl bg-[#e0f2fe] dark:bg-sky-950/60 border border-[#bae6fd] dark:border-sky-800/60 text-[#0284c7] dark:text-sky-400 shrink-0">
+                  <AntennaIcon className="w-5 h-5" />
                 </div>
+                <div className="min-w-0">
+                  <span className="text-sm font-bold text-[#0284c7] dark:text-sky-400 block truncate">
+                    Antenna
+                  </span>
+                  <span className="text-xs text-slate-400 dark:text-slate-500 font-medium block">
+                    Total
+                  </span>
+                  <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight leading-tight mt-0.5">
+                    {antennaCount.toLocaleString()}
+                  </div>
+                </div>
+              </div>
+              <div className="pt-1">
+                <Link
+                  href="/devices/antenna"
+                  className="inline-flex items-center justify-center w-full py-2 px-3 rounded-2xl border border-sky-200/80 dark:border-sky-800/80 text-sky-600 dark:text-sky-400 bg-sky-50/20 dark:bg-sky-950/20 hover:bg-sky-50 dark:hover:bg-sky-950/50 font-bold text-xs sm:text-sm transition-colors text-center"
+                >
+                  View Devices
+                </Link>
               </div>
             </div>
 
@@ -304,33 +314,34 @@ export function DashboardClient({ stats }: DashboardClientProps) {
                 </div>
               </div>
             </div>
-
-            <div className="pt-1">
-              <Link
-                href="/devices/antenna"
-                className="inline-flex items-center justify-center w-full py-2 px-3 rounded-2xl border border-sky-200/80 dark:border-sky-800/80 text-sky-600 dark:text-sky-400 bg-sky-50/20 dark:bg-sky-950/20 hover:bg-sky-50 dark:hover:bg-sky-950/50 font-bold text-xs sm:text-sm transition-colors text-center"
-              >
-                View Devices
-              </Link>
-            </div>
           </div>
 
           {/* Access Point Card */}
-          <div className="bg-white dark:bg-slate-900/90 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 flex flex-col justify-between space-y-4 shadow-[0_1px_2px_rgba(0,0,0,0.03)] hover:border-slate-300 dark:hover:border-slate-700 transition-all">
-            <div className="flex items-start gap-3">
-              <div className="p-2.5 rounded-2xl bg-[#f3e8ff] dark:bg-purple-950/60 border border-[#e9d5ff] dark:border-purple-800/60 text-[#9333ea] dark:text-purple-400 shrink-0">
-                <AccessPointIcon className="w-5 h-5" />
-              </div>
-              <div className="min-w-0">
-                <span className="text-sm font-bold text-[#9333ea] dark:text-purple-400 block truncate">
-                  Access Point
-                </span>
-                <span className="text-xs text-slate-400 dark:text-slate-500 font-medium block">
-                  Total
-                </span>
-                <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight leading-tight mt-0.5">
-                  {apCount.toLocaleString()}
+          <div className="relative bg-gradient-to-br from-purple-50/60 via-white to-white dark:from-purple-950/20 dark:via-slate-900/90 dark:to-slate-900/90 rounded-3xl border border-purple-200/70 dark:border-purple-800/50 p-4 sm:p-5 flex flex-col justify-between space-y-4 shadow-[0_2px_8px_rgba(168,85,247,0.08)] hover:shadow-[0_6px_20px_rgba(168,85,247,0.18)] hover:border-purple-300/80 dark:hover:border-purple-700/70 transition-all duration-200 overflow-hidden before:absolute before:inset-y-0 before:left-0 before:w-1 before:rounded-l-3xl before:bg-gradient-to-b before:from-purple-400 before:to-purple-600">
+            <div className="flex flex-wrap justify-between items-start gap-2">
+              <div className="flex items-start gap-3">
+                <div className="p-2.5 rounded-2xl bg-[#f3e8ff] dark:bg-purple-950/60 border border-[#e9d5ff] dark:border-purple-800/60 text-[#9333ea] dark:text-purple-400 shrink-0">
+                  <AccessPointIcon className="w-5 h-5" />
                 </div>
+                <div className="min-w-0">
+                  <span className="text-sm font-bold text-[#9333ea] dark:text-purple-400 block truncate">
+                    Access Point
+                  </span>
+                  <span className="text-xs text-slate-400 dark:text-slate-500 font-medium block">
+                    Total
+                  </span>
+                  <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight leading-tight mt-0.5">
+                    {apCount.toLocaleString()}
+                  </div>
+                </div>
+              </div>
+              <div className="pt-1">
+                <Link
+                  href="/devices/access-point"
+                  className="inline-flex items-center justify-center w-full py-2 px-3 rounded-2xl border border-purple-200/80 dark:border-purple-800/80 text-purple-600 dark:text-purple-400 bg-purple-50/20 dark:bg-purple-950/20 hover:bg-purple-50 dark:hover:bg-purple-950/50 font-bold text-xs sm:text-sm transition-colors text-center"
+                >
+                  View Devices
+                </Link>
               </div>
             </div>
 
@@ -356,32 +367,34 @@ export function DashboardClient({ stats }: DashboardClientProps) {
               </div>
             </div>
 
-            <div className="pt-1">
-              <Link
-                href="/devices/access-point"
-                className="inline-flex items-center justify-center w-full py-2 px-3 rounded-2xl border border-purple-200/80 dark:border-purple-800/80 text-purple-600 dark:text-purple-400 bg-purple-50/20 dark:bg-purple-950/20 hover:bg-purple-50 dark:hover:bg-purple-950/50 font-bold text-xs sm:text-sm transition-colors text-center"
-              >
-                View Devices
-              </Link>
-            </div>
           </div>
 
           {/* Router Card */}
-          <div className="bg-white dark:bg-slate-900/90 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 flex flex-col justify-between space-y-4 shadow-[0_1px_2px_rgba(0,0,0,0.03)] hover:border-slate-300 dark:hover:border-slate-700 transition-all">
-            <div className="flex items-start gap-3">
-              <div className="p-2.5 rounded-2xl bg-[#e0e7ff] dark:bg-indigo-950/60 border border-[#c7d2fe] dark:border-indigo-800/60 text-[#4f46e5] dark:text-indigo-400 shrink-0">
-                <CustomRouterIcon className="w-5 h-5" />
-              </div>
-              <div className="min-w-0">
-                <span className="text-sm font-bold text-[#4f46e5] dark:text-indigo-400 block truncate">
-                  Router
-                </span>
-                <span className="text-xs text-slate-400 dark:text-slate-500 font-medium block">
-                  Total
-                </span>
-                <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight leading-tight mt-0.5">
-                  {routerCount.toLocaleString()}
+          <div className="relative bg-gradient-to-br from-indigo-50/60 via-white to-white dark:from-indigo-950/20 dark:via-slate-900/90 dark:to-slate-900/90 rounded-3xl border border-indigo-200/70 dark:border-indigo-800/50 p-4 sm:p-5 flex flex-col justify-between space-y-4 shadow-[0_2px_8px_rgba(99,102,241,0.08)] hover:shadow-[0_6px_20px_rgba(99,102,241,0.18)] hover:border-indigo-300/80 dark:hover:border-indigo-700/70 transition-all duration-200 overflow-hidden before:absolute before:inset-y-0 before:left-0 before:w-1 before:rounded-l-3xl before:bg-gradient-to-b before:from-indigo-400 before:to-indigo-600">
+            <div className="flex flex-wrap justify-between items-start gap-2">
+              <div className="flex items-start gap-3">
+                <div className="p-2.5 rounded-2xl bg-[#e0e7ff] dark:bg-indigo-950/60 border border-[#c7d2fe] dark:border-indigo-800/60 text-[#4f46e5] dark:text-indigo-400 shrink-0">
+                  <CustomRouterIcon className="w-5 h-5" />
                 </div>
+                <div className="min-w-0">
+                  <span className="text-sm font-bold text-[#4f46e5] dark:text-indigo-400 block truncate">
+                    Router
+                  </span>
+                  <span className="text-xs text-slate-400 dark:text-slate-500 font-medium block">
+                    Total
+                  </span>
+                  <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight leading-tight mt-0.5">
+                    {routerCount.toLocaleString()}
+                  </div>
+                </div>
+              </div>
+              <div className="pt-1">
+                <Link
+                  href="/devices/router"
+                  className="inline-flex items-center justify-center w-full py-2 px-3 rounded-2xl border border-indigo-200/80 dark:border-indigo-800/80 text-indigo-600 dark:text-indigo-400 bg-indigo-50/20 dark:bg-indigo-950/20 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 font-bold text-xs sm:text-sm transition-colors text-center"
+                >
+                  View Devices
+                </Link>
               </div>
             </div>
 
@@ -407,32 +420,35 @@ export function DashboardClient({ stats }: DashboardClientProps) {
               </div>
             </div>
 
-            <div className="pt-1">
-              <Link
-                href="/devices/router"
-                className="inline-flex items-center justify-center w-full py-2 px-3 rounded-2xl border border-indigo-200/80 dark:border-indigo-800/80 text-indigo-600 dark:text-indigo-400 bg-indigo-50/20 dark:bg-indigo-950/20 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 font-bold text-xs sm:text-sm transition-colors text-center"
-              >
-                View Devices
-              </Link>
-            </div>
+
           </div>
 
           {/* Switch Card */}
-          <div className="bg-white dark:bg-slate-900/90 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 flex flex-col justify-between space-y-4 shadow-[0_1px_2px_rgba(0,0,0,0.03)] hover:border-slate-300 dark:hover:border-slate-700 transition-all">
-            <div className="flex items-start gap-3">
-              <div className="p-2.5 rounded-2xl bg-[#dcfce7] dark:bg-emerald-950/60 border border-[#bbf7d0] dark:border-emerald-800/60 text-[#16a34a] dark:text-emerald-400 shrink-0">
-                <SwitchIcon className="w-5 h-5" />
-              </div>
-              <div className="min-w-0">
-                <span className="text-sm font-bold text-[#16a34a] dark:text-emerald-400 block truncate">
-                  Switch
-                </span>
-                <span className="text-xs text-slate-400 dark:text-slate-500 font-medium block">
-                  Total
-                </span>
-                <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight leading-tight mt-0.5">
-                  {switchCount.toLocaleString()}
+          <div className="relative bg-gradient-to-br from-emerald-50/60 via-white to-white dark:from-emerald-950/20 dark:via-slate-900/90 dark:to-slate-900/90 rounded-3xl border border-emerald-200/70 dark:border-emerald-800/50 p-4 sm:p-5 flex flex-col justify-between space-y-4 shadow-[0_2px_8px_rgba(16,185,129,0.08)] hover:shadow-[0_6px_20px_rgba(16,185,129,0.18)] hover:border-emerald-300/80 dark:hover:border-emerald-700/70 transition-all duration-200 overflow-hidden before:absolute before:inset-y-0 before:left-0 before:w-1 before:rounded-l-3xl before:bg-gradient-to-b before:from-emerald-400 before:to-emerald-600">
+            <div className="flex flex-wrap justify-between items-start gap-2">
+              <div className="flex items-start gap-3">
+                <div className="p-2.5 rounded-2xl bg-[#dcfce7] dark:bg-emerald-950/60 border border-[#bbf7d0] dark:border-emerald-800/60 text-[#16a34a] dark:text-emerald-400 shrink-0">
+                  <SwitchIcon className="w-5 h-5" />
                 </div>
+                <div className="min-w-0">
+                  <span className="text-sm font-bold text-[#16a34a] dark:text-emerald-400 block truncate">
+                    Switch
+                  </span>
+                  <span className="text-xs text-slate-400 dark:text-slate-500 font-medium block">
+                    Total
+                  </span>
+                  <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight leading-tight mt-0.5">
+                    {switchCount.toLocaleString()}
+                  </div>
+                </div>
+              </div>
+              <div className="pt-1">
+                <Link
+                  href="/devices/switch"
+                  className="inline-flex items-center justify-center w-full py-2 px-3 rounded-2xl border border-emerald-200/80 dark:border-emerald-800/80 text-emerald-600 dark:text-emerald-400 bg-emerald-50/20 dark:bg-emerald-950/20 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 font-bold text-xs sm:text-sm transition-colors text-center"
+                >
+                  View Devices
+                </Link>
               </div>
             </div>
 
@@ -458,14 +474,6 @@ export function DashboardClient({ stats }: DashboardClientProps) {
               </div>
             </div>
 
-            <div className="pt-1">
-              <Link
-                href="/devices/switch"
-                className="inline-flex items-center justify-center w-full py-2 px-3 rounded-2xl border border-emerald-200/80 dark:border-emerald-800/80 text-emerald-600 dark:text-emerald-400 bg-emerald-50/20 dark:bg-emerald-950/20 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 font-bold text-xs sm:text-sm transition-colors text-center"
-              >
-                View Devices
-              </Link>
-            </div>
           </div>
         </div>
       </section>
