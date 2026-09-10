@@ -50,7 +50,8 @@ export default function SettingsClient() {
               Device Catalog Management
             </CardTitle>
             <CardDescription className="text-xs text-slate-500 dark:text-slate-400">
-              Configure device types (Antenna, Router, Switch, Server, AP), manufacturer brands, and hardware model specifications.
+              Configure device types (Antenna, Router, Switch, Server, AP),
+              manufacturer brands, and hardware model specifications.
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-2">
@@ -73,12 +74,16 @@ export default function SettingsClient() {
               Administrator Accounts
             </CardTitle>
             <CardDescription className="text-xs text-slate-500 dark:text-slate-400">
-              Manage authorized administrator email addresses with full access to device lifecycle and catalog operations.
+              Manage authorized administrator email addresses with full access
+              to device lifecycle and catalog operations.
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-2">
             <Link href="/admins">
-              <Button variant="outline" className="w-full rounded-xl border-slate-200 dark:border-slate-800 text-xs font-semibold justify-between">
+              <Button
+                variant="outline"
+                className="w-full rounded-xl border-slate-200 dark:border-slate-800 text-xs font-semibold justify-between"
+              >
                 <span>Manage Admin Accounts</span>
                 <ChevronRight className="w-4 h-4" />
               </Button>
@@ -96,13 +101,16 @@ export default function SettingsClient() {
               Platform & Database Architecture
             </CardTitle>
             <CardDescription className="text-xs text-slate-500 dark:text-slate-400">
-              Core platform specifications, system modules, and development details
+              Core platform specifications, system modules, and development
+              details
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-2">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
               <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 space-y-1">
-                <span className="text-slate-400 block font-medium">Application</span>
+                <span className="text-slate-400 block font-medium">
+                  Application
+                </span>
                 <span className="font-bold text-slate-900 dark:text-slate-100 text-sm block">
                   GESN Device Management
                 </span>
@@ -112,7 +120,9 @@ export default function SettingsClient() {
               </div>
 
               <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 space-y-1">
-                <span className="text-slate-400 block font-medium">Data Architecture</span>
+                <span className="text-slate-400 block font-medium">
+                  Data Architecture
+                </span>
                 <span className="font-bold text-slate-900 dark:text-slate-100 text-sm block">
                   MongoDB Indexed Cluster
                 </span>
@@ -122,7 +132,9 @@ export default function SettingsClient() {
               </div>
 
               <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 space-y-1">
-                <span className="text-slate-400 block font-medium">Authentication</span>
+                <span className="text-slate-400 block font-medium">
+                  Authentication
+                </span>
                 <span className="font-bold text-slate-900 dark:text-slate-100 text-sm block">
                   Clerk RBAC Protected
                 </span>
@@ -132,20 +144,20 @@ export default function SettingsClient() {
               </div>
 
               <a
-                href="https://www.artistycode.studio/"
+                href="https://www.rizmec.com/"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 hover:border-sky-400 dark:hover:border-sky-600 hover:bg-sky-50/50 dark:hover:bg-sky-950/20 transition-all group space-y-1 block"
               >
-                <span className="text-slate-400 block font-medium flex items-center justify-between">
+                <span className="text-slate-400 font-medium flex items-center justify-between">
                   <span>Developed By</span>
                   <ExternalLink className="w-3 h-3 text-sky-500 opacity-70 group-hover:opacity-100 transition-opacity" />
                 </span>
                 <span className="font-bold text-sky-600 dark:text-sky-400 text-sm block group-hover:underline">
-                  ArtistyCode Studio
+                  RIZMEC
                 </span>
                 <span className="text-[11px] text-slate-500 dark:text-slate-400 block truncate">
-                  artistycode.studio
+                  rizmec.com | Software & Systems Engineering
                 </span>
               </a>
             </div>
