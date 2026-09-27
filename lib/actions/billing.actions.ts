@@ -10,6 +10,29 @@ import type { FilterQuery } from "mongoose";
 import type { BillingStatus, GetBillingsParams, IBilling } from "@/types";
 import { requirePermission, logActivityAndNotify } from "@/lib/auth-guard";
 
+const OVERDUE_SYNC_INTERVAL_MS = 5 * 60 * 1000;
+let lastOverdueSyncAt = 0;
+
+async function syncOverdueBillsIfNeeded() {
+  const now = Date.now();
+  if (now - lastOverdueSyncAt < OVERDUE_SYNC_INTERVAL_MS) return;
+
+  // Set this before awaiting so concurrent page requests share one sweep.
+  lastOverdueSyncAt = now;
+  try {
+    await Billing.updateMany(
+      {
+        dueDate: { $lt: new Date(now) },
+        status: { $in: ["Pending", "Partial"] },
+      },
+      { status: "Overdue" }
+    );
+  } catch (error) {
+    lastOverdueSyncAt = 0;
+    throw error;
+  }
+}
+
 // Helper to generate next sequential Billing ID (e.g. "BILL-000001")
 async function getNextBillingId(): Promise<string> {
   const counter = await Counter.findByIdAndUpdate(
@@ -94,15 +117,7 @@ export async function getBillings(params?: GetBillingsParams) {
       break;
   }
 
-  // Auto-evaluate overdue bills whose due date has passed
-  const now = new Date();
-  await Billing.updateMany(
-    {
-      dueDate: { $lt: now },
-      status: { $in: ["Pending", "Partial"] },
-    },
-    { status: "Overdue" }
-  );
+  await syncOverdueBillsIfNeeded();
 
   const [billings, total] = await Promise.all([
     Billing.find(query)
@@ -411,4 +426,3 @@ export async function getAllBillingsForExport(params?: {
 
   return JSON.parse(JSON.stringify(billings)) as IBilling[];
 }
-

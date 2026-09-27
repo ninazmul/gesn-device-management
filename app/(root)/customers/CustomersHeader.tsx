@@ -90,7 +90,7 @@ export function CustomersHeader({ total }: CustomersHeaderProps) {
       }));
 
       const dateStr = new Date().toISOString().slice(0, 10);
-      exportToExcel(
+      await exportToExcel(
         rows,
         CUSTOMER_EXPORT_HEADERS,
         "Customers",
@@ -104,8 +104,9 @@ export function CustomersHeader({ total }: CustomersHeaderProps) {
     }
   };
 
-  const handleDownloadTemplate = () => {
-    downloadTemplate(
+  const handleDownloadTemplate = async () => {
+    try {
+      await downloadTemplate(
       CUSTOMER_TEMPLATE_HEADERS,
       {
         "Customer Name": "Green Enterprise Ltd",
@@ -118,8 +119,11 @@ export function CustomersHeader({ total }: CustomersHeaderProps) {
         "Status": "Active",
       },
       "customers-import-template.xlsx"
-    );
-    toast.success("Excel template downloaded!");
+      );
+      toast.success("Excel template downloaded!");
+    } catch {
+      toast.error("Failed to download the Excel template.");
+    }
   };
 
   return (

@@ -85,9 +85,13 @@ export function BulkImportDialog({
     if (file) handleFileChange(file);
   };
 
-  const handleDownloadTemplate = () => {
-    downloadTemplate(templateHeaders, sampleRow, templateFilename);
-    toast.success("Excel template downloaded!");
+  const handleDownloadTemplate = async () => {
+    try {
+      await downloadTemplate(templateHeaders, sampleRow, templateFilename);
+      toast.success("Excel template downloaded!");
+    } catch {
+      toast.error("Failed to download the Excel template.");
+    }
   };
 
   const handleStartImport = async () => {

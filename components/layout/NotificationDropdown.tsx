@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { Bell, CheckCheck, ExternalLink, ShieldAlert, Sparkles, Clock, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
+  getSuperAdminUnreadCount,
   getSuperAdminNotifications,
   markNotificationAsRead,
   markAllNotificationsAsRead,
@@ -24,18 +25,11 @@ export function NotificationDropdown() {
   const [showAll, setShowAll] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Fetch only count on mount (lightweight badge update)
-  // Full data fetched on demand when dropdown opens
+  // Fetch only the count on mount; full data loads when the dropdown opens.
   const fetchUnreadCount = useCallback(async () => {
     if (!canAccessNotifications) return;
     try {
-      const data = await getSuperAdminNotifications();
-      // Only update count for badge — don't repopulate full list in background
-      setUnreadCount(data.unreadCount);
-      // Seed notifications only if list is empty (first load)
-      setNotifications((prev) =>
-        prev.length === 0 ? data.notifications : prev
-      );
+      setUnreadCount(await getSuperAdminUnreadCount());
     } catch (err) {
       console.error("Error fetching notifications:", err);
     }
@@ -52,7 +46,7 @@ export function NotificationDropdown() {
     }
   }, [canAccessNotifications]);
 
-  // On mount: single lightweight fetch for bell badge — no polling
+  // On mount: single lightweight fetch for the bell badge — no polling.
   useEffect(() => {
     fetchUnreadCount();
   }, [fetchUnreadCount]);

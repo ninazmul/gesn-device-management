@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
 import {
   Dialog,
@@ -55,11 +56,15 @@ import type {
   ISwitchOption,
   IServerOption,
 } from "@/types";
-import { BarcodeScannerModal } from "./BarcodeScannerModal";
 import { useBarcodeGun } from "@/hooks/useBarcodeGun";
 import type { ParsedBarcodeResult } from "@/lib/barcode";
 import { usePermissions } from "@/components/providers/PermissionContext";
 import { formatDisplaySL } from "@/lib/utils";
+
+const BarcodeScannerModal = dynamic(
+  () => import("./BarcodeScannerModal").then((module) => module.BarcodeScannerModal),
+  { ssr: false }
+);
 
 interface DeviceFormDialogProps {
   open: boolean;
@@ -363,16 +368,16 @@ export function DeviceFormDialog({
 
   // Load Brands when deviceType changes
   useEffect(() => {
-    if (!deviceType) return;
+    if (!open || !deviceType) return;
     setLoadingBrands(true);
     getBrands(deviceType, true)
       .then(setAvailableBrands)
       .finally(() => setLoadingBrands(false));
-  }, [deviceType]);
+  }, [deviceType, open]);
 
   // Load Models when brand changes
   useEffect(() => {
-    if (!brand || !deviceType) {
+    if (!open || !brand || !deviceType) {
       setAvailableModels([]);
       return;
     }
@@ -380,7 +385,7 @@ export function DeviceFormDialog({
     getModels({ deviceType, brand, onlyActive: true })
       .then(setAvailableModels)
       .finally(() => setLoadingModels(false));
-  }, [brand, deviceType]);
+  }, [brand, deviceType, open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1452,14 +1457,16 @@ export function DeviceFormDialog({
         </form>
 
         {/* Live Camera Scanner Modal */}
-        <BarcodeScannerModal
-          open={scannerOpen}
-          onOpenChange={setScannerOpen}
-          onScan={handleBarcodeScan}
-          title="Scan Device Barcode / Sticker"
-          description="Point your camera at the MAC barcode or sticker on the device."
-          targetFieldLabel={scannerTargetField}
-        />
+        {scannerOpen && (
+          <BarcodeScannerModal
+            open={scannerOpen}
+            onOpenChange={setScannerOpen}
+            onScan={handleBarcodeScan}
+            title="Scan Device Barcode / Sticker"
+            description="Point your camera at the MAC barcode or sticker on the device."
+            targetFieldLabel={scannerTargetField}
+          />
+        )}
 
         {/* Scan Result Field-Assignment Confirmation */}
         {scanPendingResult && (

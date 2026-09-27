@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Wifi,
   Network,
@@ -125,6 +126,7 @@ interface DashboardClientProps {
 }
 
 export function DashboardClient({ stats }: DashboardClientProps) {
+  const router = useRouter();
   const { canRead, canWrite, isSuperAdmin, role } = usePermissions();
   const canViewServerInfra = isSuperAdmin || role === "admin";
   const canWriteDevices = canWrite("devices");
@@ -785,7 +787,7 @@ export function DashboardClient({ stats }: DashboardClientProps) {
         defaultDeviceType={createType}
         onSuccess={() => {
           setCreateDialogOpen(false);
-          window.location.reload();
+          router.refresh();
         }}
       />
 
@@ -795,7 +797,7 @@ export function DashboardClient({ stats }: DashboardClientProps) {
         onOpenChange={setCreateCustomerOpen}
         onSuccess={() => {
           setCreateCustomerOpen(false);
-          window.location.reload();
+          router.refresh();
         }}
       />
 

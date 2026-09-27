@@ -46,18 +46,6 @@ export async function getDashboardStats(): Promise<DashboardStats> {
                 },
               },
             ],
-            mikrotikCount: [
-              {
-                $match: {
-                  $or: [
-                    { brand: { $regex: "mikrotik", $options: "i" } },
-                    { model: { $regex: "mikrotik", $options: "i" } },
-                    { deviceName: { $regex: "mikrotik", $options: "i" } },
-                  ],
-                },
-              },
-              { $count: "total" },
-            ],
             serverLocations: [
               {
                 $match: {

@@ -88,7 +88,7 @@ export function BillingHeader({ total }: BillingHeaderProps) {
         ? `all-billing-invoices-${dateStr}.xlsx`
         : `billing-${currentMonth || "current"}-${dateStr}.xlsx`;
 
-      exportToExcel(
+      await exportToExcel(
         rows,
         BILLING_EXPORT_HEADERS,
         "Invoices",

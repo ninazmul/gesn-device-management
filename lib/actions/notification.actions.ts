@@ -31,6 +31,20 @@ export async function getSuperAdminNotifications() {
   };
 }
 
+/** Fetches only the bell-badge count; notification rows load when the menu opens. */
+export async function getSuperAdminUnreadCount() {
+  await connectToDatabase();
+  const profile = await getCurrentAdminProfile();
+
+  if (!profile || (profile.role !== "super_admin" && profile.role !== "developer")) {
+    return 0;
+  }
+
+  return Notification.countDocuments({
+    readBy: { $ne: profile.email.toLowerCase() },
+  });
+}
+
 // Export alias for clarity
 export const getAdminNotifications = getSuperAdminNotifications;
 

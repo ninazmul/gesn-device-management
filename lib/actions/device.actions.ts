@@ -933,7 +933,7 @@ export async function deleteDevice(id: string) {
 // GLOBAL SEARCH (⌘K Fast Lookup)
 // ==========================================
 export async function searchGlobalDevices(searchTerm: string) {
-  if (!searchTerm || searchTerm.trim().length < 1) return [];
+  if (!searchTerm || searchTerm.trim().length < 2) return [];
   await connectToDatabase();
 
   const term = searchTerm.trim();

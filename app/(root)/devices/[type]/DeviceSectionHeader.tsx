@@ -197,7 +197,7 @@ export function DeviceSectionHeader({
       });
 
       const dateStr = new Date().toISOString().slice(0, 10);
-      exportToExcel(
+      await exportToExcel(
         rows,
         DEVICE_EXPORT_HEADERS,
         typeName,
@@ -211,13 +211,17 @@ export function DeviceSectionHeader({
     }
   };
 
-  const handleDownloadTemplate = () => {
-    downloadTemplate(
+  const handleDownloadTemplate = async () => {
+    try {
+      await downloadTemplate(
       DEVICE_TEMPLATE_HEADERS,
       getSectionSampleRow(typeSlug, typeName),
       `${typeSlug}-import-template.xlsx`
-    );
-    toast.success("Excel template downloaded!");
+      );
+      toast.success("Excel template downloaded!");
+    } catch {
+      toast.error("Failed to download the Excel template.");
+    }
   };
 
   return (

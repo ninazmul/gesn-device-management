@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -36,6 +36,7 @@ export function GlobalSearchModal({ open, onOpenChange }: GlobalSearchModalProps
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<IDevice[]>([]);
   const [isPending, startTransition] = useTransition();
+  const searchRequestId = useRef(0);
 
   // Reset when opened
   useEffect(() => {
@@ -47,7 +48,10 @@ export function GlobalSearchModal({ open, onOpenChange }: GlobalSearchModalProps
 
   // Handle live search
   useEffect(() => {
-    if (!query.trim()) {
+    const term = query.trim();
+    const requestId = ++searchRequestId.current;
+
+    if (term.length < 2) {
       setResults([]);
       return;
     }
@@ -55,13 +59,13 @@ export function GlobalSearchModal({ open, onOpenChange }: GlobalSearchModalProps
     const timer = setTimeout(() => {
       startTransition(async () => {
         try {
-          const res = await searchGlobalDevices(query);
-          setResults(res);
+          const res = await searchGlobalDevices(term);
+          if (searchRequestId.current === requestId) setResults(res);
         } catch {
-          setResults([]);
+          if (searchRequestId.current === requestId) setResults([]);
         }
       });
-    }, 200);
+    }, 350);
 
     return () => clearTimeout(timer);
   }, [query]);

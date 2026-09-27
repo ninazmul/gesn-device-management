@@ -2,7 +2,12 @@
  * Shared Excel (xlsx) utilities for bulk import/export across all modules.
  * Uses SheetJS (xlsx) — works in both browser and Node.js contexts.
  */
-import * as XLSX from "xlsx";
+let xlsxPromise: Promise<typeof import("xlsx")> | undefined;
+
+function loadXlsx() {
+  xlsxPromise ??= import("xlsx");
+  return xlsxPromise;
+}
 
 // ---------------------------------------------------------------------------
 // Robust Field Parsing & Type Coercion Helpers
@@ -100,11 +105,12 @@ export function safeParseString(val: unknown, fallback: string = ""): string {
  * Creates and triggers download of a blank .xlsx template with given headers.
  * Also adds a sample row so users understand the expected format.
  */
-export function downloadTemplate(
+export async function downloadTemplate(
   headers: string[],
   sampleRow: Record<string, string | number>,
   filename: string
-): void {
+): Promise<void> {
+  const XLSX = await loadXlsx();
   const ws = XLSX.utils.json_to_sheet([sampleRow], { header: headers });
 
   // Style the header row width hints (col widths)
@@ -122,13 +128,15 @@ export function downloadTemplate(
 /**
  * Exports an array of objects to a formatted .xlsx file and triggers download.
  */
-export function exportToExcel<T extends Record<string, unknown>>(
+export async function exportToExcel<T extends Record<string, unknown>>(
   data: T[],
   headers: string[],
   sheetName: string,
   filename: string
-): void {
+): Promise<void> {
   if (data.length === 0) return;
+
+  const XLSX = await loadXlsx();
 
   const ws = XLSX.utils.json_to_sheet(data, { header: headers });
   ws["!cols"] = headers.map(() => ({ wch: 22 }));
@@ -151,7 +159,8 @@ export interface ExcelSheet {
 /**
  * Creates a multi-sheet workbook — used for the full financial report.
  */
-export function exportMultiSheetExcel(sheets: ExcelSheet[], filename: string): void {
+export async function exportMultiSheetExcel(sheets: ExcelSheet[], filename: string): Promise<void> {
+  const XLSX = await loadXlsx();
   const wb = XLSX.utils.book_new();
 
   for (const sheet of sheets) {
@@ -177,6 +186,7 @@ export function exportMultiSheetExcel(sheets: ExcelSheet[], filename: string): v
 export async function parseExcelFile(
   file: File
 ): Promise<Record<string, unknown>[]> {
+  const XLSX = await loadXlsx();
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
 

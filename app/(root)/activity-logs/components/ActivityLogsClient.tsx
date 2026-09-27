@@ -186,7 +186,7 @@ export default function ActivityLogsClient({
       }));
 
       const dateStr = new Date().toISOString().slice(0, 10);
-      exportToExcel(
+      await exportToExcel(
         rows,
         [
           "Timestamp",
