@@ -25,13 +25,18 @@ import {
   Wifi,
   Router as RouterIcon,
   Network,
+  CheckCircle2,
+  XCircle,
+  Loader2,
+  AlertTriangle,
 } from "lucide-react";
 import { DeviceStatusBadge } from "./DeviceStatusBadge";
 import { CopyButton } from "@/components/shared/CopyButton";
 import { DeviceStatusDialog } from "./DeviceStatusDialog";
 import { DeviceFormDialog } from "./DeviceFormDialog";
+import { RejectDeviceDialog } from "./RejectDeviceDialog";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
-import { deleteDevice, toggleDeviceActive } from "@/lib/actions/device.actions";
+import { deleteDevice, toggleDeviceActive, approveDevice } from "@/lib/actions/device.actions";
 import { formatDisplaySL } from "@/lib/utils";
 import { toast } from "react-hot-toast";
 import type { IDevice } from "@/types";
@@ -117,16 +122,18 @@ export function DeviceTable({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { canWrite, isSuperAdmin } = usePermissions();
+  const { canWrite, isSuperAdmin, isDeveloper, admin, canApproveDevice, canDeleteDevice, canEditDevice } = usePermissions();
   const canWriteDevices = canWrite("devices");
 
   // Modals state
   const [editingDevice, setEditingDevice] = useState<IDevice | null>(null);
   const [statusDevice, setStatusDevice] = useState<IDevice | null>(null);
   const [deletingDevice, setDeletingDevice] = useState<IDevice | null>(null);
+  const [rejectingDevice, setRejectingDevice] = useState<IDevice | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [approvingId, setApprovingId] = useState<string | null>(null);
 
   const navigatePage = (newPage: number) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -164,6 +171,20 @@ export function DeviceTable({
       toast.error(err instanceof Error ? err.message : "Failed to delete device");
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleApproveDevice = async (e: React.MouseEvent, deviceId: string) => {
+    e.stopPropagation();
+    try {
+      setApprovingId(deviceId);
+      await approveDevice(deviceId);
+      toast.success("Device approved and set to Active!");
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to approve device");
+    } finally {
+      setApprovingId(null);
     }
   };
 
@@ -257,6 +278,7 @@ export function DeviceTable({
                           const devTheme = getDeviceTypeTheme(device.deviceType);
                           const isOnline = device.status === "Active" || device.status === "Available";
                           const isPendingOrMaint = device.status === "Pending" || device.status === "Maintenance";
+                          const isRejected = device.status === "Rejected";
 
                           const dotColor =
                             device.status === "Active"
@@ -269,6 +291,8 @@ export function DeviceTable({
                               ? "bg-amber-500"
                               : device.status === "Retired"
                               ? "bg-purple-500"
+                              : device.status === "Rejected"
+                              ? "bg-rose-600"
                               : "bg-slate-400";
 
                           return (
@@ -321,6 +345,17 @@ export function DeviceTable({
                                     <span className="inline-flex items-center px-1.5 py-0.2 rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-medium text-[10px]">
                                       UpLink: #{formatDisplaySL((device.uplinkSwitch as IDevice).sl)}
                                     </span>
+                                  )}
+                                  {device.submittedBy?.email && (
+                                    admin?.email && device.submittedBy.email.toLowerCase() === admin.email.toLowerCase() ? (
+                                      <span className="inline-flex items-center px-1.5 py-0.2 rounded-full bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-sky-800 text-[10px] font-semibold">
+                                        Submitted by you
+                                      </span>
+                                    ) : (isSuperAdmin || isDeveloper) ? (
+                                      <span className="text-[10px] text-slate-400" title={`Submitted by ${device.submittedBy.email}`}>
+                                        By: {device.submittedBy.name || device.submittedBy.email.split("@")[0]}
+                                      </span>
+                                    ) : null
                                   )}
                                 </div>
                               </div>
@@ -431,6 +466,41 @@ export function DeviceTable({
                       {/* Row Actions */}
                       <TableCell className="text-right whitespace-nowrap">
                         <div className="flex items-center justify-end gap-1">
+                          {/* Quick Approve/Reject for Pending Devices */}
+                          {device.status === "Pending" && canApproveDevice && (
+                            <>
+                              <button
+                                type="button"
+                                disabled={approvingId === device._id}
+                                onClick={(e) => handleApproveDevice(e, device._id)}
+                                className="p-1.5 rounded-lg text-emerald-500 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors disabled:opacity-50"
+                                title="Approve Device"
+                              >
+                                {approvingId === device._id ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <CheckCircle2 className="w-4 h-4" />
+                                )}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setRejectingDevice(device)}
+                                className="p-1.5 rounded-lg text-rose-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                                title="Reject Device"
+                              >
+                                <XCircle className="w-4 h-4" />
+                              </button>
+                            </>
+                          )}
+                          {/* Rejection reason tooltip for Rejected devices */}
+                          {device.status === "Rejected" && (device.rejectionReason || device.rejectedBy?.reason) && (
+                            <span
+                              className="p-1.5 rounded-lg text-rose-400 cursor-help"
+                              title={`Rejected: ${device.rejectionReason || device.rejectedBy?.reason}`}
+                            >
+                              <AlertTriangle className="w-4 h-4" />
+                            </span>
+                          )}
                           <Link
                             href={`/devices/${device.deviceType}/${device._id}`}
                             className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
@@ -438,7 +508,7 @@ export function DeviceTable({
                           >
                             <Eye className="w-4 h-4" />
                           </Link>
-                          {canWriteDevices && (
+                          {(canWriteDevices || canEditDevice) && (
                             <button
                               type="button"
                               onClick={() => setEditingDevice(device)}
@@ -448,7 +518,7 @@ export function DeviceTable({
                               <Pencil className="w-4 h-4" />
                             </button>
                           )}
-                          {canWriteDevices && (
+                          {(canWriteDevices || canDeleteDevice) && (
                             <button
                               type="button"
                               onClick={() => setDeletingDevice(device)}
@@ -542,6 +612,17 @@ export function DeviceTable({
         defaultDeviceType={currentType || "antenna"}
         onSuccess={() => {
           setIsCreateOpen(false);
+          router.refresh();
+        }}
+      />
+
+      {/* Reject Device Dialog */}
+      <RejectDeviceDialog
+        device={rejectingDevice}
+        open={Boolean(rejectingDevice)}
+        onOpenChange={(open) => !open && setRejectingDevice(null)}
+        onSuccess={() => {
+          setRejectingDevice(null);
           router.refresh();
         }}
       />

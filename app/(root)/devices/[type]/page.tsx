@@ -17,6 +17,7 @@ interface DeviceTypePageProps {
     brand?: string;
     model?: string;
     sortBy?: string;
+    submittedBy?: string;
     page?: string;
   }>;
 }
@@ -56,6 +57,7 @@ export default async function DeviceTypePage({
     brand: resolvedSearchParams.brand,
     model: resolvedSearchParams.model,
     sortBy: resolvedSearchParams.sortBy,
+    submittedBy: resolvedSearchParams.submittedBy,
     page,
     limit: 25,
   });

@@ -18,12 +18,43 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Loader2, Plus, Network, Server, X, ScanBarcode, Camera, Wifi, Fingerprint, MapPin } from "lucide-react";
+import {
+  Loader2,
+  Plus,
+  Network,
+  Server,
+  X,
+  ScanBarcode,
+  Camera,
+  Wifi,
+  Radio,
+  Router as RouterIcon,
+  Fingerprint,
+  MapPin,
+  ChevronDown,
+  ChevronUp,
+  Layers,
+  Globe,
+  SlidersHorizontal,
+} from "lucide-react";
 import { toast } from "react-hot-toast";
-import { createDevice, updateDevice, getAvailableSwitches, getAvailableServers } from "@/lib/actions/device.actions";
+import {
+  createDevice,
+  updateDevice,
+  getAvailableSwitches,
+  getAvailableServers,
+} from "@/lib/actions/device.actions";
 import { getBrands, getModels, getDeviceTypes } from "@/lib/actions/catalog.actions";
 import { PRIMARY_DEVICE_TYPES, DEVICE_STATUSES } from "@/lib/constants";
-import type { DeviceStatus, IDevice, IDeviceType, IBrand, IModel, ISwitchOption, IServerOption } from "@/types";
+import type {
+  DeviceStatus,
+  IDevice,
+  IDeviceType,
+  IBrand,
+  IModel,
+  ISwitchOption,
+  IServerOption,
+} from "@/types";
 import { BarcodeScannerModal } from "./BarcodeScannerModal";
 import { useBarcodeGun } from "@/hooks/useBarcodeGun";
 import type { ParsedBarcodeResult } from "@/lib/barcode";
@@ -47,16 +78,36 @@ export function DeviceFormDialog({
   deviceToEdit,
   onSuccess,
 }: DeviceFormDialogProps) {
-  const { isSuperAdmin } = usePermissions();
+  const { isSuperAdmin, isDeveloper, canApproveDevice } = usePermissions();
   const isEditing = !!deviceToEdit;
 
-  // Form State
+  // Active Device Type
   const [deviceType, setDeviceType] = useState(
     deviceToEdit?.deviceType || defaultDeviceType
   );
+
+  // Main Form Fields (Required based on deviceType)
+  const [macAddress, setMacAddress] = useState(deviceToEdit?.macAddress || "");
+  const [apNumber, setApNumber] = useState(deviceToEdit?.apNumber || "");
+  const [server, setServer] = useState<string>(
+    typeof deviceToEdit?.server === "object" && deviceToEdit.server
+      ? (deviceToEdit.server as IDevice)._id
+      : typeof deviceToEdit?.server === "string"
+      ? deviceToEdit.server
+      : ""
+  );
+  const [customerName, setCustomerName] = useState(deviceToEdit?.customerName || "");
+  const [customerMobile, setCustomerMobile] = useState(deviceToEdit?.customerMobile || "");
+  const [gpsLink, setGpsLink] = useState(deviceToEdit?.gpsLink || "");
+  const [description, setDescription] = useState(deviceToEdit?.description || "");
+
+  // More (Optional) Toggle & Fields
+  const [showMore, setShowMore] = useState(false);
   const [brand, setBrand] = useState(deviceToEdit?.brand || "");
   const [model, setModel] = useState(deviceToEdit?.model || "");
   const [deviceName, setDeviceName] = useState(deviceToEdit?.deviceName || "");
+  const [ipAddress, setIpAddress] = useState(deviceToEdit?.ipAddress || "");
+  const [onlineLink, setOnlineLink] = useState(deviceToEdit?.onlineLink || "");
   const [totalPorts, setTotalPorts] = useState<string>(
     deviceToEdit?.totalPorts !== undefined ? String(deviceToEdit.totalPorts) : "8"
   );
@@ -67,36 +118,21 @@ export function DeviceFormDialog({
       ? deviceToEdit.uplinkSwitch
       : ""
   );
-  const [server, setServer] = useState<string>(
-    typeof deviceToEdit?.server === "object" && deviceToEdit.server
-      ? (deviceToEdit.server as IDevice)._id
-      : typeof deviceToEdit?.server === "string"
-      ? deviceToEdit.server
-      : ""
-  );
-  const [description, setDescription] = useState(deviceToEdit?.description || "");
-  const [onlineLink, setOnlineLink] = useState(deviceToEdit?.onlineLink || "");
-  const [macAddress, setMacAddress] = useState(deviceToEdit?.macAddress || "");
-  const [ipAddress, setIpAddress] = useState(deviceToEdit?.ipAddress || "");
-  const [activationDate, setActivationDate] = useState(
-    deviceToEdit?.activationDate
-      ? new Date(deviceToEdit.activationDate).toISOString().split("T")[0]
-      : new Date().toISOString().split("T")[0]
-  );
   const [latitude, setLatitude] = useState(
     deviceToEdit?.gps?.latitude !== undefined ? String(deviceToEdit.gps.latitude) : ""
   );
   const [longitude, setLongitude] = useState(
     deviceToEdit?.gps?.longitude !== undefined ? String(deviceToEdit.gps.longitude) : ""
   );
+  const [activationDate, setActivationDate] = useState(
+    deviceToEdit?.activationDate
+      ? new Date(deviceToEdit.activationDate).toISOString().split("T")[0]
+      : new Date().toISOString().split("T")[0]
+  );
+  const [frequency, setFrequency] = useState("");
   const [status, setStatus] = useState<DeviceStatus>(
     (deviceToEdit?.status as DeviceStatus) || "Pending"
   );
-  // Access Point / Router specific fields
-  const [apNumber, setApNumber] = useState(deviceToEdit?.apNumber || "");
-  const [customerName, setCustomerName] = useState(deviceToEdit?.customerName || "");
-  const [customerMobile, setCustomerMobile] = useState(deviceToEdit?.customerMobile || "");
-  const [gpsLink, setGpsLink] = useState(deviceToEdit?.gpsLink || "");
 
   // Catalog, Switch & Server Options
   const [availableTypes, setAvailableTypes] = useState<IDeviceType[]>([]);
@@ -109,15 +145,21 @@ export function DeviceFormDialog({
   const [loadingSwitches, setLoadingSwitches] = useState(false);
   const [loadingServers, setLoadingServers] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [scannerOpen, setScannerOpen] = useState(false);
-  const [scannerTargetField, setScannerTargetField] = useState<string>("Barcode / QR / MAC");
-  // Tracks which form fields were just populated by scan (for glow animation)
-  const [scannedFields, setScannedFields] = useState<Set<string>>(new Set());
-  // Holds a scanned value that needs user confirmation before being assigned to a field
-  const [scanPendingResult, setScanPendingResult] = useState<{ raw: string; parsed: import("@/lib/barcode").ParsedBarcodeResult } | null>(null);
 
-  // Assign a confirmed scan value to a specific field
-  const assignScanToField = (value: string, field: "macAddress" | "ipAddress" | "deviceName") => {
+  // Scanner modal states
+  const [scannerOpen, setScannerOpen] = useState(false);
+  const [scannerTargetField, setScannerTargetField] = useState<string>("MAC Address");
+  const [scannedFields, setScannedFields] = useState<Set<string>>(new Set());
+  const [scanPendingResult, setScanPendingResult] = useState<{
+    raw: string;
+    parsed: ParsedBarcodeResult;
+  } | null>(null);
+
+  // Assign scan to field helper
+  const assignScanToField = (
+    value: string,
+    field: "macAddress" | "ipAddress" | "deviceName"
+  ) => {
     const highlighted = new Set<string>();
     if (field === "macAddress") {
       setMacAddress(value.toUpperCase());
@@ -137,28 +179,24 @@ export function DeviceFormDialog({
     setScanPendingResult(null);
   };
 
-  // Handle scanned barcode: auto-fills clearly identified fields (MAC, IP);
-  // for ambiguous values (could be S/N, WiFi PW, etc.) shows a confirmation dialog.
+  // Handle scanned barcode / QR code
   const handleBarcodeScan = (result: ParsedBarcodeResult) => {
     const filledFields: string[] = [];
     const highlighted = new Set<string>();
     let hasAmbiguous = false;
 
-    // Auto-fill clearly identified MAC address
     if (result.macAddress) {
       setMacAddress(result.macAddress);
       filledFields.push(`MAC: ${result.macAddress}`);
       highlighted.add("macAddress");
     }
 
-    // Auto-fill clearly identified IP address
     if (result.ipAddress) {
       setIpAddress(result.ipAddress);
       filledFields.push(`IP: ${result.ipAddress}`);
       highlighted.add("ipAddress");
     }
 
-    // Auto-fill model when it came from a labelled key-value field (e.g. "MODEL:xxx")
     if (result.model) {
       setModel(result.model);
       if (!deviceName || deviceName === model) {
@@ -175,12 +213,9 @@ export function DeviceFormDialog({
       highlighted.add("brand");
     }
 
-    // Serial number handling removed – skip any serial-related scan results
-
-    // Fallback: raw value wasn't categorised at all (pure alphanumeric / hex blob)
+    // Fallback: raw value wasn't categorized at all
     if (!result.macAddress && !result.ipAddress && !result.model && result.raw) {
       const rawText = result.raw.trim();
-      // Could be an unformatted MAC
       if (/^[0-9A-Fa-f:.-]{12,17}$/.test(rawText)) {
         const cleanedHex = rawText.replace(/[^0-9A-Fa-f]/g, "").toUpperCase();
         if (cleanedHex.length === 12) {
@@ -189,7 +224,6 @@ export function DeviceFormDialog({
           filledFields.push(`MAC: ${formatted}`);
           highlighted.add("macAddress");
         } else {
-          // Still ambiguous
           hasAmbiguous = true;
         }
       } else {
@@ -197,7 +231,6 @@ export function DeviceFormDialog({
       }
     }
 
-    // If there is an ambiguous value, pause and ask the user which field to assign it to
     if (hasAmbiguous) {
       const ambiguousValue = result.raw.trim();
       setScanPendingResult({ raw: ambiguousValue, parsed: result });
@@ -207,38 +240,48 @@ export function DeviceFormDialog({
       setScannedFields(highlighted);
       setTimeout(() => setScannedFields(new Set()), 1400);
       if (!hasAmbiguous) {
-        toast.success(`Scanned: ${filledFields.join(", ")}. Form inputs updated.`);
+        toast.success(`Scanned: ${filledFields.join(", ")}`);
       }
     }
   };
 
-  // Hardware Scanner Gun Listener (Keyboard Wedge) - Fills inputs only
   useBarcodeGun({
     onScan: handleBarcodeScan,
     enabled: open,
   });
 
-  // Track previous open value so we only reset fields when the dialog
-  // transitions from closed → open (not on every re-render while it's open,
-  // e.g. when the scanner sub-modal opens/closes and changes scannerOpen state).
   const prevOpenRef = useRef(open);
 
-  // Sync state when editing device changes OR when the dialog first opens
+  // Sync state on open/reset
   useEffect(() => {
     const justOpened = open && !prevOpenRef.current;
     prevOpenRef.current = open;
 
-    // Only reset/populate fields when the dialog actually opens or the target
-    // device changes. Skip intermediate renders (open already true) so that
-    // values written by handleBarcodeScan are not overwritten.
     if (!justOpened && !deviceToEdit) return;
     if (!open && !deviceToEdit) return;
 
     if (deviceToEdit) {
       setDeviceType(deviceToEdit.deviceType);
-      setBrand(deviceToEdit.brand);
-      setModel(deviceToEdit.model);
-      setDeviceName(deviceToEdit.deviceName || deviceToEdit.model || "");
+      setMacAddress(deviceToEdit.macAddress || "");
+      setApNumber(deviceToEdit.apNumber || "");
+      setServer(
+        typeof deviceToEdit.server === "object" && deviceToEdit.server
+          ? (deviceToEdit.server as IDevice)._id
+          : typeof deviceToEdit.server === "string"
+          ? deviceToEdit.server
+          : ""
+      );
+      setCustomerName(deviceToEdit.customerName || "");
+      setCustomerMobile(deviceToEdit.customerMobile || "");
+      setGpsLink(deviceToEdit.gpsLink || "");
+      setDescription(deviceToEdit.description || "");
+
+      // More fields
+      setBrand(deviceToEdit.brand || "");
+      setModel(deviceToEdit.model || "");
+      setDeviceName(deviceToEdit.deviceName || "");
+      setIpAddress(deviceToEdit.ipAddress || "");
+      setOnlineLink(deviceToEdit.onlineLink || "");
       setTotalPorts(
         deviceToEdit.totalPorts !== undefined ? String(deviceToEdit.totalPorts) : "8"
       );
@@ -249,58 +292,45 @@ export function DeviceFormDialog({
           ? deviceToEdit.uplinkSwitch
           : ""
       );
-      setServer(
-        typeof deviceToEdit.server === "object" && deviceToEdit.server
-          ? (deviceToEdit.server as IDevice)._id
-          : typeof deviceToEdit.server === "string"
-          ? deviceToEdit.server
-          : ""
-      );
-      setDescription(deviceToEdit.description || "");
-      setOnlineLink(deviceToEdit.onlineLink || "");
-      setMacAddress(deviceToEdit.macAddress || "");
-      setIpAddress(deviceToEdit.ipAddress || "");
-      setActivationDate(
-        deviceToEdit.activationDate
-          ? new Date(deviceToEdit.activationDate).toISOString().split("T")[0]
-          : new Date().toISOString().split("T")[0]
-      );
       setLatitude(
         deviceToEdit.gps?.latitude !== undefined ? String(deviceToEdit.gps.latitude) : ""
       );
       setLongitude(
         deviceToEdit.gps?.longitude !== undefined ? String(deviceToEdit.gps.longitude) : ""
       );
+      setActivationDate(
+        deviceToEdit.activationDate
+          ? new Date(deviceToEdit.activationDate).toISOString().split("T")[0]
+          : new Date().toISOString().split("T")[0]
+      );
       setStatus(deviceToEdit.status || "Pending");
-      setApNumber(deviceToEdit.apNumber || "");
-      setCustomerName(deviceToEdit.customerName || "");
-      setCustomerMobile(deviceToEdit.customerMobile || "");
-      setGpsLink(deviceToEdit.gpsLink || "");
+      setShowMore(false); // Collapsed by default
     } else if (justOpened) {
-      // Only clear fields when the dialog is freshly opened for a new device
       setDeviceType(defaultDeviceType);
-      setBrand("");
-      setModel("");
-      setDeviceName("");
-      setTotalPorts(defaultDeviceType === "switch" ? "8" : "");
-      setUplinkSwitch("");
-      setServer("");
-      setDescription("");
-      setOnlineLink("");
       setMacAddress("");
-      setIpAddress("");
-      setActivationDate(new Date().toISOString().split("T")[0]);
-      setLatitude("");
-      setLongitude("");
-      setStatus("Pending");
       setApNumber("");
+      setServer("");
       setCustomerName("");
       setCustomerMobile("");
       setGpsLink("");
+      setDescription("");
+      setBrand("");
+      setModel("");
+      setDeviceName("");
+      setIpAddress("");
+      setOnlineLink("");
+      setTotalPorts(defaultDeviceType === "switch" ? "8" : "");
+      setUplinkSwitch("");
+      setLatitude("");
+      setLongitude("");
+      setActivationDate(new Date().toISOString().split("T")[0]);
+      setFrequency("");
+      setStatus("Pending");
+      setShowMore(false); // Collapsed by default
     }
   }, [deviceToEdit, defaultDeviceType, open]);
 
-  // Load Device Types, Available Switches, and Available Servers on open
+  // Load available types, servers, and switches on open
   useEffect(() => {
     if (open) {
       getDeviceTypes(true).then((types) => {
@@ -319,19 +349,15 @@ export function DeviceFormDialog({
         }
       });
 
-      setLoadingSwitches(true);
-      getAvailableSwitches()
-        .then((switches) => {
-          setAvailableSwitches(switches);
-        })
-        .finally(() => setLoadingSwitches(false));
-
       setLoadingServers(true);
       getAvailableServers()
-        .then((servers) => {
-          setAvailableServers(servers);
-        })
+        .then(setAvailableServers)
         .finally(() => setLoadingServers(false));
+
+      setLoadingSwitches(true);
+      getAvailableSwitches()
+        .then(setAvailableSwitches)
+        .finally(() => setLoadingSwitches(false));
     }
   }, [open]);
 
@@ -340,9 +366,7 @@ export function DeviceFormDialog({
     if (!deviceType) return;
     setLoadingBrands(true);
     getBrands(deviceType, true)
-      .then((brands) => {
-        setAvailableBrands(brands);
-      })
+      .then(setAvailableBrands)
       .finally(() => setLoadingBrands(false));
   }, [deviceType]);
 
@@ -354,52 +378,150 @@ export function DeviceFormDialog({
     }
     setLoadingModels(true);
     getModels({ deviceType, brand, onlyActive: true })
-      .then((models) => {
-        setAvailableModels(models);
-      })
+      .then(setAvailableModels)
       .finally(() => setLoadingModels(false));
   }, [brand, deviceType]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    const normalizedType = deviceType.toLowerCase().trim();
+
+    // 1. Common required field for all forms: MAC Address
     if (!macAddress.trim()) {
-      toast.error("Please enter a MAC Address");
+      toast.error("MAC Address is required");
       return;
+    }
+
+    // 2. Strict required fields per device type
+    if (normalizedType === "access-point") {
+      if (!apNumber.trim()) {
+        toast.error("AP Number is required");
+        return;
+      }
+      if (!server) {
+        toast.error("Please select a Connected Server");
+        return;
+      }
+      if (!customerName.trim()) {
+        toast.error("Customer Name is required");
+        return;
+      }
+      if (!customerMobile.trim()) {
+        toast.error("Mobile Number is required");
+        return;
+      }
+      if (!gpsLink.trim()) {
+        toast.error("GPS Link is required");
+        return;
+      }
+      if (!description.trim()) {
+        toast.error("Description is required");
+        return;
+      }
+    } else if (normalizedType === "router") {
+      if (!server) {
+        toast.error("Please select a Connected Server");
+        return;
+      }
+      if (!customerName.trim()) {
+        toast.error("Customer Name is required");
+        return;
+      }
+      if (!customerMobile.trim()) {
+        toast.error("Mobile Number is required");
+        return;
+      }
+      if (!gpsLink.trim()) {
+        toast.error("GPS Link is required");
+        return;
+      }
+      if (!description.trim()) {
+        toast.error("Description is required");
+        return;
+      }
+    } else if (normalizedType === "switch") {
+      if (!server) {
+        toast.error("Please select a Connected Server");
+        return;
+      }
+      if (!gpsLink.trim()) {
+        toast.error("GPS Link / Location is required");
+        return;
+      }
+      if (!description.trim()) {
+        toast.error("Description is required");
+        return;
+      }
+    } else if (normalizedType === "antenna") {
+      if (!server) {
+        toast.error("Please select a Connected Server");
+        return;
+      }
+      if (!gpsLink.trim()) {
+        toast.error("Location / GPS Link is required");
+        return;
+      }
+      if (!description.trim()) {
+        toast.error("Description is required");
+        return;
+      }
+    } else {
+      // General fallback (e.g. server or other custom types)
+      if (!description.trim()) {
+        toast.error("Description is required");
+        return;
+      }
     }
 
     try {
       setSubmitting(true);
+      const combinedDescription = frequency.trim()
+        ? `${description.trim()}\nFrequency: ${frequency.trim()}`
+        : description.trim();
+
       const payload = {
-        deviceType,
-        brand,
+        deviceType: normalizedType,
+        macAddress: macAddress.trim(),
+        server: normalizedType !== "server" && server ? server : null,
+        description: combinedDescription,
+        // AP & Customer fields
+        apNumber: ["access-point"].includes(normalizedType) ? apNumber.trim() : undefined,
+        customerName: ["access-point", "router"].includes(normalizedType) ? customerName.trim() : undefined,
+        customerMobile: ["access-point", "router"].includes(normalizedType) ? customerMobile.trim() : undefined,
+        gpsLink: gpsLink.trim() || undefined,
+        // More (Optional) fields
+        brand: brand.trim(),
         model: model.trim(),
         deviceName: deviceName.trim(),
-        totalPorts: deviceType === "switch" && totalPorts ? Number(totalPorts) : undefined,
-        uplinkSwitch: ["antenna", "access-point", "router"].includes(deviceType) && uplinkSwitch ? uplinkSwitch : null,
-        server: deviceType !== "server" && server ? server : null,
-        description,
-        onlineLink,
-        macAddress,
-        ipAddress,
-        activationDate: activationDate ? new Date(activationDate) : new Date(),
-        apNumber: ["access-point"].includes(deviceType) ? apNumber.trim() : undefined,
-        customerName: ["access-point", "router"].includes(deviceType) ? customerName.trim() : undefined,
-        customerMobile: ["access-point", "router"].includes(deviceType) ? customerMobile.trim() : undefined,
-        gpsLink: ["access-point", "router"].includes(deviceType) ? gpsLink.trim() : undefined,
+        ipAddress: ipAddress.trim() || undefined,
+        onlineLink: onlineLink.trim() || undefined,
+        totalPorts:
+          normalizedType === "switch" && totalPorts
+            ? Number(totalPorts)
+            : undefined,
+        uplinkSwitch:
+          ["antenna", "access-point", "router", "switch"].includes(normalizedType) && uplinkSwitch
+            ? uplinkSwitch
+            : null,
         gps: {
           latitude: latitude ? parseFloat(latitude) : undefined,
           longitude: longitude ? parseFloat(longitude) : undefined,
         },
+        activationDate: activationDate ? new Date(activationDate) : new Date(),
         status,
       };
 
       if (isEditing && deviceToEdit) {
         await updateDevice(deviceToEdit._id, payload);
-        toast.success(`Device #${deviceToEdit.sl} updated successfully`);
+        toast.success(`Device #${formatDisplaySL(deviceToEdit.sl)} updated successfully`);
       } else {
         const created = await createDevice(payload);
-        toast.success(`Device #${created.sl} created successfully`);
+        toast.success(
+          created.status === "Pending"
+            ? `Device #${formatDisplaySL(created.sl)} created — Pending approval`
+            : `Device #${formatDisplaySL(created.sl)} created successfully`
+        );
       }
 
       onOpenChange(false);
@@ -430,680 +552,891 @@ export function DeviceFormDialog({
                   <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
                 </span>
                 <span className="truncate">
-                  {isEditing ? `Edit Device #${formatDisplaySL(deviceToEdit?.sl)}` : `Add New ${getTypeName(deviceType)}`}
+                  {isEditing
+                    ? `Edit Device #${formatDisplaySL(deviceToEdit?.sl)}`
+                    : `Quick Add ${getTypeName(deviceType)}`}
                 </span>
               </DialogTitle>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                 {isEditing
                   ? "Update network specifications and deployment properties."
-                  : "Register infrastructure hardware into the device inventory."}
+                  : "Simple, fast mobile-friendly entry. Fill required fields to submit."}
               </p>
             </div>
           </div>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6 pt-2">
-          {/* Group 1: Hardware Classification & Identity */}
-          <div className="space-y-3">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-              1. Hardware Classification & Identity
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-              {/* Device Type */}
-              <div className="space-y-1.5">
+        <form onSubmit={handleSubmit} className="space-y-4 pt-2">
+          {/* Device Type Switcher */}
+          {!isEditing && (
+            <div className="space-y-1.5 bg-slate-50 dark:bg-slate-950/50 p-2.5 rounded-xl border border-slate-200/70 dark:border-slate-800">
+              <div className="flex items-center justify-between">
                 <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                   Device Type <span className="text-rose-500">*</span>
                 </Label>
-                <Select
-                  value={deviceType}
-                  onValueChange={(val) => {
-                    setDeviceType(val);
-                    setBrand("");
-                    setModel("");
-                    if (val === "switch" && !totalPorts) {
-                      setTotalPorts("8");
-                    }
-                    if (!["antenna", "access-point", "router"].includes(val)) {
-                      setUplinkSwitch("");
-                    }
-                    if (val === "server") {
-                      setServer("");
-                    }
-                  }}
-                  disabled={isEditing}
-                >
-                  <SelectTrigger className="rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950">
-                    <SelectValue placeholder="Select Type" />
-                  </SelectTrigger>
-                  <SelectContent className="dark:bg-slate-900 dark:border-slate-800">
-                    {availableTypes.map((t) => (
-                      <SelectItem key={t.slug} value={t.slug}>
-                        {t.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <span className="text-[11px] text-slate-400">Selecting type updates required form fields</span>
               </div>
+              <Select
+                value={deviceType}
+                onValueChange={(val) => {
+                  setDeviceType(val);
+                  setBrand("");
+                  setModel("");
+                  if (val === "switch" && !totalPorts) {
+                    setTotalPorts("8");
+                  }
+                  if (!["antenna", "access-point", "router", "switch"].includes(val)) {
+                    setUplinkSwitch("");
+                  }
+                  if (val === "server") {
+                    setServer("");
+                  }
+                }}
+              >
+                <SelectTrigger className="h-10 rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-900 font-semibold text-sm">
+                  <SelectValue placeholder="Select Device Type" />
+                </SelectTrigger>
+                <SelectContent className="dark:bg-slate-900 dark:border-slate-800">
+                  {availableTypes.map((t) => (
+                    <SelectItem key={t.slug} value={t.slug} className="py-2 font-medium">
+                      {t.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
-              {/* Brand (Dependent) */}
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Brand
-                </Label>
-                <Select
-                  value={brand}
-                  onValueChange={(val) => {
-                    setBrand(val);
-                    setModel("");
-                  }}
-                  disabled={loadingBrands}
-                >
-                  <SelectTrigger className="rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950">
-                    <SelectValue
-                      placeholder={loadingBrands ? "Loading..." : "Select Brand"}
+          {/* ========================================================================= */}
+          {/* MAIN REQUIRED FORM FIELDS (EXACT ORDER PER SPECIFICATION) */}
+          {/* ========================================================================= */}
+          <div className="space-y-3.5 bg-slate-50/50 dark:bg-slate-950/30 p-3.5 sm:p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-sky-700 dark:text-sky-400">
+                Main Form (All Required)
+              </span>
+              <span className="text-[10px] text-slate-400 font-medium">
+                All fields below are mandatory
+              </span>
+            </div>
+
+            {/* ------------------------------------------------------------- */}
+            {/* 1. ACCESS POINT FORM (Exact order: MAC, AP Number, Server, Customer Name, Mobile, GPS Link, Description) */}
+            {/* ------------------------------------------------------------- */}
+            {deviceType === "access-point" && (
+              <div className="space-y-3">
+                {/* 1. MAC Address */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                      1. MAC Address <span className="text-rose-500">*</span>
+                    </Label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setScannerTargetField("MAC Address");
+                        setScannerOpen(true);
+                      }}
+                      className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 inline-flex items-center gap-1"
+                    >
+                      <Camera className="w-3.5 h-3.5" /> Scan MAC
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <Input
+                      placeholder="AA:BB:CC:DD:EE:FF"
+                      value={macAddress}
+                      onChange={(e) => setMacAddress(e.target.value)}
+                      className={`h-10 rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 font-mono text-sm uppercase pr-10 ${
+                        scannedFields.has("macAddress") ? "scan-field-highlight" : ""
+                      }`}
                     />
-                  </SelectTrigger>
-                  <SelectContent className="dark:bg-slate-900 dark:border-slate-800">
-                    {availableBrands.map((b) => (
-                      <SelectItem key={b._id} value={b.name}>
-                        {b.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setScannerTargetField("MAC Address");
+                        setScannerOpen(true);
+                      }}
+                      title="Live Scan MAC Address"
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-emerald-500 transition-colors p-1"
+                    >
+                      <ScanBarcode className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
 
-              {/* Model (Dependent) */}
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Model
-                </Label>
-                {availableModels.length > 0 ? (
-                  <Select
-                    value={model}
-                    onValueChange={(val) => {
-                      setModel(val);
-                      if (!deviceName || deviceName === model) {
-                        setDeviceName(val);
-                      }
-                    }}
-                    disabled={loadingModels}
-                  >
-                    <SelectTrigger className="rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950">
-                      <SelectValue
-                        placeholder={loadingModels ? "Loading..." : "Select Model"}
-                      />
+                {/* 2. AP Number */}
+                <div className="space-y-1">
+                  <Label className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                    2. AP Number <span className="text-rose-500">*</span>
+                  </Label>
+                  <Input
+                    placeholder="e.g. AP-001 or AP-North-05"
+                    value={apNumber}
+                    onChange={(e) => setApNumber(e.target.value)}
+                    className="h-10 rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm font-mono"
+                  />
+                </div>
+
+                {/* 3. Connected Server */}
+                <div className="space-y-1">
+                  <Label className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center justify-between">
+                    <span>3. Connected Server <span className="text-rose-500">*</span></span>
+                    {loadingServers && <span className="text-[10px] text-slate-400">Loading servers...</span>}
+                  </Label>
+                  <Select value={server} onValueChange={setServer}>
+                    <SelectTrigger className="h-10 rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm">
+                      <SelectValue placeholder="Select Connected Server" />
                     </SelectTrigger>
-                    <SelectContent className="dark:bg-slate-900 dark:border-slate-800">
-                      {availableModels.map((m) => (
-                        <SelectItem key={m._id} value={m.name}>
-                          {m.name}
+                    <SelectContent className="dark:bg-slate-900 dark:border-slate-800 max-h-60">
+                      {availableServers.map((srv) => (
+                        <SelectItem key={srv._id} value={srv._id} className="py-2">
+                          #{srv.sl} — {srv.deviceName} ({srv.brand} {srv.model})
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                ) : (
-                  <Input
-                    placeholder="e.g. Rocket Prism 5AC"
-                    value={model}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setModel(val);
-                      if (!deviceName || deviceName === model) {
-                        setDeviceName(val);
-                      }
-                    }}
-                    className="rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm"
-                    disabled={!brand}
-                  />
-                )}
-              </div>
-
-              {/* Device Name */}
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Device Name
-                </Label>
-                <Input
-                  placeholder="e.g. Tower North Sector 1 or Rocket Prism 5AC"
-                  value={deviceName}
-                  onChange={(e) => setDeviceName(e.target.value)}
-                  className="rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm"
-                />
-              </div>
-
-              {/* MAC Address (Required - with Scan camera/barcode button) */}
-              <div className="space-y-1.5 sm:col-span-2">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                    MAC Address <span className="text-rose-500">*</span>
-                  </Label>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setScannerTargetField("MAC Address");
-                      setScannerOpen(true);
-                    }}
-                    className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 inline-flex items-center gap-1 transition-colors"
-                  >
-                    <Camera className="w-3.5 h-3.5" /> Scan
-                  </button>
-                </div>
-                <div
-                  className={`relative transition-all${
-                    scannedFields.has("macAddress") ? " scan-field-highlight" : ""
-                  }`}
-                >
-                  <Input
-                    placeholder="AA:BB:CC:DD:EE:FF"
-                    value={macAddress}
-                    onChange={(e) => setMacAddress(e.target.value)}
-                    className="rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 font-mono text-sm uppercase pr-10"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setScannerTargetField("MAC Address");
-                      setScannerOpen(true);
-                    }}
-                    title="Live Scan MAC Address"
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-emerald-500 transition-colors"
-                  >
-                    <ScanBarcode className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Server Infrastructure Selection (For all devices EXCEPT Server itself) */}
-          {deviceType !== "server" && (
-            <div className="space-y-3 p-4 rounded-2xl bg-sky-50/40 dark:bg-sky-950/20 border border-sky-100 dark:border-sky-900/40">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Server className="w-4 h-4 text-sky-600 dark:text-sky-400" />
-                  <Label className="text-xs font-bold uppercase tracking-wider text-sky-900 dark:text-sky-300">
-                    Hosting / Connected Server
-                  </Label>
-                </div>
-                {server && (
-                  <button
-                    type="button"
-                    onClick={() => setServer("")}
-                    className="text-xs text-rose-500 hover:text-rose-700 dark:hover:text-rose-400 font-medium inline-flex items-center gap-1 transition-colors"
-                  >
-                    <X className="w-3.5 h-3.5" /> Detach Server
-                  </button>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Select
-                  value={server}
-                  onValueChange={setServer}
-                  disabled={loadingServers}
-                >
-                  <SelectTrigger className="rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950">
-                    <SelectValue
-                      placeholder={
-                        loadingServers
-                          ? "Loading available servers..."
-                          : availableServers.length === 0
-                          ? "No active servers found in inventory"
-                          : "Select Server (Optional)"
-                      }
-                    />
-                  </SelectTrigger>
-                  <SelectContent className="dark:bg-slate-900 dark:border-slate-800 max-h-60">
-                    {availableServers.map((srv) => (
-                      <SelectItem
-                        key={srv._id}
-                        value={srv._id}
-                        className="py-2 cursor-pointer"
-                      >
-                        <div className="flex items-center justify-between w-full gap-4">
-                          <span className="font-semibold text-slate-900 dark:text-slate-100">
-                            #{srv.sl} — {srv.deviceName} ({srv.brand} {srv.model})
-                          </span>
-                          {srv.ipAddress && (
-                            <span className="text-xs font-mono text-slate-500 dark:text-slate-400 ml-auto">
-                              {srv.ipAddress}
-                            </span>
-                          )}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Selected Server Preview Card */}
-              {selectedServerData && (
-                <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-sky-100/80 dark:border-sky-900/60 shadow-sm flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="p-1.5 rounded-lg bg-sky-50 dark:bg-sky-950 text-sky-600 dark:text-sky-400 shrink-0">
-                      <Server className="w-4 h-4" />
-                    </div>
-                    <div className="min-w-0">
-                      <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5 truncate">
-                        <span>{selectedServerData.deviceName}</span>
-                        <span className="text-[10px] font-mono text-slate-400">
-                          #{selectedServerData.sl}
-                        </span>
-                      </h4>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                        {selectedServerData.brand} • {selectedServerData.model}
-                        {selectedServerData.ipAddress && ` • ${selectedServerData.ipAddress}`}
-                      </p>
-                    </div>
-                  </div>
-
-                  <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-sky-50 dark:bg-sky-950/50 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800 shrink-0">
-                    {selectedServerData.status}
-                  </span>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Switch Port Capacity Configuration (When Switch) */}
-          {deviceType === "switch" && (
-            <div className="space-y-3 p-4 rounded-2xl bg-sky-50/50 dark:bg-sky-950/20 border border-sky-100 dark:border-sky-900/40">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Network className="w-4 h-4 text-sky-600 dark:text-sky-400" />
-                  <Label className="text-xs font-bold uppercase tracking-wider text-sky-900 dark:text-sky-300">
-                    Switch Port Capacity
-                  </Label>
-                </div>
-                <span className="text-[11px] text-sky-600 dark:text-sky-400 font-medium">
-                  Physical Ethernet / SFP Ports
-                </span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 items-center">
-                <div className="space-y-1.5">
-                  <Input
-                    type="number"
-                    min="1"
-                    max="128"
-                    placeholder="e.g. 8, 16, 24, 48"
-                    value={totalPorts}
-                    onChange={(e) => setTotalPorts(e.target.value)}
-                    className="rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm font-semibold"
-                  />
                 </div>
 
-                {/* Quick Preset Buttons */}
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  {SWITCH_PORT_PRESETS.map((preset) => (
-                    <button
-                      key={preset}
-                      type="button"
-                      onClick={() => setTotalPorts(String(preset))}
-                      className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${
-                        totalPorts === String(preset)
-                          ? "bg-sky-600 text-white shadow-sm"
-                          : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-sky-400"
-                      }`}
-                    >
-                      {preset}P
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* UpLink Switch Infrastructure Selection (Only for Antenna, Access Point, Router) */}
-          {["antenna", "access-point", "router"].includes(deviceType) && (
-            <div className="space-y-3 p-4 rounded-2xl bg-indigo-50/40 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/40">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Network className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                  <Label className="text-xs font-bold uppercase tracking-wider text-indigo-900 dark:text-indigo-300">
-                    UpLink Switch Assignment
-                  </Label>
-                </div>
-                {uplinkSwitch && (
-                  <button
-                    type="button"
-                    onClick={() => setUplinkSwitch("")}
-                    className="text-xs text-rose-500 hover:text-rose-700 dark:hover:text-rose-400 font-medium inline-flex items-center gap-1"
-                  >
-                    <X className="w-3.5 h-3.5" /> Detach UpLink
-                  </button>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Select
-                  value={uplinkSwitch}
-                  onValueChange={setUplinkSwitch}
-                  disabled={loadingSwitches}
-                >
-                  <SelectTrigger className="rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950">
-                    <SelectValue
-                      placeholder={
-                        loadingSwitches
-                          ? "Loading available switches..."
-                          : availableSwitches.length === 0
-                          ? "No active switches found in inventory"
-                          : "Select UpLink Switch (Optional)"
-                      }
-                    />
-                  </SelectTrigger>
-                  <SelectContent className="dark:bg-slate-900 dark:border-slate-800 max-h-60">
-                    {availableSwitches.map((sw) => {
-                      const isFull = sw.availablePorts <= 0 && sw._id !== uplinkSwitch;
-                      return (
-                        <SelectItem
-                          key={sw._id}
-                          value={sw._id}
-                          disabled={isFull}
-                          className="py-2 cursor-pointer"
-                        >
-                          <div className="flex items-center justify-between w-full gap-4">
-                            <span className="font-semibold text-slate-900 dark:text-slate-100">
-                              #{sw.sl} — {sw.deviceName} ({sw.brand} {sw.model})
-                            </span>
-                            <span
-                              className={`text-xs px-2 py-0.5 rounded-full font-bold ml-auto ${
-                                sw.availablePorts > 0
-                                  ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300"
-                                  : "bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300"
-                              }`}
-                            >
-                              {sw.availablePorts > 0
-                                ? `${sw.availablePorts}/${sw.totalPorts} Free`
-                                : `Full (0 Free)`}
-                            </span>
-                          </div>
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Live Selected Switch Details Card */}
-              {selectedSwitchData && (
-                <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-indigo-100/80 dark:border-indigo-900/60 shadow-sm space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2.5">
-                      <div className="p-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400">
-                        <Network className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
-                          <span>{selectedSwitchData.deviceName}</span>
-                          <span className="text-[10px] font-mono text-slate-400">
-                            #{selectedSwitchData.sl}
-                          </span>
-                        </h4>
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                          {selectedSwitchData.brand} • {selectedSwitchData.model}
-                          {selectedSwitchData.ipAddress && ` • ${selectedSwitchData.ipAddress}`}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="text-right">
-                      <span
-                        className={`text-xs font-extrabold px-2.5 py-1 rounded-lg ${
-                          selectedSwitchData.availablePorts > 0
-                            ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800"
-                            : "bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400 border border-amber-200 dark:border-amber-800"
-                        }`}
-                      >
-                        {selectedSwitchData.availablePorts > 0
-                          ? `${selectedSwitchData.availablePorts} Port${selectedSwitchData.availablePorts > 1 ? "s" : ""} Available`
-                          : "Switch Capacity Full"}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Port Utilization Gauge */}
-                  <div className="space-y-1.5 pt-1 border-t border-slate-100 dark:border-slate-800">
-                    <div className="flex items-center justify-between text-[11px] font-medium text-slate-500 dark:text-slate-400">
-                      <span>Port Allocation</span>
-                      <span className="font-bold text-slate-800 dark:text-slate-200">
-                        {selectedSwitchData.activePortsCount} Active / {selectedSwitchData.totalPorts} Total Ports ({selectedSwitchData.availablePorts} free)
-                      </span>
-                    </div>
-                    <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2 overflow-hidden flex">
-                      <div
-                        className={`h-full transition-all rounded-full ${
-                          selectedSwitchData.activePortsCount >= selectedSwitchData.totalPorts
-                            ? "bg-rose-500"
-                            : selectedSwitchData.activePortsCount / selectedSwitchData.totalPorts > 0.75
-                            ? "bg-amber-500"
-                            : "bg-emerald-500"
-                        }`}
-                        style={{
-                          width: `${Math.min(
-                            100,
-                            selectedSwitchData.totalPorts > 0
-                              ? (selectedSwitchData.activePortsCount / selectedSwitchData.totalPorts) * 100
-                              : 0
-                          )}%`,
-                        }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Group 2: Network & Connectivity */}
-          <div className="space-y-3 pt-2 border-t border-slate-100 dark:border-slate-800">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-              2. Network & Connectivity
-            </h3>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-              {/* IPv4 Address */}
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  IPv4 Address
-                </Label>
-                <Input
-                  placeholder="192.168.1.100"
-                  value={ipAddress}
-                  onChange={(e) => setIpAddress(e.target.value)}
-                  className={`rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 font-mono text-sm${
-                    scannedFields.has("ipAddress") ? " scan-field-highlight" : ""
-                  }`}
-                />
-              </div>
-
-              {/* Online Management Link */}
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Online Management Link
-                </Label>
-                <Input
-                  placeholder="https://192.168.1.100 or portal URL"
-                  value={onlineLink}
-                  onChange={(e) => setOnlineLink(e.target.value)}
-                  className="rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Group 3: Deployment & Location */}
-          <div className="space-y-3 pt-2 border-t border-slate-100 dark:border-slate-800">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-              3. Deployment & Location
-            </h3>
-
-            {/* Access Point / Router: Customer & GPS Link fields */}
-            {["access-point", "router"].includes(deviceType) && (
-              <div className="space-y-3 p-4 rounded-2xl bg-violet-50/40 dark:bg-violet-950/20 border border-violet-100 dark:border-violet-900/40">
-                <div className="flex items-center gap-2">
-                  <MapPin className="w-4 h-4 text-violet-600 dark:text-violet-400" />
-                  <Label className="text-xs font-bold uppercase tracking-wider text-violet-900 dark:text-violet-300">
-                    Customer & Location Info
-                  </Label>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                  {/* AP Number – only for Access Point */}
-                  {deviceType === "access-point" && (
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                        AP Number
-                      </Label>
-                      <Input
-                        placeholder="e.g. AP-001"
-                        value={apNumber}
-                        onChange={(e) => setApNumber(e.target.value)}
-                        className="rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm font-mono"
-                      />
-                    </div>
-                  )}
-
-                  {/* Customer Name */}
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                      Customer Name
+                {/* 4. Customer Name & 5. Mobile Number (Responsive 2-col on desktop) */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                      4. Customer Name <span className="text-rose-500">*</span>
                     </Label>
                     <Input
                       placeholder="e.g. Md. Rahim Uddin"
                       value={customerName}
                       onChange={(e) => setCustomerName(e.target.value)}
-                      className="rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm"
+                      className="h-10 rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm"
                     />
                   </div>
-
-                  {/* Mobile Number */}
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                      Mobile Number
+                  <div className="space-y-1">
+                    <Label className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                      5. Mobile Number <span className="text-rose-500">*</span>
                     </Label>
                     <Input
+                      type="tel"
                       placeholder="e.g. 01700000000"
                       value={customerMobile}
                       onChange={(e) => setCustomerMobile(e.target.value)}
-                      className="rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm"
+                      className="h-10 rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm"
                     />
                   </div>
+                </div>
 
-                  {/* GPS Share Link */}
-                  <div className={`space-y-1.5 ${deviceType === "access-point" ? "sm:col-span-2" : ""}`}>
-                    <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                      GPS Link
-                    </Label>
-                    <Input
-                      placeholder="e.g. https://maps.google.com/?q=23.8103,90.4125"
-                      value={gpsLink}
-                      onChange={(e) => setGpsLink(e.target.value)}
-                      className="rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm"
-                    />
-                  </div>
+                {/* 6. GPS Link */}
+                <div className="space-y-1">
+                  <Label className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                    6. GPS Link <span className="text-rose-500">*</span>
+                  </Label>
+                  <Input
+                    placeholder="https://maps.google.com/?q=23.8103,90.4125"
+                    value={gpsLink}
+                    onChange={(e) => setGpsLink(e.target.value)}
+                    className="h-10 rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm"
+                  />
+                </div>
+
+                {/* 7. Description (Free Text) */}
+                <div className="space-y-1">
+                  <Label className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                    7. Description (Free Text) <span className="text-rose-500">*</span>
+                  </Label>
+                  <Textarea
+                    placeholder="Enter any relevant deployment info, location notes, or subscriber details..."
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    rows={2}
+                    className="rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm resize-none"
+                  />
                 </div>
               </div>
             )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Date of Activation
-                </Label>
-                <Input
-                  type="date"
-                  value={activationDate}
-                  onChange={(e) => setActivationDate(e.target.value)}
-                  className="rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm"
-                />
-              </div>
+            {/* ------------------------------------------------------------- */}
+            {/* 2. ROUTER FORM (Exact order: MAC, Server, Customer Name, Mobile, GPS Link, Description) */}
+            {/* ------------------------------------------------------------- */}
+            {deviceType === "router" && (
+              <div className="space-y-3">
+                {/* 1. MAC Address */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                      1. MAC Address <span className="text-rose-500">*</span>
+                    </Label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setScannerTargetField("MAC Address");
+                        setScannerOpen(true);
+                      }}
+                      className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 inline-flex items-center gap-1"
+                    >
+                      <Camera className="w-3.5 h-3.5" /> Scan MAC
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <Input
+                      placeholder="AA:BB:CC:DD:EE:FF"
+                      value={macAddress}
+                      onChange={(e) => setMacAddress(e.target.value)}
+                      className={`h-10 rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 font-mono text-sm uppercase pr-10 ${
+                        scannedFields.has("macAddress") ? "scan-field-highlight" : ""
+                      }`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setScannerTargetField("MAC Address");
+                        setScannerOpen(true);
+                      }}
+                      title="Live Scan MAC Address"
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-emerald-500 transition-colors p-1"
+                    >
+                      <ScanBarcode className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
 
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  GPS Latitude
-                </Label>
-                <Input
-                  placeholder="e.g. 23.8103"
-                  value={latitude}
-                  onChange={(e) => setLatitude(e.target.value)}
-                  className="rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm"
-                />
-              </div>
+                {/* 2. Connected Server */}
+                <div className="space-y-1">
+                  <Label className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center justify-between">
+                    <span>2. Connected Server <span className="text-rose-500">*</span></span>
+                    {loadingServers && <span className="text-[10px] text-slate-400">Loading servers...</span>}
+                  </Label>
+                  <Select value={server} onValueChange={setServer}>
+                    <SelectTrigger className="h-10 rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm">
+                      <SelectValue placeholder="Select Connected Server" />
+                    </SelectTrigger>
+                    <SelectContent className="dark:bg-slate-900 dark:border-slate-800 max-h-60">
+                      {availableServers.map((srv) => (
+                        <SelectItem key={srv._id} value={srv._id} className="py-2">
+                          #{srv.sl} — {srv.deviceName} ({srv.brand} {srv.model})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  GPS Longitude
-                </Label>
-                <Input
-                  placeholder="e.g. 90.4125"
-                  value={longitude}
-                  onChange={(e) => setLongitude(e.target.value)}
-                  className="rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm"
-                />
+                {/* 3. Customer Name & 4. Mobile Number */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                      3. Customer Name <span className="text-rose-500">*</span>
+                    </Label>
+                    <Input
+                      placeholder="e.g. Md. Rahim Uddin"
+                      value={customerName}
+                      onChange={(e) => setCustomerName(e.target.value)}
+                      className="h-10 rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                      4. Mobile Number <span className="text-rose-500">*</span>
+                    </Label>
+                    <Input
+                      type="tel"
+                      placeholder="e.g. 01700000000"
+                      value={customerMobile}
+                      onChange={(e) => setCustomerMobile(e.target.value)}
+                      className="h-10 rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm"
+                    />
+                  </div>
+                </div>
+
+                {/* 5. GPS Link */}
+                <div className="space-y-1">
+                  <Label className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                    5. GPS Link <span className="text-rose-500">*</span>
+                  </Label>
+                  <Input
+                    placeholder="https://maps.google.com/?q=23.8103,90.4125"
+                    value={gpsLink}
+                    onChange={(e) => setGpsLink(e.target.value)}
+                    className="h-10 rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm"
+                  />
+                </div>
+
+                {/* 6. Description (Free Text) */}
+                <div className="space-y-1">
+                  <Label className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                    6. Description (Free Text) <span className="text-rose-500">*</span>
+                  </Label>
+                  <Textarea
+                    placeholder="Enter any deployment info, customer package or location details..."
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    rows={2}
+                    className="rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm resize-none"
+                  />
+                </div>
               </div>
-            </div>
+            )}
+
+            {/* ------------------------------------------------------------- */}
+            {/* 3. SWITCH FORM (Exact order: MAC, Connected Server, GPS Link / Location, Description) */}
+            {/* ------------------------------------------------------------- */}
+            {deviceType === "switch" && (
+              <div className="space-y-3">
+                {/* 1. MAC Address */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                      1. MAC Address <span className="text-rose-500">*</span>
+                    </Label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setScannerTargetField("MAC Address");
+                        setScannerOpen(true);
+                      }}
+                      className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 inline-flex items-center gap-1"
+                    >
+                      <Camera className="w-3.5 h-3.5" /> Scan MAC
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <Input
+                      placeholder="AA:BB:CC:DD:EE:FF"
+                      value={macAddress}
+                      onChange={(e) => setMacAddress(e.target.value)}
+                      className={`h-10 rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 font-mono text-sm uppercase pr-10 ${
+                        scannedFields.has("macAddress") ? "scan-field-highlight" : ""
+                      }`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setScannerTargetField("MAC Address");
+                        setScannerOpen(true);
+                      }}
+                      title="Live Scan MAC Address"
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-emerald-500 transition-colors p-1"
+                    >
+                      <ScanBarcode className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* 2. Connected Server */}
+                <div className="space-y-1">
+                  <Label className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center justify-between">
+                    <span>2. Connected Server <span className="text-rose-500">*</span></span>
+                    {loadingServers && <span className="text-[10px] text-slate-400">Loading servers...</span>}
+                  </Label>
+                  <Select value={server} onValueChange={setServer}>
+                    <SelectTrigger className="h-10 rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm">
+                      <SelectValue placeholder="Select Connected Server" />
+                    </SelectTrigger>
+                    <SelectContent className="dark:bg-slate-900 dark:border-slate-800 max-h-60">
+                      {availableServers.map((srv) => (
+                        <SelectItem key={srv._id} value={srv._id} className="py-2">
+                          #{srv.sl} — {srv.deviceName} ({srv.brand} {srv.model})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* 3. GPS Link / Location */}
+                <div className="space-y-1">
+                  <Label className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                    3. GPS Link / Location <span className="text-rose-500">*</span>
+                  </Label>
+                  <Input
+                    placeholder="e.g. Rack A-02, Core Room or https://maps.google.com/..."
+                    value={gpsLink}
+                    onChange={(e) => setGpsLink(e.target.value)}
+                    className="h-10 rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm"
+                  />
+                </div>
+
+                {/* 4. Description (Free Text) */}
+                <div className="space-y-1">
+                  <Label className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                    4. Description (Free Text) <span className="text-rose-500">*</span>
+                  </Label>
+                  <Textarea
+                    placeholder="Enter switch distribution role, building location, or cabinet notes..."
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    rows={2}
+                    className="rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm resize-none"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* ------------------------------------------------------------- */}
+            {/* 4. ANTENNA FORM (Exact order: MAC, Connected Server, Location / GPS Link, Description) */}
+            {/* ------------------------------------------------------------- */}
+            {deviceType === "antenna" && (
+              <div className="space-y-3">
+                {/* 1. MAC Address */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                      1. MAC Address <span className="text-rose-500">*</span>
+                    </Label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setScannerTargetField("MAC Address");
+                        setScannerOpen(true);
+                      }}
+                      className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 inline-flex items-center gap-1"
+                    >
+                      <Camera className="w-3.5 h-3.5" /> Scan MAC
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <Input
+                      placeholder="AA:BB:CC:DD:EE:FF"
+                      value={macAddress}
+                      onChange={(e) => setMacAddress(e.target.value)}
+                      className={`h-10 rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 font-mono text-sm uppercase pr-10 ${
+                        scannedFields.has("macAddress") ? "scan-field-highlight" : ""
+                      }`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setScannerTargetField("MAC Address");
+                        setScannerOpen(true);
+                      }}
+                      title="Live Scan MAC Address"
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-emerald-500 transition-colors p-1"
+                    >
+                      <ScanBarcode className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* 2. Connected Server */}
+                <div className="space-y-1">
+                  <Label className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center justify-between">
+                    <span>2. Connected Server <span className="text-rose-500">*</span></span>
+                    {loadingServers && <span className="text-[10px] text-slate-400">Loading servers...</span>}
+                  </Label>
+                  <Select value={server} onValueChange={setServer}>
+                    <SelectTrigger className="h-10 rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm">
+                      <SelectValue placeholder="Select Connected Server" />
+                    </SelectTrigger>
+                    <SelectContent className="dark:bg-slate-900 dark:border-slate-800 max-h-60">
+                      {availableServers.map((srv) => (
+                        <SelectItem key={srv._id} value={srv._id} className="py-2">
+                          #{srv.sl} — {srv.deviceName} ({srv.brand} {srv.model})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* 3. Location / GPS Link */}
+                <div className="space-y-1">
+                  <Label className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                    3. Location / GPS Link <span className="text-rose-500">*</span>
+                  </Label>
+                  <Input
+                    placeholder="e.g. Tower 3 North or https://maps.google.com/?q=..."
+                    value={gpsLink}
+                    onChange={(e) => setGpsLink(e.target.value)}
+                    className="h-10 rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm"
+                  />
+                </div>
+
+                {/* 4. Description (Free Text) */}
+                <div className="space-y-1">
+                  <Label className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                    4. Description (Free Text) <span className="text-rose-500">*</span>
+                  </Label>
+                  <Textarea
+                    placeholder="Enter tower antenna sector coverage, height, azimuth, or technical notes..."
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    rows={2}
+                    className="rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm resize-none"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* ------------------------------------------------------------- */}
+            {/* 5. SERVER OR OTHER FORM */}
+            {/* ------------------------------------------------------------- */}
+            {!["access-point", "router", "switch", "antenna"].includes(deviceType) && (
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <Label className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                    1. MAC Address <span className="text-rose-500">*</span>
+                  </Label>
+                  <Input
+                    placeholder="AA:BB:CC:DD:EE:FF"
+                    value={macAddress}
+                    onChange={(e) => setMacAddress(e.target.value)}
+                    className="h-10 rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 font-mono text-sm uppercase"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                    2. Location / GPS Link
+                  </Label>
+                  <Input
+                    placeholder="Data Center Rack 04 or GPS Link"
+                    value={gpsLink}
+                    onChange={(e) => setGpsLink(e.target.value)}
+                    className="h-10 rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                    3. Description (Free Text) <span className="text-rose-500">*</span>
+                  </Label>
+                  <Textarea
+                    placeholder="Enter server operational purpose and location..."
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    rows={2}
+                    className="rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm resize-none"
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Group 4: Operational Status & Notes */}
-          <div className="space-y-3 pt-2 border-t border-slate-100 dark:border-slate-800">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-              4. Operational State & Notes
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-              <div className="space-y-1.5 sm:col-span-1">
+          {/* ========================================================================= */}
+          {/* SMALL EXPANDABLE BUTTON: More (Optional) */}
+          {/* ========================================================================= */}
+          <div className="pt-1">
+            <button
+              type="button"
+              onClick={() => setShowMore((prev) => !prev)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors shadow-2xs"
+            >
+              {showMore ? (
+                <ChevronUp className="w-3.5 h-3.5 text-slate-500" />
+              ) : (
+                <ChevronDown className="w-3.5 h-3.5 text-slate-500" />
+              )}
+              <span>More (Optional)</span>
+              <span className="text-[10px] text-slate-400 font-normal">
+                {showMore ? "(click to collapse)" : "(Brand, Model, IP, Uplink, etc.)"}
+              </span>
+            </button>
+          </div>
+
+          {/* ========================================================================= */}
+          {/* MORE (OPTIONAL) SECTION - COLLAPSED BY DEFAULT */}
+          {/* ========================================================================= */}
+          {showMore && (
+            <div className="space-y-4 p-4 rounded-2xl bg-white dark:bg-slate-900 border border-dashed border-slate-300 dark:border-slate-700 animate-in fade-in-50 duration-150">
+              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                  <SlidersHorizontal className="w-3.5 h-3.5 text-sky-500" />
+                  Additional & Advanced Specifications (Optional)
+                </span>
+                <span className="text-[10px] text-slate-400">All fields below are optional</span>
+              </div>
+
+              {/* Brand & Model */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Brand
+                  </Label>
+                  <Select
+                    value={brand}
+                    onValueChange={(val) => {
+                      setBrand(val);
+                      setModel("");
+                    }}
+                    disabled={loadingBrands}
+                  >
+                    <SelectTrigger className="h-9 rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-xs">
+                      <SelectValue placeholder={loadingBrands ? "Loading..." : "Select Brand (Optional)"} />
+                    </SelectTrigger>
+                    <SelectContent className="dark:bg-slate-900 dark:border-slate-800">
+                      {availableBrands.map((b) => (
+                        <SelectItem key={b._id} value={b.name}>
+                          {b.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1">
+                  <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Model
+                  </Label>
+                  {availableModels.length > 0 ? (
+                    <Select
+                      value={model}
+                      onValueChange={(val) => {
+                        setModel(val);
+                        if (!deviceName || deviceName === model) {
+                          setDeviceName(val);
+                        }
+                      }}
+                      disabled={loadingModels}
+                    >
+                      <SelectTrigger className="h-9 rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-xs">
+                        <SelectValue placeholder={loadingModels ? "Loading..." : "Select Model"} />
+                      </SelectTrigger>
+                      <SelectContent className="dark:bg-slate-900 dark:border-slate-800">
+                        {availableModels.map((m) => (
+                          <SelectItem key={m._id} value={m.name}>
+                            {m.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Input
+                      placeholder="e.g. Rocket Prism 5AC"
+                      value={model}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setModel(val);
+                        if (!deviceName || deviceName === model) {
+                          setDeviceName(val);
+                        }
+                      }}
+                      className="h-9 rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-xs"
+                    />
+                  )}
+                </div>
+              </div>
+
+              {/* Device Name */}
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  Device Name
+                </Label>
+                <Input
+                  placeholder="e.g. Tower North Sector 1 or custom identifier"
+                  value={deviceName}
+                  onChange={(e) => setDeviceName(e.target.value)}
+                  className="h-9 rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-xs"
+                />
+              </div>
+
+              {/* IPv4 Address & Online Link */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    IPv4 Address
+                  </Label>
+                  <Input
+                    placeholder="192.168.1.100"
+                    value={ipAddress}
+                    onChange={(e) => setIpAddress(e.target.value)}
+                    className="h-9 rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 font-mono text-xs"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Online Management Link
+                  </Label>
+                  <Input
+                    placeholder="https://192.168.1.100"
+                    value={onlineLink}
+                    onChange={(e) => setOnlineLink(e.target.value)}
+                    className="h-9 rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-xs"
+                  />
+                </div>
+              </div>
+
+              {/* Switch Port Capacity Configuration (When Switch) */}
+              {deviceType === "switch" && (
+                <div className="space-y-2 p-3 rounded-xl bg-sky-50/50 dark:bg-sky-950/20 border border-sky-100 dark:border-sky-900/40">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-bold text-sky-900 dark:text-sky-300">
+                      Switch Port Capacity
+                    </Label>
+                    <span className="text-[10px] text-sky-600 dark:text-sky-400">Total physical ports</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 items-center">
+                    <Input
+                      type="number"
+                      min="1"
+                      max="128"
+                      placeholder="e.g. 8, 16, 24, 48"
+                      value={totalPorts}
+                      onChange={(e) => setTotalPorts(e.target.value)}
+                      className="h-8 rounded-lg border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-xs font-semibold"
+                    />
+                    <div className="flex items-center gap-1 flex-wrap">
+                      {SWITCH_PORT_PRESETS.map((preset) => (
+                        <button
+                          key={preset}
+                          type="button"
+                          onClick={() => setTotalPorts(String(preset))}
+                          className={`px-2 py-0.5 text-[11px] font-bold rounded-md transition-all ${
+                            totalPorts === String(preset)
+                              ? "bg-sky-600 text-white shadow-xs"
+                              : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
+                          }`}
+                        >
+                          {preset}P
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Uplink Switch Assignment (For Antenna, AP, Router, Switch) */}
+              {["antenna", "access-point", "router", "switch"].includes(deviceType) && (
+                <div className="space-y-2 p-3 rounded-xl bg-indigo-50/40 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/40">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <Network className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                      <Label className="text-xs font-bold text-indigo-900 dark:text-indigo-300">
+                        Uplink Switch Assignment
+                      </Label>
+                    </div>
+                    {uplinkSwitch && (
+                      <button
+                        type="button"
+                        onClick={() => setUplinkSwitch("")}
+                        className="text-[11px] text-rose-500 hover:text-rose-700 font-medium inline-flex items-center gap-0.5"
+                      >
+                        <X className="w-3 h-3" /> Detach
+                      </button>
+                    )}
+                  </div>
+                  <Select value={uplinkSwitch} onValueChange={setUplinkSwitch} disabled={loadingSwitches}>
+                    <SelectTrigger className="h-9 rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-xs">
+                      <SelectValue
+                        placeholder={
+                          loadingSwitches
+                            ? "Loading switches..."
+                            : availableSwitches.length === 0
+                            ? "No active switches found"
+                            : "Select Uplink Switch (Optional)"
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent className="dark:bg-slate-900 dark:border-slate-800 max-h-56">
+                      {availableSwitches.map((sw) => (
+                        <SelectItem key={sw._id} value={sw._id} className="py-1.5 text-xs">
+                          #{sw.sl} — {sw.deviceName} ({sw.brand} {sw.model}) [{sw.availablePorts}/{sw.totalPorts} Free]
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {selectedSwitchData && (
+                    <div className="p-2.5 rounded-lg bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900/60 text-xs flex items-center justify-between">
+                      <span className="font-semibold text-slate-800 dark:text-slate-200 truncate">
+                        #{selectedSwitchData.sl} {selectedSwitchData.deviceName}
+                      </span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 shrink-0">
+                        {selectedSwitchData.availablePorts} Ports Available
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Antenna Frequency / Tech info */}
+              {deviceType === "antenna" && (
+                <div className="space-y-1">
+                  <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Frequency / Technical Specs
+                  </Label>
+                  <Input
+                    placeholder="e.g. 5GHz 30dBi / MIMO 2x2"
+                    value={frequency}
+                    onChange={(e) => setFrequency(e.target.value)}
+                    className="h-9 rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-xs"
+                  />
+                </div>
+              )}
+
+              {/* GPS Coordinates & Activation Date */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    GPS Latitude
+                  </Label>
+                  <Input
+                    placeholder="e.g. 23.8103"
+                    value={latitude}
+                    onChange={(e) => setLatitude(e.target.value)}
+                    className="h-9 rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-xs"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    GPS Longitude
+                  </Label>
+                  <Input
+                    placeholder="e.g. 90.4125"
+                    value={longitude}
+                    onChange={(e) => setLongitude(e.target.value)}
+                    className="h-9 rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-xs"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Date of Activation
+                  </Label>
+                  <Input
+                    type="date"
+                    value={activationDate}
+                    onChange={(e) => setActivationDate(e.target.value)}
+                    className="h-9 rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-xs"
+                  />
+                </div>
+              </div>
+
+              {/* Status Selection (Accessible to Super Admin / Developer or permitted staff) */}
+              <div className="space-y-1">
                 <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                   Status
                 </Label>
                 <Select value={status} onValueChange={(val) => setStatus(val as DeviceStatus)}>
-                  <SelectTrigger className="rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950">
+                  <SelectTrigger className="h-9 rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-xs">
                     <SelectValue placeholder="Select Status" />
                   </SelectTrigger>
                   <SelectContent className="dark:bg-slate-900 dark:border-slate-800">
-                    {DEVICE_STATUSES.filter((st) => isSuperAdmin || st !== "Active").map((st) => (
+                    {DEVICE_STATUSES.filter(
+                      (st) => isSuperAdmin || canApproveDevice || st !== "Active"
+                    ).map((st) => (
                       <SelectItem key={st} value={st}>
                         {st}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                {!isSuperAdmin && (
-                  <p className="text-[10px] text-amber-600 dark:text-amber-400 font-medium mt-1">
-                    Activation requires Super Admin approval.
+                {!isSuperAdmin && !canApproveDevice && (
+                  <p className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">
+                    New devices submitted by staff will be saved as Pending for Super Admin / Developer approval.
                   </p>
                 )}
               </div>
-
-              <div className="space-y-1.5 sm:col-span-2">
-                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Description / Notes
-                </Label>
-                <Textarea
-                  placeholder="Main tower antenna used for sector coverage..."
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  rows={2}
-                  className="rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm resize-none"
-                />
-              </div>
             </div>
-          </div>
+          )}
 
           {/* Footer Actions */}
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100 dark:border-slate-800">
             <Button
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
               disabled={submitting}
-              className="rounded-xl border-slate-200 dark:border-slate-800"
+              className="rounded-xl border-slate-200 dark:border-slate-800 h-10 px-4 text-xs font-semibold"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={submitting || !macAddress.trim()}
-              className="rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-semibold shadow-md shadow-sky-600/10"
+              className="rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-semibold text-xs h-10 px-5 shadow-sm"
             >
               {submitting ? (
                 <>
@@ -1123,55 +1456,55 @@ export function DeviceFormDialog({
           open={scannerOpen}
           onOpenChange={setScannerOpen}
           onScan={handleBarcodeScan}
-          title="Scan Device Barcode / Back Sticker"
-          description="Point your camera at the barcode, MAC address sticker, or QR code on the back of the device."
+          title="Scan Device Barcode / Sticker"
+          description="Point your camera at the MAC barcode or sticker on the device."
           targetFieldLabel={scannerTargetField}
         />
 
         {/* Scan Result Field-Assignment Confirmation */}
         {scanPendingResult && (
           <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center p-3 sm:p-4">
-            {/* Backdrop */}
             <div
               className="absolute inset-0 bg-black/60 backdrop-blur-sm"
               onClick={() => setScanPendingResult(null)}
             />
             <div className="relative w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden animate-in slide-in-from-bottom-4 duration-200">
-              {/* Header */}
               <div className="flex items-center justify-between px-4 py-3 bg-amber-50 dark:bg-amber-950/40 border-b border-amber-200 dark:border-amber-800/50">
                 <div className="flex items-center gap-2">
                   <ScanBarcode className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
-                  <span className="text-sm font-bold text-amber-900 dark:text-amber-200">Assign Scanned Value</span>
+                  <span className="text-sm font-bold text-amber-900 dark:text-amber-200">
+                    Assign Scanned Value
+                  </span>
                 </div>
                 <button
                   type="button"
                   onClick={() => setScanPendingResult(null)}
-                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors p-1 rounded-lg"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
 
               <div className="px-4 py-3 space-y-3">
-                {/* Scanned value display */}
                 <div className="space-y-1">
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Decoded Value</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                    Decoded Value
+                  </p>
                   <div className="px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
                     <span className="font-mono text-sm font-bold text-slate-800 dark:text-slate-100 break-all">
                       {scanPendingResult.raw}
                     </span>
                   </div>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                    Multiple barcodes were detected on the sticker. Choose which field this value belongs to, or dismiss to discard.
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Choose which field this scanned value should populate:
                   </p>
                 </div>
 
-                {/* Field assignment buttons */}
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={() => assignScanToField(scanPendingResult.raw, "macAddress")}
-                    className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-violet-50 dark:bg-violet-950/40 border border-violet-200 dark:border-violet-800/60 text-violet-700 dark:text-violet-300 text-xs font-semibold hover:bg-violet-100 dark:hover:bg-violet-900/50 transition-colors text-left"
+                    className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-violet-50 dark:bg-violet-950/40 border border-violet-200 dark:border-violet-800/60 text-violet-700 dark:text-violet-300 text-xs font-semibold hover:bg-violet-100 transition-colors text-left"
                   >
                     <Fingerprint className="w-3.5 h-3.5 shrink-0" />
                     MAC Address
@@ -1180,7 +1513,7 @@ export function DeviceFormDialog({
                   <button
                     type="button"
                     onClick={() => assignScanToField(scanPendingResult.raw, "ipAddress")}
-                    className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 text-emerald-700 dark:text-emerald-300 text-xs font-semibold hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors text-left"
+                    className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 text-emerald-700 dark:text-emerald-300 text-xs font-semibold hover:bg-emerald-100 transition-colors text-left"
                   >
                     <MapPin className="w-3.5 h-3.5 shrink-0" />
                     IP Address
@@ -1189,7 +1522,7 @@ export function DeviceFormDialog({
                   <button
                     type="button"
                     onClick={() => assignScanToField(scanPendingResult.raw, "deviceName")}
-                    className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-orange-50 dark:bg-orange-950/40 border border-orange-200 dark:border-orange-800/60 text-orange-700 dark:text-orange-300 text-xs font-semibold hover:bg-orange-100 dark:hover:bg-orange-900/50 transition-colors text-left"
+                    className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-orange-50 dark:bg-orange-950/40 border border-orange-200 dark:border-orange-800/60 text-orange-700 dark:text-orange-300 text-xs font-semibold hover:bg-orange-100 transition-colors text-left"
                   >
                     <Wifi className="w-3.5 h-3.5 shrink-0" />
                     Device Name
@@ -1199,9 +1532,9 @@ export function DeviceFormDialog({
                 <button
                   type="button"
                   onClick={() => setScanPendingResult(null)}
-                  className="w-full py-2 text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors font-medium"
+                  className="w-full py-2 text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 font-medium"
                 >
-                  Dismiss — value not needed
+                  Dismiss — discard value
                 </button>
               </div>
             </div>

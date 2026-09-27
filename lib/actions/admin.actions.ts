@@ -6,9 +6,10 @@ import {
   getCurrentAdminProfile,
   requirePermission,
   resolveEffectivePermissions,
+  resolveEffectiveGranularPermissions,
   logActivityAndNotify,
 } from "@/lib/auth-guard";
-import { AdminRole, IAdminUser, ModulePermissions } from "@/types";
+import { AdminRole, GranularPermissions, IAdminUser, ModulePermissions } from "@/types";
 import { revalidatePath } from "next/cache";
 
 export const checkIsAdmin = async (): Promise<boolean> => {
@@ -40,6 +41,7 @@ export const getAllAdmins = async (): Promise<{ success: boolean; admins: IAdmin
         name: a.name || "",
         role,
         permissions: resolveEffectivePermissions(role, a.permissions),
+        granularPermissions: resolveEffectiveGranularPermissions(role, a.granularPermissions),
         isActive: a.isActive !== false,
         createdAt: a.createdAt,
         updatedAt: a.updatedAt,
@@ -58,9 +60,14 @@ export const addAdmin = async (data: {
   name?: string;
   role?: AdminRole;
   permissions?: Partial<ModulePermissions>;
+  granularPermissions?: GranularPermissions;
 }) => {
   try {
     const actor = await requirePermission("admins", "write");
+    const canManageUsers = actor.role === "super_admin" || Boolean(actor.granularPermissions?.user_manage);
+    if (!canManageUsers) {
+      throw new Error("Forbidden: You do not have permission to manage staff users.");
+    }
     await connectToDatabase();
 
     const normalizedEmail = data.email.toLowerCase().trim();
@@ -74,6 +81,7 @@ export const addAdmin = async (data: {
       name: data.name?.trim() || "",
       role,
       permissions: data.permissions || {},
+      granularPermissions: data.granularPermissions || {},
       isActive: true,
     });
 
@@ -100,11 +108,16 @@ export const updateAdminRoleAndPermissions = async (
     name?: string;
     role: AdminRole;
     permissions?: Partial<ModulePermissions>;
+    granularPermissions?: GranularPermissions;
     isActive?: boolean;
   }
 ) => {
   try {
     const actor = await requirePermission("admins", "write");
+    const canManageUsers = actor.role === "super_admin" || Boolean(actor.granularPermissions?.user_manage);
+    if (!canManageUsers) {
+      throw new Error("Forbidden: You do not have permission to manage staff users.");
+    }
     await connectToDatabase();
 
     const targetAdmin = await Admin.findById(adminId);
@@ -121,6 +134,7 @@ export const updateAdminRoleAndPermissions = async (
     if (data.name !== undefined) targetAdmin.name = data.name.trim();
     targetAdmin.role = data.role;
     if (data.permissions !== undefined) targetAdmin.permissions = data.permissions;
+    if (data.granularPermissions !== undefined) targetAdmin.granularPermissions = data.granularPermissions;
     if (data.isActive !== undefined) targetAdmin.isActive = data.isActive;
 
     await targetAdmin.save();

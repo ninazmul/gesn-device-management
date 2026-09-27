@@ -11,13 +11,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, X, RotateCcw, SlidersHorizontal, ScanBarcode } from "lucide-react";
+import { Search, X, RotateCcw, SlidersHorizontal, ScanBarcode, User } from "lucide-react";
 import { DEVICE_STATUSES, SORT_OPTIONS } from "@/lib/constants";
 import { getDeviceFilterOptions } from "@/lib/actions/device.actions";
 import { BarcodeScannerModal } from "./BarcodeScannerModal";
 import { useBarcodeGun } from "@/hooks/useBarcodeGun";
 import type { ParsedBarcodeResult } from "@/lib/barcode";
 import { toast } from "react-hot-toast";
+import { usePermissions } from "@/components/providers/PermissionContext";
 
 interface DeviceFiltersProps {
   currentType?: string;
@@ -35,6 +36,12 @@ export function DeviceFilters({ currentType, totalDevices }: DeviceFiltersProps)
   const currentBrand = searchParams.get("brand") || "all";
   const currentModel = searchParams.get("model") || "all";
   const currentSort = searchParams.get("sortBy") || "newest";
+  const currentSubmittedBy = searchParams.get("submittedBy") || "";
+
+  const { admin } = usePermissions();
+  const isMySubmissionsActive = Boolean(
+    admin?.email && currentSubmittedBy.toLowerCase() === admin.email.toLowerCase()
+  );
 
   // Local state for debounced search
   const [searchTerm, setSearchTerm] = useState(currentSearch);
@@ -112,7 +119,8 @@ export function DeviceFilters({ currentType, totalDevices }: DeviceFiltersProps)
     currentStatus !== "all" ||
     currentBrand !== "all" ||
     currentModel !== "all" ||
-    currentSort !== "newest";
+    currentSort !== "newest" ||
+    currentSubmittedBy !== "";
 
   return (
     <div className="space-y-3 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
@@ -188,8 +196,34 @@ export function DeviceFilters({ currentType, totalDevices }: DeviceFiltersProps)
           </Select>
         </div>
 
-        {/* Advanced Filters Toggle */}
-        <div className="flex items-center gap-2">
+        {/* Action & Filter Buttons */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {admin?.email && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() =>
+                updateQuery(
+                  "submittedBy",
+                  isMySubmissionsActive ? "all" : admin.email.toLowerCase()
+                )
+              }
+              className={`rounded-xl border-slate-200 dark:border-slate-800 text-xs font-semibold gap-1.5 h-10 px-3.5 transition-all ${
+                isMySubmissionsActive
+                  ? "bg-sky-50 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300 border-sky-300 dark:border-sky-700 ring-2 ring-sky-500/20 shadow-xs"
+                  : "text-slate-600 dark:text-slate-300 hover:text-sky-600 hover:bg-slate-50 dark:hover:bg-slate-800"
+              }`}
+              title="Toggle to view only devices submitted by you"
+            >
+              <User className="w-3.5 h-3.5" />
+              <span>My Submissions</span>
+              {isMySubmissionsActive && (
+                <span className="w-2 h-2 rounded-full bg-sky-500 shrink-0" />
+              )}
+            </Button>
+          )}
+
+          {/* Advanced Filters Toggle */}
           <Button
             type="button"
             variant="outline"

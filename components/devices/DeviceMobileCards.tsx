@@ -16,13 +16,18 @@ import {
   Wifi,
   Router as RouterIcon,
   Network,
+  CheckCircle2,
+  XCircle,
+  Loader2,
+  AlertTriangle,
 } from "lucide-react";
 import { DeviceStatusBadge } from "./DeviceStatusBadge";
 import { CopyButton } from "@/components/shared/CopyButton";
 import { DeviceStatusDialog } from "./DeviceStatusDialog";
 import { DeviceFormDialog } from "./DeviceFormDialog";
+import { RejectDeviceDialog } from "./RejectDeviceDialog";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
-import { deleteDevice, toggleDeviceActive } from "@/lib/actions/device.actions";
+import { deleteDevice, toggleDeviceActive, approveDevice } from "@/lib/actions/device.actions";
 import { formatDisplaySL } from "@/lib/utils";
 import { toast } from "react-hot-toast";
 import type { IDevice } from "@/types";
@@ -105,14 +110,16 @@ export function DeviceMobileCards({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { canWrite, isSuperAdmin } = usePermissions();
+  const { canWrite, isSuperAdmin, isDeveloper, admin, canApproveDevice, canDeleteDevice, canEditDevice } = usePermissions();
   const canWriteDevices = canWrite("devices");
 
   const [editingDevice, setEditingDevice] = useState<IDevice | null>(null);
   const [statusDevice, setStatusDevice] = useState<IDevice | null>(null);
   const [deletingDevice, setDeletingDevice] = useState<IDevice | null>(null);
+  const [rejectingDevice, setRejectingDevice] = useState<IDevice | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [approvingId, setApprovingId] = useState<string | null>(null);
 
   const navigatePage = (newPage: number) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -150,6 +157,20 @@ export function DeviceMobileCards({
       toast.error(err instanceof Error ? err.message : "Failed to delete device");
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleApproveDevice = async (e: React.MouseEvent, deviceId: string) => {
+    e.stopPropagation();
+    try {
+      setApprovingId(deviceId);
+      await approveDevice(deviceId);
+      toast.success("Device approved and set to Active!");
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to approve device");
+    } finally {
+      setApprovingId(null);
     }
   };
 
@@ -235,6 +256,17 @@ export function DeviceMobileCards({
                       <span className="inline-flex items-center px-1.5 py-0.2 rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:indigo-400 font-medium text-[10px]">
                         UpLink: #{formatDisplaySL((device.uplinkSwitch as IDevice).sl)}
                       </span>
+                    )}
+                    {device.submittedBy?.email && (
+                      admin?.email && device.submittedBy.email.toLowerCase() === admin.email.toLowerCase() ? (
+                        <span className="inline-flex items-center px-1.5 py-0.2 rounded-full bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-sky-800 text-[10px] font-semibold">
+                          Submitted by you
+                        </span>
+                      ) : (isSuperAdmin || isDeveloper) ? (
+                        <span className="text-[10px] text-slate-400" title={`Submitted by ${device.submittedBy.email}`}>
+                          By: {device.submittedBy.name || device.submittedBy.email.split("@")[0]}
+                        </span>
+                      ) : null
                     )}
                   </div>
                 </div>
@@ -329,13 +361,51 @@ export function DeviceMobileCards({
               )}
 
               <div className="flex items-center gap-1">
+                {/* Quick Approve/Reject for Pending Devices */}
+                {device.status === "Pending" && canApproveDevice && (
+                  <>
+                    <button
+                      type="button"
+                      disabled={approvingId === device._id}
+                      onClick={(e) => handleApproveDevice(e, device._id)}
+                      className="flex items-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400 p-2 rounded-xl hover:bg-emerald-50 dark:hover:bg-emerald-950/40 disabled:opacity-50"
+                      title="Approve Device"
+                    >
+                      {approvingId === device._id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <CheckCircle2 className="w-4 h-4" />
+                      )}
+                      Approve
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRejectingDevice(device)}
+                      className="flex items-center gap-1 text-xs font-semibold text-rose-500 dark:text-rose-400 p-2 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/40"
+                      title="Reject Device"
+                    >
+                      <XCircle className="w-4 h-4" />
+                      Reject
+                    </button>
+                  </>
+                )}
+                {/* Rejection reason for Rejected devices */}
+                {device.status === "Rejected" && (device.rejectionReason || device.rejectedBy?.reason) && (
+                  <span
+                    className="flex items-center gap-1 text-xs text-rose-500 p-2"
+                    title={`Rejected: ${device.rejectionReason || device.rejectedBy?.reason}`}
+                  >
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                    <span className="truncate max-w-[120px]">{device.rejectionReason || device.rejectedBy?.reason}</span>
+                  </span>
+                )}
                 <Link
                   href={`/devices/${device.deviceType}/${device._id}`}
                   className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-sky-600 p-2 rounded-xl hover:bg-sky-50 dark:hover:bg-sky-950/40"
                 >
                   <Eye className="w-4 h-4" /> Details
                 </Link>
-                {canWriteDevices && (
+                {(canWriteDevices || canEditDevice) && (
                   <button
                     type="button"
                     onClick={() => setEditingDevice(device)}
@@ -345,7 +415,7 @@ export function DeviceMobileCards({
                     <Pencil className="w-4 h-4" />
                   </button>
                 )}
-                {canWriteDevices && (
+                {(canWriteDevices || canDeleteDevice) && (
                   <button
                     type="button"
                     onClick={() => setDeletingDevice(device)}
@@ -404,6 +474,16 @@ export function DeviceMobileCards({
         deviceToEdit={editingDevice}
         onSuccess={() => {
           setEditingDevice(null);
+          router.refresh();
+        }}
+      />
+
+      <RejectDeviceDialog
+        device={rejectingDevice}
+        open={Boolean(rejectingDevice)}
+        onOpenChange={(open) => !open && setRejectingDevice(null)}
+        onSuccess={() => {
+          setRejectingDevice(null);
           router.refresh();
         }}
       />

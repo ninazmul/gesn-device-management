@@ -4,19 +4,32 @@ import React, { createContext, useContext } from "react";
 import {
   AdminRole,
   AppModule,
+  GranularPermissionKey,
+  GranularPermissions,
   IAdminUser,
   ModulePermissions,
   PermissionLevel,
 } from "@/types";
+import {
+  DEFAULT_GRANULAR_PERMISSIONS,
+  resolveEffectiveGranularPermissions,
+} from "@/lib/rbac-utils";
 
 interface PermissionContextValue {
   admin: IAdminUser | null;
   role: AdminRole;
   isSuperAdmin: boolean;
+  isDeveloper: boolean;
   permissions: ModulePermissions;
+  granularPermissions: Record<GranularPermissionKey, boolean>;
   hasPermission: (module: AppModule, requiredLevel: PermissionLevel) => boolean;
   canRead: (module: AppModule) => boolean;
   canWrite: (module: AppModule) => boolean;
+  can: (action: GranularPermissionKey) => boolean;
+  canApproveDevice: boolean;
+  canDeleteDevice: boolean;
+  canAddDevice: boolean;
+  canEditDevice: boolean;
 }
 
 const PermissionContext = createContext<PermissionContextValue | undefined>(
@@ -43,10 +56,15 @@ export function PermissionProvider({
 }) {
   const role: AdminRole = admin?.role || "viewer";
   const isSuperAdmin = role === "super_admin";
+  const isDeveloper = role === "developer";
+
   const permissions: ModulePermissions = {
     ...defaultPermissions,
     ...(admin?.permissions || {}),
   };
+
+  const granularPermissions: Record<GranularPermissionKey, boolean> =
+    resolveEffectiveGranularPermissions(role, admin?.granularPermissions);
 
   const hasPermission = (
     module: AppModule,
@@ -68,16 +86,34 @@ export function PermissionProvider({
   const canRead = (module: AppModule) => hasPermission(module, "read");
   const canWrite = (module: AppModule) => hasPermission(module, "write");
 
+  const can = (action: GranularPermissionKey): boolean => {
+    if (isSuperAdmin) return true;
+    if (action === "device_approve" && isDeveloper) return true;
+    return Boolean(granularPermissions[action]);
+  };
+
+  const canApproveDevice = isSuperAdmin || isDeveloper || can("device_approve");
+  const canDeleteDevice = isSuperAdmin || can("device_delete");
+  const canAddDevice = isSuperAdmin || can("device_add") || canWrite("devices");
+  const canEditDevice = isSuperAdmin || can("device_edit") || canWrite("devices");
+
   return (
     <PermissionContext.Provider
       value={{
         admin,
         role,
         isSuperAdmin,
+        isDeveloper,
         permissions,
+        granularPermissions,
         hasPermission,
         canRead,
         canWrite,
+        can,
+        canApproveDevice,
+        canDeleteDevice,
+        canAddDevice,
+        canEditDevice,
       }}
     >
       {children}

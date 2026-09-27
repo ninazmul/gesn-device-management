@@ -6,6 +6,7 @@ export interface IAdmin extends Document {
   name?: string;
   role: AdminRole;
   permissions?: Partial<ModulePermissions>;
+  granularPermissions?: Record<string, boolean>;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -27,12 +28,17 @@ const AdminSchema: Schema = new Schema(
     },
     role: {
       type: String,
-      enum: ["super_admin", "admin", "editor", "moderator", "viewer", "custom"],
+      enum: ["super_admin", "developer", "admin", "editor", "moderator", "viewer", "custom"],
       default: "admin",
     },
     permissions: {
       type: Map,
       of: String,
+      default: {},
+    },
+    granularPermissions: {
+      type: Map,
+      of: Boolean,
       default: {},
     },
     isActive: {

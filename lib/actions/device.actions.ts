@@ -6,11 +6,17 @@ import Counter from "@/lib/database/models/counter.model";
 import Brand from "@/lib/database/models/brand.model";
 import DeviceModel from "@/lib/database/models/model.model";
 import Notification from "@/lib/database/models/notification.model";
+import ActivityLog from "@/lib/database/models/activityLog.model";
 import { formatSL, isValidIPv4, normalizeMAC } from "@/lib/utils";
 import { revalidatePath } from "next/cache";
 import type { FilterQuery } from "mongoose";
 import type { DeviceStatus, GetDevicesParams, IDevice, ISwitchOption, IServerOption } from "@/types";
-import { requirePermission, logActivityAndNotify } from "@/lib/auth-guard";
+import {
+  getCurrentAdminProfile,
+  requirePermission,
+  requireGranularPermission,
+  logActivityAndNotify,
+} from "@/lib/auth-guard";
 
 // Helper to generate next sequential SL (e.g. "000001")
 async function getNextSL(): Promise<string> {
@@ -137,6 +143,10 @@ export async function getDevices(params?: GetDevicesParams) {
 
   if (status && status !== "all") {
     query.status = status;
+  }
+
+  if (params?.submittedBy && params.submittedBy !== "all") {
+    query["submittedBy.email"] = params.submittedBy.toLowerCase().trim();
   }
 
   if (search && search.trim()) {
@@ -319,11 +329,28 @@ export async function createDevice(data: {
   const actor = await requirePermission("devices", "write");
   await connectToDatabase();
 
+  const isSuperAdmin = actor.role === "super_admin";
+  const isDeveloper = actor.role === "developer";
+  const canAdd = isSuperAdmin || isDeveloper || (actor.granularPermissions && actor.granularPermissions.device_add !== false);
+  if (!canAdd) {
+    throw new Error("Forbidden: You do not have permission to add devices.");
+  }
+
   if (!data.deviceType || !data.deviceType.trim()) {
     throw new Error("Device Type is required");
   }
 
-  // MAC Address is required
+  const type = data.deviceType.toLowerCase().trim();
+
+  // If registering a server, check server_manage permission
+  if (type === "server") {
+    const canManageServer = isSuperAdmin || (actor.granularPermissions && actor.granularPermissions.server_manage);
+    if (!canManageServer) {
+      throw new Error("Forbidden: You do not have permission to register server hardware.");
+    }
+  }
+
+  // 1. MAC Address is required for ALL device forms
   const rawMac = data.macAddress?.trim() || "";
   if (!rawMac) {
     throw new Error("MAC Address is required");
@@ -332,6 +359,30 @@ export async function createDevice(data: {
   const normalizedMAC = normalizeMAC(rawMac);
   if (!normalizedMAC) {
     throw new Error("Invalid MAC Address format. Example: AA:BB:CC:DD:EE:FF");
+  }
+
+  // 2. Strict type-specific required fields validation
+  if (type === "access-point") {
+    if (!data.apNumber?.trim()) throw new Error("AP Number is required for Access Point");
+    if (!data.server) throw new Error("Connected Server is required for Access Point");
+    if (!data.customerName?.trim()) throw new Error("Customer Name is required for Access Point");
+    if (!data.customerMobile?.trim()) throw new Error("Mobile Number is required for Access Point");
+    if (!data.gpsLink?.trim()) throw new Error("GPS Link is required for Access Point");
+    if (!data.description?.trim()) throw new Error("Description is required for Access Point");
+  } else if (type === "router") {
+    if (!data.server) throw new Error("Connected Server is required for Router");
+    if (!data.customerName?.trim()) throw new Error("Customer Name is required for Router");
+    if (!data.customerMobile?.trim()) throw new Error("Mobile Number is required for Router");
+    if (!data.gpsLink?.trim()) throw new Error("GPS Link is required for Router");
+    if (!data.description?.trim()) throw new Error("Description is required for Router");
+  } else if (type === "switch") {
+    if (!data.server) throw new Error("Connected Server is required for Switch");
+    if (!data.gpsLink?.trim()) throw new Error("GPS Link / Location is required for Switch");
+    if (!data.description?.trim()) throw new Error("Description is required for Switch");
+  } else if (type === "antenna") {
+    if (!data.server) throw new Error("Connected Server is required for Antenna");
+    if (!data.gpsLink?.trim()) throw new Error("Location / GPS Link is required for Antenna");
+    if (!data.description?.trim()) throw new Error("Description is required for Antenna");
   }
 
   // IP Address is optional
@@ -343,19 +394,18 @@ export async function createDevice(data: {
   const deviceName = data.deviceName?.trim() || data.model?.trim() || data.brand?.trim() || `${data.deviceType.toUpperCase()} ${normalizedMAC.slice(-5)}`;
   const sl = await getNextSL();
 
-  const isSuperAdmin = actor.role === "super_admin";
   // Non-super-admins cannot activate devices directly; status is forced to "Pending"
   const finalStatus: DeviceStatus = isSuperAdmin ? (data.status || "Active") : "Pending";
 
   const device = await Device.create({
     sl,
-    deviceType: data.deviceType.toLowerCase().trim(),
+    deviceType: type,
     brand: data.brand?.trim() || "",
     model: data.model?.trim() || "",
     deviceName,
     totalPorts: data.totalPorts !== undefined && !isNaN(Number(data.totalPorts)) ? Number(data.totalPorts) : undefined,
     uplinkSwitch: data.uplinkSwitch ? data.uplinkSwitch : null,
-    server: data.deviceType.toLowerCase().trim() !== "server" && data.server ? data.server : null,
+    server: type !== "server" && data.server ? data.server : null,
     description: data.description?.trim() || "",
     onlineLink: data.onlineLink?.trim() || "",
     macAddress: normalizedMAC,
@@ -370,11 +420,18 @@ export async function createDevice(data: {
       longitude: data.gps?.longitude !== undefined && !isNaN(Number(data.gps.longitude)) ? Number(data.gps.longitude) : undefined,
     },
     status: finalStatus,
+    submittedBy: {
+      email: actor.email,
+      name: actor.name || actor.email.split("@")[0],
+      role: actor.role,
+      userId: actor._id,
+      date: new Date(),
+    },
   });
 
   const logDetails = isSuperAdmin
     ? `Added new ${data.deviceType} device: ${deviceName} (SL: ${sl}, IP: ${rawIp || "N/A"}, Status: ${finalStatus})`
-    : `Added new ${data.deviceType} device: ${deviceName} (SL: ${sl}, MAC: ${normalizedMAC}) - Pending Super Admin activation approval.`;
+    : `Added new ${data.deviceType} device: ${deviceName} (SL: ${sl}, MAC: ${normalizedMAC}) - Pending Super Admin / Developer approval.`;
 
   await logActivityAndNotify({
     actor,
@@ -383,12 +440,26 @@ export async function createDevice(data: {
     resourceId: sl,
     resourceName: `${deviceName} (${sl})`,
     details: logDetails,
-    link: `/devices/${data.deviceType.toLowerCase().trim()}`,
+    link: `/devices/${type}`,
   });
+
+  // When submitted as Pending, ensure both Super Admin and Developer receive notification
+  if (finalStatus === "Pending") {
+    await Notification.create({
+      actorEmail: actor.email,
+      actorRole: actor.role,
+      action: "DEVICE_SUBMISSION",
+      module: "devices",
+      title: `New Device Submission: ${type.toUpperCase()}`,
+      message: `New ${type} device (${deviceName}, MAC: ${normalizedMAC}) submitted by ${actor.name || actor.email} (${actor.role}) at ${new Date().toLocaleTimeString()} — Status: Pending Approval.`,
+      link: `/devices/${type}/${device._id}`,
+      readBy: [],
+    });
+  }
 
   revalidatePath("/");
   revalidatePath("/devices");
-  revalidatePath(`/devices/${data.deviceType.toLowerCase().trim()}`);
+  revalidatePath(`/devices/${type}`);
   if (data.uplinkSwitch) {
     revalidatePath(`/devices/switch/${data.uplinkSwitch}`);
   }
@@ -437,6 +508,12 @@ export async function updateDevice(
   }
 
   const isSuperAdmin = actor.role === "super_admin";
+  const isDeveloper = actor.role === "developer";
+  const canEdit = isSuperAdmin || isDeveloper || (actor.granularPermissions && actor.granularPermissions.device_edit !== false);
+  if (!canEdit) {
+    throw new Error("Forbidden: You do not have permission to edit devices.");
+  }
+
   const updatePayload: Record<string, unknown> = {};
 
   if (data.deviceType) updatePayload.deviceType = data.deviceType.toLowerCase().trim();
@@ -493,10 +570,21 @@ export async function updateDevice(
   }
 
   if (data.status) {
-    if (data.status === "Active" && !isSuperAdmin && device.status !== "Active") {
-      throw new Error("Only Super Admins can activate devices or approve pending devices.");
+    const canApprove = isSuperAdmin || isDeveloper || Boolean(actor.granularPermissions?.device_approve);
+    if ((data.status === "Active" || data.status === "Rejected") && !canApprove && device.status !== data.status) {
+      throw new Error("Only Super Admins and Developers can approve or reject devices.");
     }
     updatePayload.status = data.status;
+    if (data.status === "Active" && device.status !== "Active") {
+      updatePayload.approvedBy = {
+        email: actor.email,
+        name: actor.name || actor.email.split("@")[0],
+        role: actor.role,
+        userId: actor._id,
+        date: new Date(),
+      };
+      updatePayload.rejectionReason = "";
+    }
   }
 
   const updatedDevice = await Device.findByIdAndUpdate(id, updatePayload, {
@@ -532,18 +620,191 @@ export async function updateDevice(
 }
 
 // ==========================================
+// APPROVE DEVICE (SUPER ADMIN OR DEVELOPER)
+// ==========================================
+export async function approveDevice(id: string) {
+  await connectToDatabase();
+  const actor = await getCurrentAdminProfile();
+  if (!actor) {
+    throw new Error("Unauthorized: Access is restricted to authorized administrators.");
+  }
+
+  const isSuperAdmin = actor.role === "super_admin";
+  const isDeveloper = actor.role === "developer";
+  const canApprove =
+    isSuperAdmin ||
+    isDeveloper ||
+    Boolean(actor.granularPermissions?.device_approve);
+
+  if (!canApprove) {
+    throw new Error("Forbidden: Only Super Admins and Developers can approve devices.");
+  }
+
+  const device = await Device.findById(id);
+  if (!device) throw new Error("Device not found");
+
+  // Idempotent safety check: if already Active, return cleanly
+  if (device.status === "Active") {
+    return JSON.parse(JSON.stringify(device)) as IDevice;
+  }
+
+  device.status = "Active";
+  device.approvedBy = {
+    email: actor.email,
+    name: actor.name || actor.email.split("@")[0],
+    role: actor.role,
+    userId: actor._id,
+    date: new Date(),
+  };
+  device.rejectionReason = "";
+
+  await device.save();
+
+  await ActivityLog.create({
+    actorEmail: actor.email,
+    actorRole: actor.role,
+    action: "APPROVE_DEVICE",
+    module: "devices",
+    resourceId: device.sl,
+    resourceName: `${device.deviceName} (${device.sl})`,
+    details: `${actor.name || actor.email} (${actor.role}) approved device #${device.sl} (${device.deviceName}) - Status is now Active / Online`,
+    metadata: {
+      deviceId: String(device._id),
+      sl: device.sl,
+      action: "APPROVE",
+      approverName: actor.name || actor.email,
+      approverUserId: actor._id,
+      approverRole: actor.role,
+      date: new Date().toISOString(),
+    },
+  });
+
+  revalidatePath("/");
+  revalidatePath("/devices");
+  revalidatePath(`/devices/${device.deviceType.toLowerCase().trim()}`);
+  revalidatePath(`/devices/${device.deviceType.toLowerCase().trim()}/${device._id}`);
+
+  return JSON.parse(JSON.stringify(device)) as IDevice;
+}
+
+// ==========================================
+// REJECT DEVICE (SUPER ADMIN OR DEVELOPER)
+// ==========================================
+export async function rejectDevice(id: string, reason?: string) {
+  await connectToDatabase();
+  const actor = await getCurrentAdminProfile();
+  if (!actor) {
+    throw new Error("Unauthorized: Access is restricted to authorized administrators.");
+  }
+
+  const isSuperAdmin = actor.role === "super_admin";
+  const isDeveloper = actor.role === "developer";
+  const canApprove =
+    isSuperAdmin ||
+    isDeveloper ||
+    Boolean(actor.granularPermissions?.device_approve);
+
+  if (!canApprove) {
+    throw new Error("Forbidden: Only Super Admins and Developers can reject devices.");
+  }
+
+  const device = await Device.findById(id);
+  if (!device) throw new Error("Device not found");
+
+  const cleanReason = reason?.trim() || "No specific reason provided.";
+
+  // Idempotent safety check: if already Rejected with same reason, return cleanly
+  if (device.status === "Rejected" && device.rejectionReason === cleanReason) {
+    return JSON.parse(JSON.stringify(device)) as IDevice;
+  }
+
+  device.status = "Rejected";
+  device.rejectedBy = {
+    email: actor.email,
+    name: actor.name || actor.email.split("@")[0],
+    role: actor.role,
+    userId: actor._id,
+    date: new Date(),
+    reason: cleanReason,
+  };
+  device.rejectionReason = cleanReason;
+
+  await device.save();
+
+  await ActivityLog.create({
+    actorEmail: actor.email,
+    actorRole: actor.role,
+    action: "REJECT_DEVICE",
+    module: "devices",
+    resourceId: device.sl,
+    resourceName: `${device.deviceName} (${device.sl})`,
+    details: `${actor.name || actor.email} (${actor.role}) rejected device #${device.sl} (${device.deviceName}). Reason: ${cleanReason}`,
+    metadata: {
+      deviceId: String(device._id),
+      sl: device.sl,
+      action: "REJECT",
+      approverName: actor.name || actor.email,
+      approverUserId: actor._id,
+      approverRole: actor.role,
+      rejectionReason: cleanReason,
+      date: new Date().toISOString(),
+    },
+  });
+
+  revalidatePath("/");
+  revalidatePath("/devices");
+  revalidatePath(`/devices/${device.deviceType.toLowerCase().trim()}`);
+  revalidatePath(`/devices/${device.deviceType.toLowerCase().trim()}/${device._id}`);
+
+  return JSON.parse(JSON.stringify(device)) as IDevice;
+}
+
+// ==========================================
 // UPDATE DEVICE STATUS
 // ==========================================
-export async function updateDeviceStatus(id: string, status: DeviceStatus) {
+export async function updateDeviceStatus(
+  id: string,
+  status: DeviceStatus,
+  rejectionReason?: string
+) {
   const actor = await requirePermission("devices", "write");
   await connectToDatabase();
 
   const isSuperAdmin = actor.role === "super_admin";
-  if (status === "Active" && !isSuperAdmin) {
-    throw new Error("Only Super Admins can activate devices or approve pending devices.");
+  const isDeveloper = actor.role === "developer";
+  const canApprove =
+    isSuperAdmin ||
+    isDeveloper ||
+    Boolean(actor.granularPermissions?.device_approve);
+
+  if ((status === "Active" || status === "Rejected") && !canApprove) {
+    throw new Error("Only Super Admins and Developers can approve or reject devices.");
   }
 
-  const device = (await Device.findByIdAndUpdate(id, { status }, { new: true }).lean()) as IDevice | null;
+  const updateFields: Record<string, unknown> = { status };
+  if (status === "Active") {
+    updateFields.approvedBy = {
+      email: actor.email,
+      name: actor.name || actor.email.split("@")[0],
+      role: actor.role,
+      userId: actor._id,
+      date: new Date(),
+    };
+    updateFields.rejectionReason = "";
+  } else if (status === "Rejected") {
+    const cleanReason = rejectionReason?.trim() || "No specific reason provided.";
+    updateFields.rejectedBy = {
+      email: actor.email,
+      name: actor.name || actor.email.split("@")[0],
+      role: actor.role,
+      userId: actor._id,
+      date: new Date(),
+      reason: cleanReason,
+    };
+    updateFields.rejectionReason = cleanReason;
+  }
+
+  const device = (await Device.findByIdAndUpdate(id, updateFields, { new: true }).lean()) as IDevice | null;
   if (!device) throw new Error("Device not found");
 
   await logActivityAndNotify({
@@ -564,14 +825,21 @@ export async function updateDeviceStatus(id: string, status: DeviceStatus) {
 }
 
 // ==========================================
-// TOGGLE DEVICE ACTIVE (SUPER ADMIN ONLY QUICK TOGGLE)
+// TOGGLE DEVICE ACTIVE (SUPER ADMIN OR DEVELOPER QUICK TOGGLE)
 // ==========================================
 export async function toggleDeviceActive(id: string) {
   const actor = await requirePermission("devices", "write");
   await connectToDatabase();
 
-  if (actor.role !== "super_admin") {
-    throw new Error("Only Super Admins can toggle device activation.");
+  const isSuperAdmin = actor.role === "super_admin";
+  const isDeveloper = actor.role === "developer";
+  const canApprove =
+    isSuperAdmin ||
+    isDeveloper ||
+    Boolean(actor.granularPermissions?.device_approve);
+
+  if (!canApprove) {
+    throw new Error("Only Super Admins and Developers can activate or approve devices.");
   }
 
   const device = await Device.findById(id);
@@ -579,6 +847,16 @@ export async function toggleDeviceActive(id: string) {
 
   const newStatus: DeviceStatus = device.status === "Active" ? "Pending" : "Active";
   device.status = newStatus;
+  if (newStatus === "Active") {
+    device.approvedBy = {
+      email: actor.email,
+      name: actor.name || actor.email.split("@")[0],
+      role: actor.role,
+      userId: actor._id,
+      date: new Date(),
+    };
+    device.rejectionReason = "";
+  }
   await device.save();
 
   await logActivityAndNotify({
@@ -587,7 +865,7 @@ export async function toggleDeviceActive(id: string) {
     module: "devices",
     resourceId: device.sl,
     resourceName: `${device.deviceName} (${device.sl})`,
-    details: `Super Admin toggled device #${device.sl} (${device.deviceName}) to ${newStatus}`,
+    details: `${actor.email} (${actor.role}) toggled device #${device.sl} (${device.deviceName}) to ${newStatus}`,
     link: `/devices/${device.deviceType}`,
   });
 
@@ -604,6 +882,12 @@ export async function toggleDeviceActive(id: string) {
 export async function deleteDevice(id: string) {
   const actor = await requirePermission("devices", "write");
   await connectToDatabase();
+
+  const isSuperAdmin = actor.role === "super_admin";
+  const canDelete = isSuperAdmin || Boolean(actor.granularPermissions?.device_delete);
+  if (!canDelete) {
+    throw new Error("Forbidden: You do not have permission to delete devices.");
+  }
 
   const device = await Device.findById(id);
   if (!device) {

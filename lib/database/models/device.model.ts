@@ -24,6 +24,28 @@ export interface IDeviceDoc {
     longitude?: number;
   };
   status: (typeof DEVICE_STATUSES)[number];
+  submittedBy?: {
+    email: string;
+    name?: string;
+    role?: string;
+    userId?: string;
+  };
+  approvedBy?: {
+    email: string;
+    name?: string;
+    role?: string;
+    userId?: string;
+    date?: Date;
+  };
+  rejectedBy?: {
+    email: string;
+    name?: string;
+    role?: string;
+    userId?: string;
+    date?: Date;
+    reason?: string;
+  };
+  rejectionReason?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -135,6 +157,33 @@ const DeviceSchema = new Schema(
       enum: DEVICE_STATUSES,
       default: "Pending",
       index: true,
+    },
+    submittedBy: {
+      email: { type: String, trim: true, lowercase: true },
+      name: { type: String, trim: true },
+      role: { type: String, trim: true },
+      userId: { type: String, trim: true },
+      date: { type: Date },
+    },
+    approvedBy: {
+      email: { type: String, trim: true, lowercase: true },
+      name: { type: String, trim: true },
+      role: { type: String, trim: true },
+      userId: { type: String, trim: true },
+      date: { type: Date },
+    },
+    rejectedBy: {
+      email: { type: String, trim: true, lowercase: true },
+      name: { type: String, trim: true },
+      role: { type: String, trim: true },
+      userId: { type: String, trim: true },
+      date: { type: Date },
+      reason: { type: String, trim: true },
+    },
+    rejectionReason: {
+      type: String,
+      default: "",
+      trim: true,
     },
   },
   {

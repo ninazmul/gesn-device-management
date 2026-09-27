@@ -15,7 +15,8 @@ import Link from "next/link";
 import { toast } from "react-hot-toast";
 
 export function NotificationDropdown() {
-  const { isSuperAdmin } = usePermissions();
+  const { isSuperAdmin, isDeveloper } = usePermissions();
+  const canAccessNotifications = isSuperAdmin || isDeveloper;
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<INotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -26,7 +27,7 @@ export function NotificationDropdown() {
   // Fetch only count on mount (lightweight badge update)
   // Full data fetched on demand when dropdown opens
   const fetchUnreadCount = useCallback(async () => {
-    if (!isSuperAdmin) return;
+    if (!canAccessNotifications) return;
     try {
       const data = await getSuperAdminNotifications();
       // Only update count for badge — don't repopulate full list in background
@@ -38,10 +39,10 @@ export function NotificationDropdown() {
     } catch (err) {
       console.error("Error fetching notifications:", err);
     }
-  }, [isSuperAdmin]);
+  }, [canAccessNotifications]);
 
   const fetchNotifications = useCallback(async () => {
-    if (!isSuperAdmin) return;
+    if (!canAccessNotifications) return;
     try {
       const data = await getSuperAdminNotifications();
       setNotifications(data.notifications);
@@ -49,7 +50,7 @@ export function NotificationDropdown() {
     } catch (err) {
       console.error("Error fetching notifications:", err);
     }
-  }, [isSuperAdmin]);
+  }, [canAccessNotifications]);
 
   // On mount: single lightweight fetch for bell badge — no polling
   useEffect(() => {
@@ -98,7 +99,7 @@ export function NotificationDropdown() {
     };
   }, [open]);
 
-  if (!isSuperAdmin) return null;
+  if (!canAccessNotifications) return null;
 
   const handleMarkAllRead = async () => {
     try {

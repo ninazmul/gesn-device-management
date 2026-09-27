@@ -1,0 +1,70 @@
+# DMS Device & Role Update Checklist
+
+Track implementation progress for DMS device forms, developer role, approval system, and granular permissions.
+
+- [x] Existing system audit
+  - [x] Frontend architecture and components reviewed
+  - [x] Backend actions and permission middleware reviewed
+  - [x] Database models (`Device`, `Admin`, `ActivityLog`, `Notification`) reviewed
+  - [x] Existing roles and RBAC utils reviewed
+- [x] Database & Types Update
+  - [x] Add `developer` to `AdminRole` in types
+  - [x] Add `Rejected` to `DeviceStatus` and `DEVICE_STATUSES`
+  - [x] Add `submittedBy`, `approvedBy`, `rejectedBy`, `rejectionReason` to `IDeviceDoc` and `DeviceSchema`
+  - [x] Add `granularPermissions` to `IAdminUser` and `AdminSchema`
+  - [x] Define granular permission keys in `types/index.ts` and `lib/rbac-utils.ts`
+- [x] Granular Permissions & RBAC
+  - [x] Update `lib/rbac-utils.ts` with granular permissions resolver and role defaults
+  - [x] Configure `developer` role defaults (`device_approve: true`, configurable by Super Admin)
+  - [x] Extend `lib/auth-guard.ts` with `requireGranularPermission`
+  - [x] Update `components/providers/PermissionContext.tsx` with granular permission checks
+- [x] Backend Authorization & Actions
+  - [x] Update `createDevice` with required fields validation per device type
+  - [x] Enforce backend required fields for Access Point, Router, Switch, Antenna
+  - [x] Force non-super-admin submissions to `Pending` status and record `submittedBy`
+  - [x] Trigger notification to Super Admin + Developer on new device submissions
+  - [x] Implement `approveDevice(deviceId)` with idempotent status transition and audit logging
+  - [x] Implement `rejectDevice(deviceId, reason)` with idempotent status transition and audit logging
+  - [x] Update `deleteDevice` to enforce `device_delete` permission
+  - [x] Update `notification.actions.ts` to allow Developer and Super Admin access
+- [x] Device Forms Redesign (`components/devices/DeviceFormDialog.tsx`)
+  - [x] Implement clean, mobile-first quick add layout
+  - [x] **Access Point Form**:
+    - [x] Main Required Fields: MAC Address, AP Number, Connected Server, Customer Name, Mobile Number, GPS Link, Description
+    - [x] Brand & Model NOT in Main Form
+    - [x] Collapsible "More (Optional)" section with remaining fields
+  - [x] **Router Form**:
+    - [x] Main Required Fields: MAC Address, Connected Server, Customer Name, Mobile Number, GPS Link, Description
+    - [x] Brand & Model NOT in Main Form
+    - [x] Collapsible "More (Optional)" section
+  - [x] **Switch Form**:
+    - [x] Main Required Fields: MAC Address, Connected Server, GPS Link / Location, Description
+    - [x] Collapsible "More (Optional)" section
+  - [x] **Antenna Form**:
+    - [x] Main Required Fields: MAC Address, Connected Server, Location / GPS Link, Description
+    - [x] Collapsible "More (Optional)" section preserving technical fields
+  - [x] Ensure "More (Optional)" is collapsed by default and opening/closing does not lose data
+  - [x] Strict required-field validation and user feedback
+- [x] Device Table, Mobile Cards, & Details View
+  - [x] Add Approve and Reject actions for Super Admin and Developer
+  - [x] Show submission details and approval status (Pending / Approved / Rejected)
+  - [x] Show Rejection Reason dialog when rejecting
+  - [x] Show "Submitted by you" badge for general staff
+  - [x] Add "My Submissions" quick filter tab/option
+- [x] Admin / Staff Management UI (`AdminsClient.tsx`)
+  - [x] Add Developer role to role selector and role guide
+  - [x] Allow Super Admin to individually configure granular permissions for Developer and Staff
+  - [x] Ensure Super Admin retains full immutable access
+- [x] Notifications UI (`NotificationDropdown.tsx`)
+  - [x] Allow Developer and Super Admin to view and manage notifications
+  - [x] Show device submission details (Device Type, MAC, Submitter, Time, Action Link)
+- [ ] Testing & Verification
+  - [ ] Form validation and submission for Access Point, Router, Switch, Antenna
+  - [ ] More (Optional) collapsible behavior
+  - [ ] Approval and rejection flows
+  - [ ] Notification delivery to Super Admin and Developer
+  - [ ] Granular permission checks at frontend and backend API levels
+  - [ ] Backward compatibility with existing records
+- [ ] Documentation
+  - [x] Create persistent AI project context file `docs/AI_PROJECT_CONTEXT.md`
+  - [x] Update final checklist state

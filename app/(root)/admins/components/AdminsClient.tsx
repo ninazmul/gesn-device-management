@@ -42,6 +42,7 @@ import {
   ChevronDown,
   ChevronUp,
   Info,
+  Terminal,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import {
@@ -54,12 +55,20 @@ import { formatDate } from "@/lib/utils";
 import {
   AdminRole,
   AppModule,
+  GranularPermissionKey,
+  GranularPermissions,
   IAdminUser,
   ModulePermissions,
   PermissionLevel,
 } from "@/types";
 import { usePermissions } from "@/components/providers/PermissionContext";
-import { DEFAULT_ROLE_PERMISSIONS, ALL_APP_MODULES } from "@/lib/rbac-utils";
+import {
+  DEFAULT_ROLE_PERMISSIONS,
+  DEFAULT_GRANULAR_PERMISSIONS,
+  GRANULAR_PERMISSIONS_LIST,
+  resolveEffectiveGranularPermissions,
+  ALL_APP_MODULES,
+} from "@/lib/rbac-utils";
 
 export interface RoleDetail {
   label: string;
@@ -93,6 +102,26 @@ const ROLE_OPTIONS: RoleDetail[] = [
       "Receive real-time bell alerts whenever other staff make modifications",
     ],
     cannotDo: [],
+  },
+  {
+    label: "Developer",
+    value: "developer",
+    badge: "Developer",
+    color: "text-indigo-600 dark:text-indigo-400",
+    border: "border-indigo-500/30",
+    bgLight: "bg-indigo-500/10",
+    summary: "Technical Engineer & Device Approver",
+    desc: "Hardware management, approve & reject submitted devices, real-time alerts.",
+    canDo: [
+      "Review, approve, and reject submitted devices (APs, Routers, Switches, Antennas)",
+      "Add, edit, change status & delete devices and hardware",
+      "Full write access across devices, customers, billing, catalog, settings & logs",
+      "Receive real-time bell alerts when devices are submitted for review",
+      "Inspect audit activity logs and system events",
+    ],
+    cannotDo: [
+      "Cannot add, edit roles, or delete staff administrators (unless granted by Super Admin)",
+    ],
   },
   {
     label: "Admin",
@@ -206,12 +235,99 @@ const MODULE_LABELS: Record<AppModule, string> = {
   settings: "Settings",
 };
 
+function GranularPermissionsEditor({
+  perms,
+  onChange,
+}: {
+  perms: Record<GranularPermissionKey, boolean>;
+  onChange: (key: GranularPermissionKey, value: boolean) => void;
+}) {
+  const categories: Array<"Devices" | "Servers" | "Customers & Reports" | "Administration"> = [
+    "Devices",
+    "Servers",
+    "Customers & Reports",
+    "Administration",
+  ];
+
+  return (
+    <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 space-y-3">
+      <div className="flex items-center justify-between">
+        <div>
+          <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+            <Shield className="w-3.5 h-3.5 text-indigo-500" />
+            Granular Action Permissions
+          </span>
+          <p className="text-[10px] text-slate-500 dark:text-slate-400">
+            Configure specific device, server, and administrative action grants.
+          </p>
+        </div>
+        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
+          Super Admin Config
+        </span>
+      </div>
+
+      <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
+        {categories.map((cat) => {
+          const list = GRANULAR_PERMISSIONS_LIST.filter((item) => item.category === cat);
+          if (list.length === 0) return null;
+
+          return (
+            <div key={cat} className="space-y-1.5">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                {cat}
+              </span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {list.map((item) => {
+                  const active = Boolean(perms[item.key]);
+                  return (
+                    <button
+                      key={item.key}
+                      type="button"
+                      onClick={() => onChange(item.key, !active)}
+                      className={`flex items-start justify-between p-2 rounded-xl border text-left transition-all cursor-pointer ${
+                        active
+                          ? "bg-indigo-50/60 dark:bg-indigo-950/30 border-indigo-200 dark:border-indigo-800/80 text-indigo-950 dark:text-indigo-200"
+                          : "bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 text-slate-500 dark:text-slate-400"
+                      }`}
+                    >
+                      <div className="pr-1.5">
+                        <span className="text-[11px] font-semibold block leading-tight">
+                          {item.label}
+                        </span>
+                        <span className="text-[9px] text-slate-400 leading-tight block mt-0.5">
+                          {item.description}
+                        </span>
+                      </div>
+                      <span
+                        className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out mt-0.5 ${
+                          active ? "bg-indigo-600" : "bg-slate-300 dark:bg-slate-700"
+                        }`}
+                      >
+                        <span
+                          className={`pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
+                            active ? "translate-x-3" : "translate-x-0"
+                          }`}
+                        />
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function AdminsClient({
   initialAdmins,
 }: {
   initialAdmins: IAdminUser[];
 }) {
   const { admin: currentLoggedInAdmin, canWrite } = usePermissions();
+  const isSuperAdmin = currentLoggedInAdmin?.role === "super_admin";
   const [admins, setAdmins] = useState<IAdminUser[]>(initialAdmins);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingAdmin, setEditingAdmin] = useState<IAdminUser | null>(null);
@@ -226,12 +342,18 @@ export default function AdminsClient({
   const [customPerms, setCustomPerms] = useState<ModulePermissions>({
     ...DEFAULT_ROLE_PERMISSIONS.admin,
   });
+  const [newGranularPerms, setNewGranularPerms] = useState<Record<GranularPermissionKey, boolean>>({
+    ...DEFAULT_GRANULAR_PERMISSIONS.admin,
+  });
 
   // Form states for Edit Admin
   const [editName, setEditName] = useState("");
   const [editRole, setEditRole] = useState<AdminRole>("admin");
   const [editPerms, setEditPerms] = useState<ModulePermissions>({
     ...DEFAULT_ROLE_PERMISSIONS.admin,
+  });
+  const [editGranularPerms, setEditGranularPerms] = useState<Record<GranularPermissionKey, boolean>>({
+    ...DEFAULT_GRANULAR_PERMISSIONS.admin,
   });
 
   const loadAdmins = useCallback(async () => {
@@ -247,11 +369,13 @@ export default function AdminsClient({
   const handleRoleChangeForNew = (role: AdminRole) => {
     setNewRole(role);
     setCustomPerms({ ...DEFAULT_ROLE_PERMISSIONS[role] });
+    setNewGranularPerms({ ...DEFAULT_GRANULAR_PERMISSIONS[role] });
   };
 
   const handleRoleChangeForEdit = (role: AdminRole) => {
     setEditRole(role);
     setEditPerms({ ...DEFAULT_ROLE_PERMISSIONS[role] });
+    setEditGranularPerms({ ...DEFAULT_GRANULAR_PERMISSIONS[role] });
   };
 
   const handleAddSubmit = async (e: React.FormEvent) => {
@@ -268,11 +392,13 @@ export default function AdminsClient({
         name: newName.trim(),
         role: newRole,
         permissions: newRole === "custom" ? customPerms : undefined,
+        granularPermissions: newRole === "super_admin" ? undefined : newGranularPerms,
       });
       toast.success("Administrator added successfully");
       setNewEmail("");
       setNewName("");
       setNewRole("admin");
+      setNewGranularPerms({ ...DEFAULT_GRANULAR_PERMISSIONS.admin });
       setIsAddOpen(false);
       loadAdmins();
     } catch (error) {
@@ -292,6 +418,9 @@ export default function AdminsClient({
       ...DEFAULT_ROLE_PERMISSIONS[admin.role],
       ...(admin.permissions || {}),
     });
+    setEditGranularPerms(
+      resolveEffectiveGranularPermissions(admin.role, admin.granularPermissions)
+    );
   };
 
   const handleEditSubmit = async (e: React.FormEvent) => {
@@ -304,6 +433,7 @@ export default function AdminsClient({
         name: editName.trim(),
         role: editRole,
         permissions: editRole === "custom" ? editPerms : undefined,
+        granularPermissions: editRole === "super_admin" ? undefined : editGranularPerms,
       });
       toast.success("Role & permissions updated successfully");
       setEditingAdmin(null);
@@ -344,6 +474,12 @@ export default function AdminsClient({
         return (
           <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
             <Crown className="w-3 h-3 text-rose-500" /> Super Admin
+          </span>
+        );
+      case "developer":
+        return (
+          <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
+            <Terminal className="w-3 h-3 text-indigo-500" /> Developer
           </span>
         );
       case "admin":
@@ -536,6 +672,23 @@ export default function AdminsClient({
                   </div>
                 )}
 
+                {/* Granular Action Permissions (Configurable by Super Admin for Developer and Staff) */}
+                {isSuperAdmin && (
+                  newRole === "super_admin" ? (
+                    <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-700 dark:text-amber-400 flex items-center gap-2">
+                      <Crown className="w-4 h-4 shrink-0 text-amber-500" />
+                      <span>Super Administrators retain unrestricted, immutable access across all modules and actions.</span>
+                    </div>
+                  ) : (
+                    <GranularPermissionsEditor
+                      perms={newGranularPerms}
+                      onChange={(key, val) =>
+                        setNewGranularPerms((prev) => ({ ...prev, [key]: val }))
+                      }
+                    />
+                  )
+                )}
+
                 <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
                   <Button
                     type="submit"
@@ -621,6 +774,7 @@ export default function AdminsClient({
                     }`}
                   >
                     {role.value === "super_admin" && <Crown className="w-3.5 h-3.5" />}
+                    {role.value === "developer" && <Terminal className="w-3.5 h-3.5" />}
                     {role.value === "admin" && <ShieldCheck className="w-3.5 h-3.5" />}
                     {role.value === "editor" && <Edit2 className="w-3.5 h-3.5" />}
                     {role.value === "moderator" && <UserCheck className="w-3.5 h-3.5" />}
@@ -643,6 +797,7 @@ export default function AdminsClient({
                     <div className="flex items-center gap-3">
                       <div className={`p-2 rounded-xl ${activeRole.bgLight} ${activeRole.color} border ${activeRole.border}`}>
                         {activeRole.value === "super_admin" && <Crown className="w-5 h-5" />}
+                        {activeRole.value === "developer" && <Terminal className="w-5 h-5" />}
                         {activeRole.value === "admin" && <ShieldCheck className="w-5 h-5" />}
                         {activeRole.value === "editor" && <Edit2 className="w-5 h-5" />}
                         {activeRole.value === "moderator" && <UserCheck className="w-5 h-5" />}
@@ -827,23 +982,35 @@ export default function AdminsClient({
                             Full Unrestricted Root Access
                           </span>
                         ) : (
-                          <div className="flex flex-wrap gap-1">
-                            {ALL_APP_MODULES.map((mod) => {
-                              const lvl = admin.permissions?.[mod] || "none";
-                              if (lvl === "none") return null;
-                              return (
-                                <span
-                                  key={mod}
-                                  className={`text-[10px] px-1.5 py-0.2 rounded border font-medium ${
-                                    lvl === "write"
-                                      ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
-                                      : "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20"
-                                  }`}
-                                >
-                                  {mod}:{lvl}
-                                </span>
-                              );
-                            })}
+                          <div className="flex flex-col gap-1">
+                            {admin.role === "developer" && (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-indigo-600 dark:text-indigo-400">
+                                <Terminal className="w-3 h-3" /> Device Approvals Authorized
+                              </span>
+                            )}
+                            <div className="flex flex-wrap gap-1">
+                              {ALL_APP_MODULES.map((mod) => {
+                                const lvl =
+                                  admin.permissions?.[mod] ||
+                                  (admin.role !== "custom"
+                                    ? DEFAULT_ROLE_PERMISSIONS[admin.role]?.[mod]
+                                    : "none") ||
+                                  "none";
+                                if (lvl === "none") return null;
+                                return (
+                                  <span
+                                    key={mod}
+                                    className={`text-[10px] px-1.5 py-0.2 rounded border font-medium ${
+                                      lvl === "write"
+                                        ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                                        : "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20"
+                                    }`}
+                                  >
+                                    {mod}:{lvl}
+                                  </span>
+                                );
+                              })}
+                            </div>
                           </div>
                         )}
                       </TableCell>
@@ -1009,6 +1176,23 @@ export default function AdminsClient({
                     ))}
                   </div>
                 </div>
+              )}
+
+              {/* Granular Action Permissions (Configurable by Super Admin for Developer and Staff) */}
+              {isSuperAdmin && (
+                editRole === "super_admin" ? (
+                  <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-700 dark:text-amber-400 flex items-center gap-2">
+                    <Crown className="w-4 h-4 shrink-0 text-amber-500" />
+                    <span>Super Administrators retain unrestricted, immutable access across all modules and actions.</span>
+                  </div>
+                ) : (
+                  <GranularPermissionsEditor
+                    perms={editGranularPerms}
+                    onChange={(key, val) =>
+                      setEditGranularPerms((prev) => ({ ...prev, [key]: val }))
+                    }
+                  />
+                )
               )}
 
               <div className="pt-2 border-t border-slate-100 dark:border-slate-800">

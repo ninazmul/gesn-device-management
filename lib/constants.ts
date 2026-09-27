@@ -14,6 +14,7 @@ export const DEVICE_STATUSES = [
   "Maintenance",
   "Inactive",
   "Retired",
+  "Rejected",
 ] as const;
 
 export const CUSTOMER_STATUSES = [
@@ -119,6 +120,14 @@ export const STATUS_CONFIG: Record<
     dot: "bg-purple-500",
     border: "border-purple-200 dark:border-purple-800/50",
     darkBg: "dark:bg-purple-950/40",
+  },
+  Rejected: {
+    label: "Rejected",
+    bg: "bg-rose-50 text-rose-700 border-rose-200",
+    text: "text-rose-700 dark:text-rose-400",
+    dot: "bg-rose-500",
+    border: "border-rose-200 dark:border-rose-800/50",
+    darkBg: "dark:bg-rose-950/40",
   },
 };
 

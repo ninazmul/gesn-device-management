@@ -19,14 +19,19 @@ import {
   Cpu,
   Clock,
   Activity,
+  XCircle,
+  AlertTriangle,
+  User2,
+  Shield,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DeviceStatusBadge } from "./DeviceStatusBadge";
 import { CopyButton } from "@/components/shared/CopyButton";
 import { DeviceStatusDialog } from "./DeviceStatusDialog";
 import { DeviceFormDialog } from "./DeviceFormDialog";
+import { RejectDeviceDialog } from "./RejectDeviceDialog";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
-import { deleteDevice, toggleDeviceActive } from "@/lib/actions/device.actions";
+import { deleteDevice, toggleDeviceActive, approveDevice } from "@/lib/actions/device.actions";
 import { formatDate, formatDateTime, formatDisplaySL } from "@/lib/utils";
 import { toast } from "react-hot-toast";
 import type { IDevice } from "@/types";
@@ -57,7 +62,7 @@ interface DeviceDetailsViewProps {
 export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
   const router = useRouter();
   const Icon = getDeviceIcon(device.deviceType);
-  const { canWrite, isSuperAdmin } = usePermissions();
+  const { canWrite, isSuperAdmin, canApproveDevice, canDeleteDevice, canEditDevice } = usePermissions();
   const canWriteDevices = canWrite("devices");
 
   const [isStatusOpen, setIsStatusOpen] = useState(false);
@@ -65,6 +70,8 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isToggling, setIsToggling] = useState(false);
+  const [isApproving, setIsApproving] = useState(false);
+  const [isRejectOpen, setIsRejectOpen] = useState(false);
 
   const handleToggleActive = async () => {
     if (!isSuperAdmin) {
@@ -93,6 +100,19 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
       toast.error(err instanceof Error ? err.message : "Failed to delete device");
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleApproveDevice = async () => {
+    try {
+      setIsApproving(true);
+      await approveDevice(device._id);
+      toast.success("Device approved and set to Active!");
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to approve device");
+    } finally {
+      setIsApproving(false);
     }
   };
 
@@ -176,7 +196,35 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
 
           {/* Action Buttons */}
           <div className="flex items-center gap-2.5 flex-wrap">
-            {isSuperAdmin && (
+            {/* Approve & Reject buttons for Pending devices */}
+            {device.status === "Pending" && canApproveDevice && (
+              <>
+                <Button
+                  type="button"
+                  disabled={isApproving}
+                  onClick={handleApproveDevice}
+                  className="rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-sm"
+                >
+                  {isApproving ? (
+                    <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                  ) : (
+                    <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />
+                  )}
+                  Approve & Activate
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsRejectOpen(true)}
+                  className="rounded-xl border-rose-200 dark:border-rose-800 text-rose-600 dark:text-rose-400 text-xs font-semibold hover:bg-rose-50 dark:hover:bg-rose-950/40"
+                >
+                  <XCircle className="w-3.5 h-3.5 mr-1.5" />
+                  Reject
+                </Button>
+              </>
+            )}
+
+            {isSuperAdmin && device.status !== "Pending" && (
               <Button
                 type="button"
                 disabled={isToggling}
@@ -192,11 +240,11 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
                 ) : (
                   <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />
                 )}
-                {device.status === "Active" ? "Set to Pending" : "Approve & Activate"}
+                {device.status === "Active" ? "Set to Pending" : "Activate"}
               </Button>
             )}
 
-            {canWriteDevices && (
+            {(canWriteDevices || canEditDevice) && (
               <Button
                 type="button"
                 variant="outline"
@@ -208,7 +256,7 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
               </Button>
             )}
 
-            {canWriteDevices && (
+            {(canWriteDevices || canEditDevice) && (
               <Button
                 type="button"
                 variant="outline"
@@ -237,7 +285,7 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
               </a>
             )}
 
-            {canWriteDevices && (
+            {(canWriteDevices || canDeleteDevice) && (
               <Button
                 type="button"
                 variant="ghost"
@@ -252,6 +300,29 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
           </div>
         </div>
       </div>
+
+      {/* Rejection Alert Banner */}
+      {device.status === "Rejected" && (device.rejectionReason || device.rejectedBy?.reason) && (
+        <div className="rounded-3xl p-5 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/40 shadow-xs flex items-start gap-4">
+          <div className="p-2.5 rounded-2xl bg-rose-500/10 text-rose-600 dark:text-rose-400 shrink-0">
+            <XCircle className="w-5 h-5" />
+          </div>
+          <div className="space-y-1">
+            <h3 className="font-bold text-sm text-rose-800 dark:text-rose-300">
+              Device Registration Rejected
+            </h3>
+            <p className="text-xs text-rose-700 dark:text-rose-400 leading-relaxed">
+              <span className="font-semibold">Reason:</span> {device.rejectionReason || device.rejectedBy?.reason}
+            </p>
+            {device.rejectedBy && (
+              <p className="text-[11px] text-rose-500/80 dark:text-rose-400/80 pt-0.5">
+                Rejected by {device.rejectedBy.name || device.rejectedBy.email}
+                {device.rejectedBy.date && ` on ${formatDateTime(device.rejectedBy.date)}`}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Grouped Information Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -448,6 +519,63 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
               <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">
                 {device.description}
               </p>
+            </div>
+          )}
+
+          {/* Submission & Approval Lifecycle */}
+          {(device.submittedBy || device.approvedBy || device.rejectedBy) && (
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 space-y-2 border border-slate-100 dark:border-slate-800">
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
+                Submission & Approval Lifecycle
+              </span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                {device.submittedBy && (
+                  <div className="space-y-0.5">
+                    <span className="text-[10px] text-slate-400 font-medium block">
+                      Submitted By
+                    </span>
+                    <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 block">
+                      {device.submittedBy.name || device.submittedBy.email}
+                    </span>
+                    {device.submittedBy.date && (
+                      <span className="text-[10px] text-slate-400 block">
+                        {formatDateTime(device.submittedBy.date)}
+                      </span>
+                    )}
+                  </div>
+                )}
+                {device.approvedBy && (
+                  <div className="space-y-0.5">
+                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium block">
+                      Approved By
+                    </span>
+                    <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-300 block">
+                      {device.approvedBy.name || device.approvedBy.email}
+                    </span>
+                    {device.approvedBy.date && (
+                      <span className="text-[10px] text-slate-400 block">
+                        {formatDateTime(device.approvedBy.date)}
+                      </span>
+                    )}
+                  </div>
+                )}
+                {device.rejectedBy && (
+                  <div className="space-y-0.5 sm:col-span-2">
+                    <span className="text-[10px] text-rose-600 dark:text-rose-400 font-medium block">
+                      Rejected By
+                    </span>
+                    <span className="text-xs font-semibold text-rose-700 dark:text-rose-300 block">
+                      {device.rejectedBy.name || device.rejectedBy.email}
+                      {device.rejectedBy.date && ` on ${formatDateTime(device.rejectedBy.date)}`}
+                    </span>
+                    {(device.rejectionReason || device.rejectedBy.reason) && (
+                      <p className="text-[11px] text-rose-600/90 dark:text-rose-400/90 italic mt-0.5">
+                        &quot;{device.rejectionReason || device.rejectedBy.reason}&quot;
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -824,6 +952,14 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
         open={isEditOpen}
         onOpenChange={setIsEditOpen}
         deviceToEdit={device}
+        onSuccess={() => router.refresh()}
+      />
+
+      {/* Reject Device Dialog */}
+      <RejectDeviceDialog
+        device={device}
+        open={isRejectOpen}
+        onOpenChange={setIsRejectOpen}
         onSuccess={() => router.refresh()}
       />
 

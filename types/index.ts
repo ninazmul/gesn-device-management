@@ -5,7 +5,8 @@ export type DeviceStatus =
   | "Offline"
   | "Maintenance"
   | "Inactive"
-  | "Retired";
+  | "Retired"
+  | "Rejected";
 
 export type CustomerStatus = "Active" | "Inactive" | "Suspended";
 
@@ -75,6 +76,29 @@ export interface IDevice {
     longitude?: number;
   };
   status: DeviceStatus;
+  submittedBy?: {
+    email: string;
+    name?: string;
+    role?: string;
+    userId?: string;
+    date?: string | Date;
+  };
+  approvedBy?: {
+    email: string;
+    name?: string;
+    role?: string;
+    userId?: string;
+    date?: string | Date;
+  };
+  rejectedBy?: {
+    email: string;
+    name?: string;
+    role?: string;
+    userId?: string;
+    date?: string | Date;
+    reason?: string;
+  };
+  rejectionReason?: string;
   createdAt: string | Date;
   updatedAt: string | Date;
 }
@@ -139,6 +163,7 @@ export interface IBilling {
 
 export type AdminRole =
   | "super_admin"
+  | "developer"
   | "admin"
   | "editor"
   | "moderator"
@@ -159,12 +184,28 @@ export type AppModule =
 
 export type ModulePermissions = Record<AppModule, PermissionLevel>;
 
+export type GranularPermissionKey =
+  | "device_add"
+  | "device_view"
+  | "device_edit"
+  | "device_delete"
+  | "device_approve"
+  | "server_view"
+  | "server_manage"
+  | "customer_view"
+  | "user_manage"
+  | "report_view"
+  | "setting_manage";
+
+export type GranularPermissions = Partial<Record<GranularPermissionKey, boolean>>;
+
 export interface IAdminUser {
   _id: string;
   email: string;
   name?: string;
   role: AdminRole;
   permissions?: Partial<ModulePermissions>;
+  granularPermissions?: GranularPermissions;
   isActive: boolean;
   createdAt: Date | string;
   updatedAt?: Date | string;
@@ -260,6 +301,7 @@ export interface GetDevicesParams {
   brand?: string;
   model?: string;
   status?: string;
+  submittedBy?: string;
   search?: string;
   sortBy?: string;
   page?: number;

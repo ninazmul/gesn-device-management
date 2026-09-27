@@ -13,17 +13,23 @@ import {
 import {
   ALL_APP_MODULES,
   DEFAULT_ROLE_PERMISSIONS,
+  DEFAULT_GRANULAR_PERMISSIONS,
+  GRANULAR_PERMISSIONS_LIST,
   resolveEffectivePermissions,
+  resolveEffectiveGranularPermissions,
   hasPermissionLevel,
 } from "@/lib/rbac-utils";
+import { GranularPermissionKey } from "@/types";
 
 export {
   ALL_APP_MODULES,
   DEFAULT_ROLE_PERMISSIONS,
+  DEFAULT_GRANULAR_PERMISSIONS,
+  GRANULAR_PERMISSIONS_LIST,
   resolveEffectivePermissions,
+  resolveEffectiveGranularPermissions,
   hasPermissionLevel,
 };
-
 
 /**
  * Fetches the currently authenticated admin profile with resolved effective permissions.
@@ -50,6 +56,7 @@ export async function getCurrentAdminProfile(): Promise<IAdminUser | null> {
         role: "super_admin",
         isActive: true,
         permissions: DEFAULT_ROLE_PERMISSIONS.super_admin,
+        granularPermissions: DEFAULT_GRANULAR_PERMISSIONS.super_admin,
       });
     }
 
@@ -66,12 +73,18 @@ export async function getCurrentAdminProfile(): Promise<IAdminUser | null> {
       adminDoc.permissions
     );
 
+    const effectiveGranular = resolveEffectiveGranularPermissions(
+      adminDoc.role as AdminRole,
+      adminDoc.granularPermissions
+    );
+
     return {
       _id: String(adminDoc._id),
       email: adminDoc.email,
       name: adminDoc.name || "",
       role: adminDoc.role as AdminRole,
       permissions: effective,
+      granularPermissions: effectiveGranular,
       isActive: adminDoc.isActive,
       createdAt: adminDoc.createdAt,
       updatedAt: adminDoc.updatedAt,
@@ -102,6 +115,35 @@ export async function requirePermission(
   if (!hasPermissionLevel(effective, module, requiredLevel)) {
     throw new Error(
       `Forbidden: You do not have ${requiredLevel} permission for the "${module}" module.`
+    );
+  }
+
+  return profile;
+}
+
+/**
+ * Enforces granular permission requirement on server actions. Throws an error if unauthorized.
+ */
+export async function requireGranularPermission(
+  key: GranularPermissionKey
+): Promise<IAdminUser> {
+  const profile = await getCurrentAdminProfile();
+  if (!profile) {
+    throw new Error("Unauthorized: Access is restricted to authorized administrators.");
+  }
+
+  if (profile.role === "super_admin") {
+    return profile;
+  }
+
+  const effectiveGranular = resolveEffectiveGranularPermissions(
+    profile.role,
+    profile.granularPermissions
+  );
+
+  if (!effectiveGranular[key]) {
+    throw new Error(
+      `Forbidden: You do not have permission to perform this action (${key.replace(/_/g, " ")}).`
     );
   }
 
