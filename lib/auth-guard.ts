@@ -130,6 +130,18 @@ export async function requirePermission(
   return profile;
 }
 
+/** RBAC and staff administration are exclusive to Super Admins. */
+export async function requireSuperAdmin(): Promise<IAdminUser> {
+  const profile = await getCurrentAdminProfile();
+  if (!profile) {
+    throw new Error("Unauthorized: Access is restricted to authorized administrators.");
+  }
+  if (profile.role !== "super_admin") {
+    throw new Error("Forbidden: Only Super Admins can manage users, roles, and permissions.");
+  }
+  return profile;
+}
+
 /**
  * Enforces granular permission requirement on server actions. Throws an error if unauthorized.
  */

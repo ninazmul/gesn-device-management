@@ -190,6 +190,7 @@ export type GranularPermissionKey =
   | "device_edit"
   | "device_delete"
   | "device_approve"
+  | "device_archive"
   | "server_view"
   | "server_manage"
   | "customer_view"

@@ -342,7 +342,7 @@ export async function createDevice(data: {
 
   const isSuperAdmin = actor.role === "super_admin";
   const isEngineer = actor.role === "engineer";
-  const canAdd = isSuperAdmin || isEngineer || (actor.granularPermissions && actor.granularPermissions.device_add !== false);
+  const canAdd = isSuperAdmin || Boolean(actor.granularPermissions?.device_add);
   if (!canAdd) {
     throw new Error("Forbidden: You do not have permission to add devices.");
   }
@@ -540,12 +540,17 @@ export async function updateDevice(
 
   const isSuperAdmin = actor.role === "super_admin";
   const isEngineer = actor.role === "engineer";
-  const canEdit = isSuperAdmin || isEngineer || (actor.granularPermissions && actor.granularPermissions.device_edit !== false);
+  const canEdit = isSuperAdmin || Boolean(actor.granularPermissions?.device_edit);
   if (!canEdit) {
     throw new Error("Forbidden: You do not have permission to edit devices.");
   }
 
   const updatePayload: Record<string, unknown> = {};
+
+  const requestedType = data.deviceType?.toLowerCase().trim() || device.deviceType;
+  if (requestedType === "server" && !isSuperAdmin && !actor.granularPermissions?.server_manage) {
+    throw new Error("Forbidden: You do not have permission to manage server hardware.");
+  }
 
   if (data.deviceType) updatePayload.deviceType = data.deviceType.toLowerCase().trim();
   if (data.brand !== undefined) updatePayload.brand = data.brand.trim();
@@ -604,6 +609,9 @@ export async function updateDevice(
     const canApprove = isSuperAdmin || isEngineer || Boolean(actor.granularPermissions?.device_approve);
     if ((data.status === "Active" || data.status === "Rejected") && !canApprove && device.status !== data.status) {
       throw new Error("Only Super Admins and Engineers can approve or reject devices.");
+    }
+    if (["Inactive", "Retired"].includes(data.status) && !isSuperAdmin && !actor.granularPermissions?.device_archive) {
+      throw new Error("Forbidden: You do not have permission to freeze or archive devices.");
     }
     updatePayload.status = data.status;
     if (data.status === "Active" && device.status !== "Active") {
@@ -959,6 +967,7 @@ export async function getPendingDevices(params?: {
 // GET PENDING DEVICES COUNT (FAST BADGE QUERY)
 // ==========================================
 export async function getPendingDevicesCount(): Promise<number> {
+  await requirePermission("devices", "read");
   await connectToDatabase();
   return Device.countDocuments({ status: "Pending" });
 }
@@ -983,6 +992,12 @@ export async function updateDeviceStatus(
 
   if ((status === "Active" || status === "Rejected") && !canApprove) {
     throw new Error("Only Super Admins and Engineers can approve or reject devices.");
+  }
+  if (["Inactive", "Retired"].includes(status) && !isSuperAdmin && !actor.granularPermissions?.device_archive) {
+    throw new Error("Forbidden: You do not have permission to freeze or archive devices.");
+  }
+  if (!["Active", "Rejected", "Inactive", "Retired"].includes(status) && !isSuperAdmin && !actor.granularPermissions?.device_edit) {
+    throw new Error("Forbidden: You do not have permission to change device status.");
   }
 
   const updateFields: Record<string, unknown> = { status };
@@ -1138,6 +1153,7 @@ export async function deleteDevice(id: string) {
 // ==========================================
 export async function searchGlobalDevices(searchTerm: string) {
   if (!searchTerm || searchTerm.trim().length < 2) return [];
+  await requirePermission("devices", "read");
   await connectToDatabase();
 
   const term = searchTerm.trim();
@@ -1164,6 +1180,7 @@ export async function searchGlobalDevices(searchTerm: string) {
 // GET FILTER OPTIONS
 // ==========================================
 export async function getDeviceFilterOptions(deviceType?: string) {
+  await requirePermission("devices", "read");
   await connectToDatabase();
 
   const brandQuery: Record<string, unknown> = { isActive: true };
@@ -1249,6 +1266,10 @@ export async function importDevicesBulk(
 ) {
   const actor = await requirePermission("devices", "write");
   await connectToDatabase();
+
+  if (actor.role !== "super_admin" && !actor.granularPermissions?.device_add) {
+    throw new Error("Forbidden: You do not have permission to add devices.");
+  }
 
   if (!rows || rows.length === 0) {
     throw new Error("No data rows provided for import.");

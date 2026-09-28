@@ -122,8 +122,7 @@ export function DeviceTable({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { canWrite, isSuperAdmin, isEngineer, admin, canApproveDevice, canDeleteDevice, canEditDevice } = usePermissions();
-  const canWriteDevices = canWrite("devices");
+  const { isSuperAdmin, isEngineer, admin, canApproveDevice, canDeleteDevice, canEditDevice, canArchiveDevice } = usePermissions();
 
   // Modals state
   const [editingDevice, setEditingDevice] = useState<IDevice | null>(null);
@@ -423,7 +422,7 @@ export function DeviceTable({
                       {/* Status & Super Admin Activation Toggle */}
                       <TableCell className="whitespace-nowrap">
                         <div className="flex items-center gap-2">
-                          {canWriteDevices ? (
+                          {(canEditDevice || canArchiveDevice || canApproveDevice) ? (
                             <button
                               type="button"
                               onClick={() => setStatusDevice(device)}
@@ -507,7 +506,7 @@ export function DeviceTable({
                           >
                             <Eye className="w-4 h-4" />
                           </Link>
-                          {(canWriteDevices || canEditDevice) && (
+                          {canEditDevice && (
                             <button
                               type="button"
                               onClick={() => setEditingDevice(device)}
@@ -517,7 +516,7 @@ export function DeviceTable({
                               <Pencil className="w-4 h-4" />
                             </button>
                           )}
-                          {(canWriteDevices || canDeleteDevice) && (
+                          {canDeleteDevice && (
                             <button
                               type="button"
                               onClick={() => setDeletingDevice(device)}

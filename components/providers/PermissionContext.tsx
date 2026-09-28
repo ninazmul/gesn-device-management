@@ -26,6 +26,7 @@ interface PermissionContextValue {
   canDeleteDevice: boolean;
   canAddDevice: boolean;
   canEditDevice: boolean;
+  canArchiveDevice: boolean;
 }
 
 const PermissionContext = createContext<PermissionContextValue | undefined>(
@@ -105,8 +106,9 @@ export function PermissionProvider({
 
   const canApproveDevice = isSuperAdmin || isEngineer || can("device_approve");
   const canDeleteDevice = isSuperAdmin || can("device_delete");
-  const canAddDevice = isSuperAdmin || can("device_add") || canWrite("devices");
-  const canEditDevice = isSuperAdmin || can("device_edit") || canWrite("devices");
+  const canAddDevice = isSuperAdmin || can("device_add");
+  const canEditDevice = isSuperAdmin || can("device_edit");
+  const canArchiveDevice = isSuperAdmin || can("device_archive");
 
   const value = useMemo(
     () => ({
@@ -124,6 +126,7 @@ export function PermissionProvider({
       canDeleteDevice,
       canAddDevice,
       canEditDevice,
+      canArchiveDevice,
     }),
     [
       admin,
@@ -140,6 +143,7 @@ export function PermissionProvider({
       canDeleteDevice,
       canAddDevice,
       canEditDevice,
+      canArchiveDevice,
     ]
   );
 

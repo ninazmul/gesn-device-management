@@ -30,51 +30,51 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<AdminRole, ModulePermissions> = {
     settings: "write",
   },
   engineer: {
-    dashboard: "read",
-    devices: "write",
-    customers: "read",
-    billing: "read",
-    catalog: "read",
-    admins: "none",
-    activity_logs: "read",
-    settings: "none",
-  },
-  admin: {
     dashboard: "write",
     devices: "write",
     customers: "write",
     billing: "write",
     catalog: "write",
-    admins: "read",
+    admins: "none",
     activity_logs: "read",
-    settings: "read",
+    settings: "none",
+  },
+  admin: {
+    dashboard: "none",
+    devices: "none",
+    customers: "none",
+    billing: "none",
+    catalog: "none",
+    admins: "none",
+    activity_logs: "none",
+    settings: "none",
   },
   editor: {
-    dashboard: "read",
+    dashboard: "none",
     devices: "write",
-    customers: "write",
-    billing: "read",
-    catalog: "write",
+    customers: "none",
+    billing: "write",
+    catalog: "none",
     admins: "none",
     activity_logs: "none",
     settings: "none",
   },
   moderator: {
-    dashboard: "read",
+    dashboard: "none",
     devices: "write",
-    customers: "read",
-    billing: "none",
-    catalog: "read",
+    customers: "none",
+    billing: "write",
+    catalog: "none",
     admins: "none",
     activity_logs: "none",
     settings: "none",
   },
   viewer: {
-    dashboard: "read",
-    devices: "read",
-    customers: "read",
-    billing: "read",
-    catalog: "read",
+    dashboard: "none",
+    devices: "none",
+    customers: "none",
+    billing: "none",
+    catalog: "none",
     admins: "none",
     activity_logs: "none",
     settings: "none",
@@ -101,6 +101,7 @@ export const DEFAULT_GRANULAR_PERMISSIONS: Record<
     device_edit: true,
     device_delete: true,
     device_approve: true,
+    device_archive: true,
     server_view: true,
     server_manage: true,
     customer_view: true,
@@ -112,36 +113,39 @@ export const DEFAULT_GRANULAR_PERMISSIONS: Record<
     device_add: true,
     device_view: true,
     device_edit: true,
-    device_delete: false,
+    device_delete: true,
     device_approve: true,
+    device_archive: true,
     server_view: true,
-    server_manage: false,
+    server_manage: true,
     customer_view: true,
     user_manage: false,
     report_view: true,
     setting_manage: false,
   },
   admin: {
-    device_add: true,
-    device_view: true,
-    device_edit: true,
+    device_add: false,
+    device_view: false,
+    device_edit: false,
     device_delete: false,
     device_approve: false,
-    server_view: true,
+    device_archive: false,
+    server_view: false,
     server_manage: false,
-    customer_view: true,
+    customer_view: false,
     user_manage: false,
-    report_view: true,
+    report_view: false,
     setting_manage: false,
   },
   editor: {
     device_add: true,
     device_view: true,
-    device_edit: true,
+    device_edit: false,
     device_delete: false,
     device_approve: false,
+    device_archive: true,
     server_view: true,
-    server_manage: false,
+    server_manage: true,
     customer_view: true,
     user_manage: false,
     report_view: false,
@@ -150,11 +154,12 @@ export const DEFAULT_GRANULAR_PERMISSIONS: Record<
   moderator: {
     device_add: true,
     device_view: true,
-    device_edit: true,
+    device_edit: false,
     device_delete: false,
     device_approve: false,
+    device_archive: false,
     server_view: true,
-    server_manage: false,
+    server_manage: true,
     customer_view: true,
     user_manage: false,
     report_view: false,
@@ -166,6 +171,7 @@ export const DEFAULT_GRANULAR_PERMISSIONS: Record<
     device_edit: false,
     device_delete: false,
     device_approve: false,
+    device_archive: false,
     server_view: true,
     server_manage: false,
     customer_view: true,
@@ -179,6 +185,7 @@ export const DEFAULT_GRANULAR_PERMISSIONS: Record<
     device_edit: false,
     device_delete: false,
     device_approve: false,
+    device_archive: false,
     server_view: false,
     server_manage: false,
     customer_view: false,
@@ -225,6 +232,12 @@ export const GRANULAR_PERMISSIONS_LIST: GranularPermissionMeta[] = [
     label: "Approve/Reject Device",
     category: "Devices",
     description: "Review pending devices and approve to Active or reject",
+  },
+  {
+    key: "device_archive",
+    label: "Freeze/Archive Device",
+    category: "Devices",
+    description: "Freeze an active device or archive it from active operations",
   },
   {
     key: "server_view",
@@ -295,6 +308,17 @@ export function resolveEffectivePermissions(
     }
   }
 
+  // Staff administration is reserved for Super Admins regardless of stored legacy overrides.
+  base.admins = "none";
+  if (role === "engineer") {
+    base.settings = "none";
+  }
+  if (role === "viewer") {
+    for (const mod of ALL_APP_MODULES) {
+      if (base[mod] === "write") base[mod] = "read";
+    }
+  }
+
   return base;
 }
 
@@ -327,6 +351,17 @@ export function resolveEffectiveGranularPermissions(
       if (typeof customObj[key] === "boolean") {
         base[key] = customObj[key];
       }
+    }
+  }
+
+  // Role and permission administration can never be delegated. Viewers are read-only.
+  base.user_manage = false;
+  if (role === "engineer") {
+    base.setting_manage = false;
+  }
+  if (role === "viewer") {
+    for (const key of Object.keys(base) as GranularPermissionKey[]) {
+      base[key] = false;
     }
   }
 

@@ -77,12 +77,12 @@ super_admin → engineer → admin → editor → moderator → viewer → custo
 
 | Role          | Summary                                                    |
 | ------------- | ---------------------------------------------------------- |
-| `super_admin` | Full immutable access to everything                        |
-| `engineer`   | Device CRUD + **approval authority** + read-only elsewhere |
-| `admin`       | Full CRUD on devices/customers/billing, read-only admins   |
-| `editor`      | Write on devices/customers/catalog, read elsewhere         |
-| `moderator`   | Write on devices, read on dashboard/customers/catalog      |
-| `viewer`      | Read-only everywhere                                       |
+| `super_admin` | Full immutable access; exclusively manages users, roles, permissions, and settings |
+| `engineer`   | Full operational access and device approval; no user, role, permission, or critical-settings control |
+| `admin`       | No automatic access; Super Admin configures sections and actions per account |
+| `editor`      | Adds devices, manages billing, and can freeze or archive devices |
+| `moderator`   | Adds devices and manages billing; no archive/freeze unless explicitly granted |
+| `viewer`      | Super Admin-configured, strictly read-only section access  |
 | `custom`      | Fully configurable by Super Admin                          |
 
 ### 3.2 Module Permissions (`ModulePermissions`)
@@ -96,13 +96,14 @@ Defined in: `lib/rbac-utils.ts → DEFAULT_ROLE_PERMISSIONS`
 Fine-grained boolean flags overlaid on module permissions. Keys:
 
 ```
-device_add, device_view, device_edit, device_delete, device_approve,
+device_add, device_view, device_edit, device_delete, device_approve, device_archive,
 server_view, server_manage, customer_view, user_manage, report_view, setting_manage
 ```
 
 - Defaults per role: `lib/rbac-utils.ts → DEFAULT_GRANULAR_PERMISSIONS`
 - Resolver: `resolveEffectiveGranularPermissions(role, customOverrides)`
 - **Engineer role always forces `device_approve: true`** (enforced in resolver).
+- User, role, and permission administration is always reserved for `super_admin`; Viewer granular actions are always disabled.
 - Super Admin overrides are immutable (always all `true`).
 
 ### 3.4 Permission Enforcement
@@ -351,4 +352,3 @@ interface RejectDeviceDialogProps {
 ---
 
 *Last updated: 2026-09-27*
-

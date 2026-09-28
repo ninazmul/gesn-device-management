@@ -59,8 +59,7 @@ interface DeviceDetailsViewProps {
 export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
   const router = useRouter();
   const Icon = getDeviceIcon(device.deviceType);
-  const { canWrite, isSuperAdmin, canApproveDevice, canDeleteDevice, canEditDevice } = usePermissions();
-  const canWriteDevices = canWrite("devices");
+  const { isSuperAdmin, canApproveDevice, canDeleteDevice, canEditDevice, canArchiveDevice } = usePermissions();
 
   const [isStatusOpen, setIsStatusOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -241,7 +240,7 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
               </Button>
             )}
 
-            {(canWriteDevices || canEditDevice) && (
+            {(canEditDevice || canArchiveDevice || canApproveDevice) && (
               <Button
                 type="button"
                 variant="outline"
@@ -253,7 +252,7 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
               </Button>
             )}
 
-            {(canWriteDevices || canEditDevice) && (
+            {canEditDevice && (
               <Button
                 type="button"
                 variant="outline"
@@ -282,7 +281,7 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
               </a>
             )}
 
-            {(canWriteDevices || canDeleteDevice) && (
+            {canDeleteDevice && (
               <Button
                 type="button"
                 variant="ghost"

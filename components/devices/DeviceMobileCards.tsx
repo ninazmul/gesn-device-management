@@ -110,8 +110,7 @@ export function DeviceMobileCards({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { canWrite, isSuperAdmin, isEngineer, admin, canApproveDevice, canDeleteDevice, canEditDevice } = usePermissions();
-  const canWriteDevices = canWrite("devices");
+  const { isSuperAdmin, isEngineer, admin, canApproveDevice, canDeleteDevice, canEditDevice } = usePermissions();
 
   const [editingDevice, setEditingDevice] = useState<IDevice | null>(null);
   const [statusDevice, setStatusDevice] = useState<IDevice | null>(null);
@@ -405,7 +404,7 @@ export function DeviceMobileCards({
                 >
                   <Eye className="w-4 h-4" /> Details
                 </Link>
-                {(canWriteDevices || canEditDevice) && (
+                {canEditDevice && (
                   <button
                     type="button"
                     onClick={() => setEditingDevice(device)}
@@ -415,7 +414,7 @@ export function DeviceMobileCards({
                     <Pencil className="w-4 h-4" />
                   </button>
                 )}
-                {(canWriteDevices || canDeleteDevice) && (
+                {canDeleteDevice && (
                   <button
                     type="button"
                     onClick={() => setDeletingDevice(device)}

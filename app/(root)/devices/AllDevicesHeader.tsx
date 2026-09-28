@@ -85,8 +85,7 @@ export function AllDevicesHeader({ total }: AllDevicesHeaderProps) {
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
 
-  const { canWrite } = usePermissions();
-  const canWriteDevices = canWrite("devices");
+  const { canAddDevice } = usePermissions();
 
   const handleExport = async () => {
     try {
@@ -235,7 +234,7 @@ export function AllDevicesHeader({ total }: AllDevicesHeaderProps) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
-              {canWriteDevices && (
+          {canAddDevice && (
                 <>
                   <DropdownMenuLabel>Inventory Management</DropdownMenuLabel>
                   <DropdownMenuItem onClick={() => setIsAddOpen(true)}>

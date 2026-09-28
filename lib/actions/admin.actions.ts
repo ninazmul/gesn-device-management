@@ -4,7 +4,7 @@ import Admin from "@/lib/database/models/admin.model";
 import { connectToDatabase } from "@/lib/database";
 import {
   getCurrentAdminProfile,
-  requirePermission,
+  requireSuperAdmin,
   resolveEffectivePermissions,
   resolveEffectiveGranularPermissions,
   logActivityAndNotify,
@@ -28,7 +28,7 @@ export const getCurrentAdmin = async (): Promise<IAdminUser | null> => {
 
 export const getAllAdmins = async (): Promise<{ success: boolean; admins: IAdminUser[] }> => {
   try {
-    await requirePermission("admins", "read");
+    await requireSuperAdmin();
     await connectToDatabase();
 
     const rawAdmins = await Admin.find({}).sort({ createdAt: -1 }).lean();
@@ -63,11 +63,7 @@ export const addAdmin = async (data: {
   granularPermissions?: GranularPermissions;
 }) => {
   try {
-    const actor = await requirePermission("admins", "write");
-    const canManageUsers = actor.role === "super_admin" || Boolean(actor.granularPermissions?.user_manage);
-    if (!canManageUsers) {
-      throw new Error("Forbidden: You do not have permission to manage staff users.");
-    }
+    const actor = await requireSuperAdmin();
     await connectToDatabase();
 
     const normalizedEmail = data.email.toLowerCase().trim();
@@ -80,8 +76,8 @@ export const addAdmin = async (data: {
       email: normalizedEmail,
       name: data.name?.trim() || "",
       role,
-      permissions: data.permissions || {},
-      granularPermissions: data.granularPermissions || {},
+      permissions: role === "super_admin" ? {} : data.permissions || {},
+      granularPermissions: role === "super_admin" ? {} : data.granularPermissions || {},
       isActive: true,
     });
 
@@ -113,11 +109,7 @@ export const updateAdminRoleAndPermissions = async (
   }
 ) => {
   try {
-    const actor = await requirePermission("admins", "write");
-    const canManageUsers = actor.role === "super_admin" || Boolean(actor.granularPermissions?.user_manage);
-    if (!canManageUsers) {
-      throw new Error("Forbidden: You do not have permission to manage staff users.");
-    }
+    const actor = await requireSuperAdmin();
     await connectToDatabase();
 
     const targetAdmin = await Admin.findById(adminId);
@@ -133,8 +125,13 @@ export const updateAdminRoleAndPermissions = async (
 
     if (data.name !== undefined) targetAdmin.name = data.name.trim();
     targetAdmin.role = data.role;
-    if (data.permissions !== undefined) targetAdmin.permissions = data.permissions;
-    if (data.granularPermissions !== undefined) targetAdmin.granularPermissions = data.granularPermissions;
+    if (data.role === "super_admin") {
+      targetAdmin.permissions = {};
+      targetAdmin.granularPermissions = {};
+    } else {
+      if (data.permissions !== undefined) targetAdmin.permissions = data.permissions;
+      if (data.granularPermissions !== undefined) targetAdmin.granularPermissions = data.granularPermissions;
+    }
     if (data.isActive !== undefined) targetAdmin.isActive = data.isActive;
 
     await targetAdmin.save();
@@ -158,7 +155,7 @@ export const updateAdminRoleAndPermissions = async (
 
 export const removeAdmin = async (adminId: string) => {
   try {
-    const actor = await requirePermission("admins", "write");
+    const actor = await requireSuperAdmin();
     await connectToDatabase();
 
     const adminToRemove = await Admin.findById(adminId);

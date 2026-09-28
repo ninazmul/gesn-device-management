@@ -30,7 +30,7 @@ export function DeviceStatusDialog({
   onOpenChange,
   onSuccess,
 }: DeviceStatusDialogProps) {
-  const { isSuperAdmin } = usePermissions();
+  const { canApproveDevice, canArchiveDevice, canEditDevice } = usePermissions();
   const [selectedStatus, setSelectedStatus] = useState<DeviceStatus>(
     (device?.status as DeviceStatus) || "Pending"
   );
@@ -74,7 +74,12 @@ export function DeviceStatusDialog({
           {DEVICE_STATUSES.map((status) => {
             const isSelected = selectedStatus === status;
             const config = STATUS_CONFIG[status];
-            const isRestricted = status === "Active" && !isSuperAdmin;
+            const isApprovalStatus = status === "Active" || status === "Rejected";
+            const isArchiveStatus = status === "Inactive" || status === "Retired";
+            const isRestricted =
+              (isApprovalStatus && !canApproveDevice) ||
+              (isArchiveStatus && !canArchiveDevice) ||
+              (!isApprovalStatus && !isArchiveStatus && !canEditDevice);
 
             return (
               <button

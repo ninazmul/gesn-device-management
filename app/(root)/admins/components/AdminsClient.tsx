@@ -109,17 +109,18 @@ const ROLE_OPTIONS: RoleDetail[] = [
     color: "text-indigo-600 dark:text-indigo-400",
     border: "border-indigo-500/30",
     bgLight: "bg-indigo-500/10",
-    summary: "Technical Engineer & Device Approver",
-    desc: "Hardware management, approve & reject submitted devices, real-time alerts.",
+    summary: "Operational Engineer",
+    desc: "Full operational access across the dashboard, devices, customers, billing, catalog, and logs.",
     canDo: [
       "Review, approve, and reject submitted devices (APs, Routers, Switches, Antennas)",
       "Add, edit, change status & delete devices and hardware",
-      "Full write access across devices, customers, billing, catalog, settings & logs",
+      "Manage operational devices, customers, billing, and catalog data",
       "Receive real-time bell alerts when devices are submitted for review",
       "Inspect audit activity logs and system events",
     ],
     cannotDo: [
-      "Cannot add, edit roles, or delete staff administrators (unless granted by Super Admin)",
+      "Cannot manage users, roles, permissions, or critical system settings",
+      "Cannot grant additional permissions or override Super Admin authority",
     ],
   },
   {
@@ -129,18 +130,14 @@ const ROLE_OPTIONS: RoleDetail[] = [
     color: "text-sky-600 dark:text-sky-400",
     border: "border-sky-500/30",
     bgLight: "bg-sky-500/10",
-    summary: "Business & Operations Lead",
-    desc: "Full operational read & write across devices, billing & customers.",
+    summary: "Super Admin Configured Access",
+    desc: "No automatic access. The Super Admin assigns each dashboard section and action individually.",
     canDo: [
-      "Add, edit, change status & delete devices and hardware",
-      "Add, edit & remove customer records and subscription plans",
-      "Generate monthly billing & record customer payment transactions",
-      "Manage hardware catalog (taxonomies, brands, models)",
-      "View staff member directory & view activity logs (read-only)",
+      "Use only the sections and actions explicitly assigned by the Super Admin",
     ],
     cannotDo: [
-      "Cannot add, edit roles, or delete staff administrators",
-      "Cannot configure custom permission matrices",
+      "Cannot manage users, roles, or permissions",
+      "Cannot grant additional permissions to self or others",
     ],
   },
   {
@@ -150,17 +147,15 @@ const ROLE_OPTIONS: RoleDetail[] = [
     color: "text-emerald-600 dark:text-emerald-400",
     border: "border-emerald-500/30",
     bgLight: "bg-emerald-500/10",
-    summary: "Content & Field Operator",
-    desc: "Can add & modify devices, customers, catalog; read billing.",
+    summary: "Device & Billing Operator",
+    desc: "Can add devices, manage billing, and freeze or archive active devices.",
     canDo: [
-      "Add, edit & delete devices and update device operational status",
-      "Add, edit & manage customer accounts and assignments",
-      "Add and modify hardware catalog models and brands",
-      "View billing invoices & customer payment statuses (read-only)",
+      "Add new devices and freeze or archive active devices",
+      "Manage permitted billing operations",
     ],
     cannotDo: [
-      "Cannot collect payments or generate monthly invoices",
-      "Cannot access staff management, activity logs, or system settings",
+      "Cannot manage users, roles, permissions, or critical settings",
+      "Cannot perform actions not explicitly assigned to the Editor preset",
     ],
   },
   {
@@ -170,17 +165,15 @@ const ROLE_OPTIONS: RoleDetail[] = [
     color: "text-blue-600 dark:text-blue-400",
     border: "border-blue-500/30",
     bgLight: "bg-blue-500/10",
-    summary: "Hardware Maintenance Tech",
-    desc: "Device management focus; read-only on customers & catalog.",
+    summary: "Device & Billing Operator",
+    desc: "Can add devices and manage billing, without other operational access.",
     canDo: [
-      "Full write access to devices (create, edit, change status, delete)",
-      "View customer directories and assigned device links (read-only)",
-      "View hardware catalog and taxonomies (read-only)",
+      "Add new devices",
+      "Manage permitted billing operations",
     ],
     cannotDo: [
-      "Cannot edit or delete customer records",
-      "Cannot access billing, invoices, or payment collections",
-      "Cannot access staff management or activity audit logs",
+      "Cannot freeze or archive devices unless the Super Admin grants that action",
+      "Cannot manage users, roles, permissions, or system settings",
     ],
   },
   {
@@ -190,18 +183,14 @@ const ROLE_OPTIONS: RoleDetail[] = [
     color: "text-slate-600 dark:text-slate-400",
     border: "border-slate-500/30",
     bgLight: "bg-slate-500/10",
-    summary: "Read-Only Auditor / Observer",
-    desc: "Read-only access; cannot add, edit, or delete anything.",
+    summary: "Super Admin Configured Read-Only Access",
+    desc: "The Super Admin chooses which sections and data are visible; all access is read-only.",
     canDo: [
-      "Browse and inspect devices, servers, and network topology",
-      "Search, filter, and view customer profiles",
-      "View billing records, invoice breakdowns, and payment statuses",
-      "View device hardware catalog",
+      "View only sections explicitly authorized by the Super Admin",
     ],
     cannotDo: [
-      "Cannot create, edit, or delete any record or device",
-      "Cannot collect payments or generate bills",
-      "Cannot access staff management or audit logs",
+      "Cannot create, edit, approve, reject, freeze, archive, or delete records",
+      "Cannot manage users, roles, permissions, or system settings",
     ],
   },
   {
@@ -390,7 +379,7 @@ export default function AdminsClient({
         email: newEmail.trim(),
         name: newName.trim(),
         role: newRole,
-        permissions: newRole === "custom" ? customPerms : undefined,
+        permissions: ["admin", "viewer", "custom"].includes(newRole) ? customPerms : undefined,
         granularPermissions: newRole === "super_admin" ? undefined : newGranularPerms,
       });
       toast.success("Administrator added successfully");
@@ -431,7 +420,7 @@ export default function AdminsClient({
       await updateAdminRoleAndPermissions(editingAdmin._id, {
         name: editName.trim(),
         role: editRole,
-        permissions: editRole === "custom" ? editPerms : undefined,
+        permissions: ["admin", "viewer", "custom"].includes(editRole) ? editPerms : undefined,
         granularPermissions: editRole === "super_admin" ? undefined : editGranularPerms,
       });
       toast.success("Role & permissions updated successfully");
@@ -632,11 +621,11 @@ export default function AdminsClient({
                   );
                 })()}
 
-                {/* Granular Matrix for Custom Role */}
-                {newRole === "custom" && (
+                {/* Super Admin configured module access */}
+                {["admin", "viewer", "custom"].includes(newRole) && (
                   <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 space-y-2">
                     <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
-                      Custom Module Permissions
+                      {newRole === "viewer" ? "Viewer Section Access" : "Module Permissions"}
                     </span>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56 overflow-y-auto pr-1">
                       {ALL_APP_MODULES.map((mod) => (
@@ -662,7 +651,7 @@ export default function AdminsClient({
                             <SelectContent className="rounded-xl text-xs">
                               <SelectItem value="none">None</SelectItem>
                               <SelectItem value="read">Read Only</SelectItem>
-                              <SelectItem value="write">Read & Write</SelectItem>
+                              {newRole !== "viewer" && <SelectItem value="write">Read & Write</SelectItem>}
                             </SelectContent>
                           </Select>
                         </div>
@@ -1139,10 +1128,10 @@ export default function AdminsClient({
                 );
               })()}
 
-              {editRole === "custom" && (
+              {["admin", "viewer", "custom"].includes(editRole) && (
                 <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 space-y-2">
                   <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
-                    Custom Module Permissions Matrix
+                    {editRole === "viewer" ? "Viewer Section Access" : "Module Permissions Matrix"}
                   </span>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56 overflow-y-auto pr-1">
                     {ALL_APP_MODULES.map((mod) => (
@@ -1168,7 +1157,7 @@ export default function AdminsClient({
                           <SelectContent className="rounded-xl text-xs">
                             <SelectItem value="none">None</SelectItem>
                             <SelectItem value="read">Read Only</SelectItem>
-                            <SelectItem value="write">Read & Write</SelectItem>
+                            {editRole !== "viewer" && <SelectItem value="write">Read & Write</SelectItem>}
                           </SelectContent>
                         </Select>
                       </div>

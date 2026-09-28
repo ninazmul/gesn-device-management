@@ -135,8 +135,7 @@ export function DeviceSectionHeader({
   const [isExporting, setIsExporting] = useState(false);
 
   const Icon = getDeviceIcon(typeSlug);
-  const { canWrite } = usePermissions();
-  const canWriteDevices = canWrite("devices");
+  const { canAddDevice } = usePermissions();
 
   const handleExport = async () => {
     try {
@@ -253,7 +252,7 @@ export function DeviceSectionHeader({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
-              {canWriteDevices && (
+          {canAddDevice && (
                 <>
                   <DropdownMenuLabel>Inventory Management</DropdownMenuLabel>
                   <DropdownMenuItem onClick={() => setIsAddOpen(true)}>
