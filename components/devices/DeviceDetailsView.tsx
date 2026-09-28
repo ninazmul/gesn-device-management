@@ -20,9 +20,6 @@ import {
   Clock,
   Activity,
   XCircle,
-  AlertTriangle,
-  User2,
-  Shield,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DeviceStatusBadge } from "./DeviceStatusBadge";

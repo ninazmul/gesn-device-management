@@ -14,7 +14,6 @@ import type { DeviceStatus, GetDevicesParams, IDevice, ISwitchOption, IServerOpt
 import {
   getCurrentAdminProfile,
   requirePermission,
-  requireGranularPermission,
   logActivityAndNotify,
 } from "@/lib/auth-guard";
 

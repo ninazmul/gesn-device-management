@@ -8,7 +8,6 @@ import {
   CheckCircle2,
   XCircle,
   Search,
-  Filter,
   ShieldCheck,
   Eye,
   Copy,
@@ -66,7 +65,6 @@ export function PendingDevicesClient({
   initialDevices,
   total,
   page,
-  limit,
   totalPages,
   byType,
 }: PendingDevicesClientProps) {

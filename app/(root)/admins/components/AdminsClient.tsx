@@ -56,7 +56,6 @@ import {
   AdminRole,
   AppModule,
   GranularPermissionKey,
-  GranularPermissions,
   IAdminUser,
   ModulePermissions,
   PermissionLevel,

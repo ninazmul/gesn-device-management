@@ -23,19 +23,14 @@ import {
   Loader2,
   Plus,
   Network,
-  Server,
   X,
   ScanBarcode,
   Camera,
   Wifi,
-  Radio,
-  Router as RouterIcon,
   Fingerprint,
   MapPin,
   ChevronDown,
   ChevronUp,
-  Layers,
-  Globe,
   SlidersHorizontal,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
@@ -85,7 +80,7 @@ export function DeviceFormDialog({
   onSuccess,
   hideDeviceType = false,
 }: DeviceFormDialogProps) {
-  const { isSuperAdmin, isEngineer, canApproveDevice } = usePermissions();
+  const { isSuperAdmin, canApproveDevice } = usePermissions();
   const isEditing = !!deviceToEdit;
 
   // Active Device Type
@@ -257,15 +252,19 @@ export function DeviceFormDialog({
     enabled: open,
   });
 
-  const prevOpenRef = useRef(open);
+  const prevOpenRef = useRef(false);
 
-  // Sync state on open/reset
+  // Sync state on open/reset only when dialog opens
   useEffect(() => {
-    const justOpened = open && !prevOpenRef.current;
-    prevOpenRef.current = open;
+    if (!open) {
+      prevOpenRef.current = false;
+      return;
+    }
 
-    if (!justOpened && !deviceToEdit) return;
-    if (!open && !deviceToEdit) return;
+    const justOpened = !prevOpenRef.current;
+    prevOpenRef.current = true;
+
+    if (!justOpened) return;
 
     if (deviceToEdit) {
       setDeviceType(deviceToEdit.deviceType);
@@ -312,7 +311,7 @@ export function DeviceFormDialog({
       );
       setStatus(deviceToEdit.status || "Pending");
       setShowMore(false); // Collapsed by default
-    } else if (justOpened) {
+    } else {
       setDeviceType(defaultDeviceType);
       setMacAddress("");
       setApNumber("");
@@ -339,8 +338,12 @@ export function DeviceFormDialog({
 
   // Load available types, servers, and switches on open
   useEffect(() => {
-    if (open) {
-      getDeviceTypes(true).then((types) => {
+    if (!open) return;
+    let isMounted = true;
+
+    getDeviceTypes(true)
+      .then((types) => {
+        if (!isMounted) return;
         if (types && types.length > 0) {
           setAvailableTypes(types);
         } else {
@@ -354,39 +357,76 @@ export function DeviceFormDialog({
             }))
           );
         }
+      })
+      .catch((err) => {
+        console.error("Error loading device types:", err);
       });
 
-      setLoadingServers(true);
-      getAvailableServers()
-        .then(setAvailableServers)
-        .finally(() => setLoadingServers(false));
+    setLoadingServers(true);
+    getAvailableServers()
+      .then((servers) => {
+        if (isMounted) setAvailableServers(servers);
+      })
+      .catch((err) => console.error("Error loading servers:", err))
+      .finally(() => {
+        if (isMounted) setLoadingServers(false);
+      });
 
-      setLoadingSwitches(true);
-      getAvailableSwitches()
-        .then(setAvailableSwitches)
-        .finally(() => setLoadingSwitches(false));
-    }
+    setLoadingSwitches(true);
+    getAvailableSwitches()
+      .then((switches) => {
+        if (isMounted) setAvailableSwitches(switches);
+      })
+      .catch((err) => console.error("Error loading switches:", err))
+      .finally(() => {
+        if (isMounted) setLoadingSwitches(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
   }, [open]);
 
   // Load Brands when deviceType changes
   useEffect(() => {
     if (!open || !deviceType) return;
+    let isMounted = true;
     setLoadingBrands(true);
     getBrands(deviceType, true)
-      .then(setAvailableBrands)
-      .finally(() => setLoadingBrands(false));
+      .then((brands) => {
+        if (isMounted) setAvailableBrands(brands);
+      })
+      .catch((err) => console.error("Error loading brands:", err))
+      .finally(() => {
+        if (isMounted) setLoadingBrands(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
   }, [deviceType, open]);
 
   // Load Models when brand changes
   useEffect(() => {
-    if (!open || !brand || !deviceType) {
-      setAvailableModels([]);
+    if (!open) return;
+    if (!brand || !deviceType) {
+      setAvailableModels((prev) => (prev.length === 0 ? prev : []));
       return;
     }
+    let isMounted = true;
     setLoadingModels(true);
     getModels({ deviceType, brand, onlyActive: true })
-      .then(setAvailableModels)
-      .finally(() => setLoadingModels(false));
+      .then((models) => {
+        if (isMounted) setAvailableModels(models);
+      })
+      .catch((err) => console.error("Error loading models:", err))
+      .finally(() => {
+        if (isMounted) setLoadingModels(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
   }, [brand, deviceType, open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -546,7 +586,6 @@ export function DeviceFormDialog({
   };
 
   const selectedSwitchData = availableSwitches.find((s) => s._id === uplinkSwitch);
-  const selectedServerData = availableServers.find((s) => s._id === server);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

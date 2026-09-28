@@ -278,7 +278,6 @@ export function DeviceTable({
                           const devTheme = getDeviceTypeTheme(device.deviceType);
                           const isOnline = device.status === "Active" || device.status === "Available";
                           const isPendingOrMaint = device.status === "Pending" || device.status === "Maintenance";
-                          const isRejected = device.status === "Rejected";
 
                           const dotColor =
                             device.status === "Active"

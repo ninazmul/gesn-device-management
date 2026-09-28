@@ -1,19 +1,15 @@
 "use client";
 
-import React, { createContext, useContext } from "react";
+import React, { createContext, useContext, useMemo, useCallback } from "react";
 import {
   AdminRole,
   AppModule,
   GranularPermissionKey,
-  GranularPermissions,
   IAdminUser,
   ModulePermissions,
   PermissionLevel,
 } from "@/types";
-import {
-  DEFAULT_GRANULAR_PERMISSIONS,
-  resolveEffectiveGranularPermissions,
-} from "@/lib/rbac-utils";
+import { resolveEffectiveGranularPermissions } from "@/lib/rbac-utils";
 
 interface PermissionContextValue {
   admin: IAdminUser | null;
@@ -58,64 +54,97 @@ export function PermissionProvider({
   const isSuperAdmin = role === "super_admin";
   const isEngineer = role === "engineer";
 
-  const permissions: ModulePermissions = {
-    ...defaultPermissions,
-    ...(admin?.permissions || {}),
-  };
+  const permissions: ModulePermissions = useMemo(
+    () => ({
+      ...defaultPermissions,
+      ...(admin?.permissions || {}),
+    }),
+    [admin?.permissions]
+  );
 
-  const granularPermissions: Record<GranularPermissionKey, boolean> =
-    resolveEffectiveGranularPermissions(role, admin?.granularPermissions);
+  const granularPermissions: Record<GranularPermissionKey, boolean> = useMemo(
+    () => resolveEffectiveGranularPermissions(role, admin?.granularPermissions),
+    [role, admin?.granularPermissions]
+  );
 
-  const hasPermission = (
-    module: AppModule,
-    requiredLevel: PermissionLevel
-  ): boolean => {
-    if (isSuperAdmin) return true;
-    if (requiredLevel === "none") return true;
+  const hasPermission = useCallback(
+    (module: AppModule, requiredLevel: PermissionLevel): boolean => {
+      if (isSuperAdmin) return true;
+      if (requiredLevel === "none") return true;
 
-    const currentLevel = permissions[module] || "none";
-    if (requiredLevel === "read") {
-      return currentLevel === "read" || currentLevel === "write";
-    }
-    if (requiredLevel === "write") {
-      return currentLevel === "write";
-    }
-    return false;
-  };
+      const currentLevel = permissions[module] || "none";
+      if (requiredLevel === "read") {
+        return currentLevel === "read" || currentLevel === "write";
+      }
+      if (requiredLevel === "write") {
+        return currentLevel === "write";
+      }
+      return false;
+    },
+    [isSuperAdmin, permissions]
+  );
 
-  const canRead = (module: AppModule) => hasPermission(module, "read");
-  const canWrite = (module: AppModule) => hasPermission(module, "write");
+  const canRead = useCallback(
+    (module: AppModule) => hasPermission(module, "read"),
+    [hasPermission]
+  );
 
-  const can = (action: GranularPermissionKey): boolean => {
-    if (isSuperAdmin) return true;
-    if (action === "device_approve" && isEngineer) return true;
-    return Boolean(granularPermissions[action]);
-  };
+  const canWrite = useCallback(
+    (module: AppModule) => hasPermission(module, "write"),
+    [hasPermission]
+  );
+
+  const can = useCallback(
+    (action: GranularPermissionKey): boolean => {
+      if (isSuperAdmin) return true;
+      if (action === "device_approve" && isEngineer) return true;
+      return Boolean(granularPermissions[action]);
+    },
+    [isSuperAdmin, isEngineer, granularPermissions]
+  );
 
   const canApproveDevice = isSuperAdmin || isEngineer || can("device_approve");
   const canDeleteDevice = isSuperAdmin || can("device_delete");
   const canAddDevice = isSuperAdmin || can("device_add") || canWrite("devices");
   const canEditDevice = isSuperAdmin || can("device_edit") || canWrite("devices");
 
+  const value = useMemo(
+    () => ({
+      admin,
+      role,
+      isSuperAdmin,
+      isEngineer,
+      permissions,
+      granularPermissions,
+      hasPermission,
+      canRead,
+      canWrite,
+      can,
+      canApproveDevice,
+      canDeleteDevice,
+      canAddDevice,
+      canEditDevice,
+    }),
+    [
+      admin,
+      role,
+      isSuperAdmin,
+      isEngineer,
+      permissions,
+      granularPermissions,
+      hasPermission,
+      canRead,
+      canWrite,
+      can,
+      canApproveDevice,
+      canDeleteDevice,
+      canAddDevice,
+      canEditDevice,
+    ]
+  );
+
   return (
-    <PermissionContext.Provider
-      value={{
-        admin,
-        role,
-        isSuperAdmin,
-        isEngineer,
-        permissions,
-        granularPermissions,
-        hasPermission,
-        canRead,
-        canWrite,
-        can,
-        canApproveDevice,
-        canDeleteDevice,
-        canAddDevice,
-        canEditDevice,
-      }}
-    >
+    <PermissionContext.Provider value={value}>
       {children}
     </PermissionContext.Provider>
   );
