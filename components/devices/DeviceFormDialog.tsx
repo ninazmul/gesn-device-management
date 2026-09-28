@@ -514,7 +514,7 @@ export function DeviceFormDialog({
         return;
       }
     } else {
-      // General fallback (e.g. server or other custom types)
+      // General fallback for custom device types.
       if (!description.trim()) {
         toast.error("Description is required");
         return;
@@ -1155,7 +1155,7 @@ export function DeviceFormDialog({
           {/* ========================================================================= */}
           {/* SMALL EXPANDABLE BUTTON: More (Optional) */}
           {/* ========================================================================= */}
-          <div className="pt-1">
+          {deviceType !== "server" && <div className="pt-1">
             <button
               type="button"
               onClick={() => setShowMore((prev) => !prev)}
@@ -1171,12 +1171,12 @@ export function DeviceFormDialog({
                 {showMore ? "(click to collapse)" : "(Brand, Model, IP, Uplink, etc.)"}
               </span>
             </button>
-          </div>
+          </div>}
 
           {/* ========================================================================= */}
           {/* MORE (OPTIONAL) SECTION - COLLAPSED BY DEFAULT */}
           {/* ========================================================================= */}
-          {showMore && (
+          {deviceType !== "server" && showMore && (
             <div className="space-y-4 p-4 rounded-2xl bg-white dark:bg-slate-900 border border-dashed border-slate-300 dark:border-slate-700 animate-in fade-in-50 duration-150">
               <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
