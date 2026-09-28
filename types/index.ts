@@ -259,6 +259,7 @@ export interface DashboardStats {
   maintenanceDevices: number;
   inactiveDevices: number;
   retiredDevices: number;
+  pendingDevices: number;
   byType: Array<{
     type: string;
     label: string;

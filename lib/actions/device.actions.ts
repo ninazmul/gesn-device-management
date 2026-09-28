@@ -18,6 +18,14 @@ import {
   logActivityAndNotify,
 } from "@/lib/auth-guard";
 
+function safeRevalidatePath(path: string) {
+  try {
+    revalidatePath(path);
+  } catch {
+    // Gracefully ignore when executed outside Next.js request context (e.g. scripts/tests)
+  }
+}
+
 // Helper to generate next sequential SL (e.g. "000001")
 async function getNextSL(): Promise<string> {
   const counter = await Counter.findByIdAndUpdate(
@@ -37,7 +45,7 @@ export async function getAvailableSwitches(): Promise<ISwitchOption[]> {
 
   const switches = await Device.find({
     deviceType: "switch",
-    status: { $nin: ["Retired"] },
+    status: { $nin: ["Retired", "Pending", "Rejected"] },
   })
     .select("sl deviceName brand model ipAddress status totalPorts")
     .sort({ deviceName: 1 })
@@ -52,7 +60,7 @@ export async function getAvailableSwitches(): Promise<ISwitchOption[]> {
     {
       $match: {
         uplinkSwitch: { $in: switchIds },
-        status: { $nin: ["Retired"] },
+        status: { $nin: ["Retired", "Pending", "Rejected"] },
       },
     },
     {
@@ -99,7 +107,7 @@ export async function getAvailableServers(): Promise<IServerOption[]> {
 
   const servers = await Device.find({
     deviceType: "server",
-    status: { $nin: ["Retired"] },
+    status: { $nin: ["Retired", "Pending", "Rejected"] },
   })
     .select("sl deviceName brand model ipAddress status")
     .sort({ deviceName: 1 })
@@ -143,6 +151,10 @@ export async function getDevices(params?: GetDevicesParams) {
 
   if (status && status !== "all") {
     query.status = status;
+  } else if (!params?.submittedBy) {
+    // When viewing general device inventory without a specific status filter and not in "My Submissions",
+    // exclude Pending and Rejected devices so unapproved hardware never appears in operational lists.
+    query.status = { $nin: ["Pending", "Rejected"] };
   }
 
   if (params?.submittedBy && params.submittedBy !== "all") {
@@ -361,7 +373,25 @@ export async function createDevice(data: {
     throw new Error("Invalid MAC Address format. Example: AA:BB:CC:DD:EE:FF");
   }
 
-  // 2. Strict type-specific required fields validation
+  // 2. Prevent duplicate submissions by MAC address
+  const existingDevice = await Device.findOne({ macAddress: normalizedMAC });
+  if (existingDevice) {
+    if (existingDevice.status === "Pending") {
+      throw new Error(
+        `A device with MAC address ${normalizedMAC} has already been submitted and is currently Pending Approval (SL: #${existingDevice.sl}, Name: ${existingDevice.deviceName}).`
+      );
+    }
+    if (existingDevice.status === "Rejected") {
+      throw new Error(
+        `A device with MAC address ${normalizedMAC} was previously rejected (SL: #${existingDevice.sl}, Reason: ${existingDevice.rejectionReason || "N/A"}). Please review existing records or consult an administrator.`
+      );
+    }
+    throw new Error(
+      `A device with MAC address ${normalizedMAC} already exists in the system (SL: #${existingDevice.sl}, Name: ${existingDevice.deviceName}, Status: ${existingDevice.status}).`
+    );
+  }
+
+  // 3. Strict type-specific required fields validation
   if (type === "access-point") {
     if (!data.apNumber?.trim()) throw new Error("AP Number is required for Access Point");
     if (!data.server) throw new Error("Connected Server is required for Access Point");
@@ -394,8 +424,9 @@ export async function createDevice(data: {
   const deviceName = data.deviceName?.trim() || data.model?.trim() || data.brand?.trim() || `${data.deviceType.toUpperCase()} ${normalizedMAC.slice(-5)}`;
   const sl = await getNextSL();
 
-  // Non-super-admins cannot activate devices directly; status is forced to "Pending"
-  const finalStatus: DeviceStatus = isSuperAdmin ? (data.status || "Active") : "Pending";
+  // Non-super-admins and non-engineers cannot activate devices directly; status is forced to "Pending"
+  const canDirectlyActivate = isSuperAdmin || isEngineer;
+  const finalStatus: DeviceStatus = canDirectlyActivate ? (data.status || "Active") : "Pending";
 
   const device = await Device.create({
     sl,
@@ -429,7 +460,7 @@ export async function createDevice(data: {
     },
   });
 
-  const logDetails = isSuperAdmin
+  const logDetails = canDirectlyActivate
     ? `Added new ${data.deviceType} device: ${deviceName} (SL: ${sl}, IP: ${rawIp || "N/A"}, Status: ${finalStatus})`
     : `Added new ${data.deviceType} device: ${deviceName} (SL: ${sl}, MAC: ${normalizedMAC}) - Pending Super Admin / Engineer approval.`;
 
@@ -443,7 +474,7 @@ export async function createDevice(data: {
     link: `/devices/${type}`,
   });
 
-  // When submitted as Pending, ensure both Super Admin and Engineer receive notification
+  // When submitted as Pending, ensure both Super Admin and Engineer receive notification with direct link to pending approvals
   if (finalStatus === "Pending") {
     await Notification.create({
       actorEmail: actor.email,
@@ -452,19 +483,20 @@ export async function createDevice(data: {
       module: "devices",
       title: `New Device Submission: ${type.toUpperCase()}`,
       message: `New ${type} device (${deviceName}, MAC: ${normalizedMAC}) submitted by ${actor.name || actor.email} (${actor.role}) at ${new Date().toLocaleTimeString()} — Status: Pending Approval.`,
-      link: `/devices/${type}/${device._id}`,
+      link: `/devices/pending`,
       readBy: [],
     });
   }
 
-  revalidatePath("/");
-  revalidatePath("/devices");
-  revalidatePath(`/devices/${type}`);
+  safeRevalidatePath("/");
+  safeRevalidatePath("/devices");
+  safeRevalidatePath("/devices/pending");
+  safeRevalidatePath(`/devices/${type}`);
   if (data.uplinkSwitch) {
-    revalidatePath(`/devices/switch/${data.uplinkSwitch}`);
+    safeRevalidatePath(`/devices/switch/${data.uplinkSwitch}`);
   }
   if (data.server) {
-    revalidatePath(`/devices/server/${data.server}`);
+    safeRevalidatePath(`/devices/server/${data.server}`);
   }
 
   return JSON.parse(JSON.stringify(device)) as IDevice;
@@ -606,14 +638,14 @@ export async function updateDevice(
     link: `/devices/${updatedDevice.deviceType.toLowerCase().trim()}`,
   });
 
-  revalidatePath("/");
-  revalidatePath("/devices");
-  revalidatePath(`/devices/${updatedDevice.deviceType.toLowerCase().trim()}`);
+  safeRevalidatePath("/");
+  safeRevalidatePath("/devices");
+  safeRevalidatePath(`/devices/${updatedDevice.deviceType.toLowerCase().trim()}`);
   if (updatedDevice.uplinkSwitch) {
-    revalidatePath(`/devices/switch/${updatedDevice.uplinkSwitch}`);
+    safeRevalidatePath(`/devices/switch/${updatedDevice.uplinkSwitch}`);
   }
   if (updatedDevice.server) {
-    revalidatePath(`/devices/server/${updatedDevice.server}`);
+    safeRevalidatePath(`/devices/server/${updatedDevice.server}`);
   }
 
   return JSON.parse(JSON.stringify(updatedDevice)) as IDevice;
@@ -643,34 +675,50 @@ export async function approveDevice(id: string) {
   const device = await Device.findById(id);
   if (!device) throw new Error("Device not found");
 
-  // Idempotent safety check: if already Active, return cleanly
   if (device.status === "Active") {
-    return JSON.parse(JSON.stringify(device)) as IDevice;
+    throw new Error("Device has already been approved and is Active.");
+  }
+  if (device.status === "Rejected") {
+    throw new Error("Device has already been rejected and cannot be approved directly.");
+  }
+  if (device.status !== "Pending") {
+    throw new Error(`Device cannot be approved because its current status is '${device.status}'. Only Pending devices can be approved.`);
   }
 
-  device.status = "Active";
-  device.approvedBy = {
-    email: actor.email,
-    name: actor.name || actor.email.split("@")[0],
-    role: actor.role,
-    userId: actor._id,
-    date: new Date(),
-  };
-  device.rejectionReason = "";
+  // Atomic state transition to prevent race conditions during concurrent approval clicks
+  const updatedDevice = await Device.findOneAndUpdate(
+    { _id: id, status: "Pending" },
+    {
+      $set: {
+        status: "Active",
+        approvedBy: {
+          email: actor.email,
+          name: actor.name || actor.email.split("@")[0],
+          role: actor.role,
+          userId: actor._id,
+          date: new Date(),
+        },
+        rejectionReason: "",
+      },
+    },
+    { new: true }
+  );
 
-  await device.save();
+  if (!updatedDevice) {
+    throw new Error("Device could not be approved. It may have already been processed by another administrator.");
+  }
 
   await ActivityLog.create({
     actorEmail: actor.email,
     actorRole: actor.role,
     action: "APPROVE_DEVICE",
     module: "devices",
-    resourceId: device.sl,
-    resourceName: `${device.deviceName} (${device.sl})`,
-    details: `${actor.name || actor.email} (${actor.role}) approved device #${device.sl} (${device.deviceName}) - Status is now Active / Online`,
+    resourceId: updatedDevice.sl,
+    resourceName: `${updatedDevice.deviceName} (${updatedDevice.sl})`,
+    details: `${actor.name || actor.email} (${actor.role}) approved device #${updatedDevice.sl} (${updatedDevice.deviceName}) - Status is now Active / Online`,
     metadata: {
-      deviceId: String(device._id),
-      sl: device.sl,
+      deviceId: String(updatedDevice._id),
+      sl: updatedDevice.sl,
       action: "APPROVE",
       approverName: actor.name || actor.email,
       approverUserId: actor._id,
@@ -679,12 +727,38 @@ export async function approveDevice(id: string) {
     },
   });
 
-  revalidatePath("/");
-  revalidatePath("/devices");
-  revalidatePath(`/devices/${device.deviceType.toLowerCase().trim()}`);
-  revalidatePath(`/devices/${device.deviceType.toLowerCase().trim()}/${device._id}`);
+  // Mark prior submission notifications as read
+  await Notification.updateMany(
+    {
+      action: "DEVICE_SUBMISSION",
+      module: "devices",
+      $or: [
+        { link: { $regex: String(id) } },
+        { message: { $regex: String(updatedDevice.sl) } },
+      ],
+    },
+    { $addToSet: { readBy: actor.email.toLowerCase() } }
+  );
 
-  return JSON.parse(JSON.stringify(device)) as IDevice;
+  // Send approval notification
+  await Notification.create({
+    actorEmail: actor.email,
+    actorRole: actor.role,
+    action: "DEVICE_APPROVAL",
+    module: "devices",
+    title: `Device Approved: ${updatedDevice.deviceName}`,
+    message: `Device #${updatedDevice.sl} (${updatedDevice.deviceName}, ${updatedDevice.deviceType.toUpperCase()}) was approved by ${actor.name || actor.email} (${actor.role}). Status is now Active.`,
+    link: `/devices/${updatedDevice.deviceType.toLowerCase().trim()}/${updatedDevice._id}`,
+    readBy: [actor.email.toLowerCase()],
+  });
+
+  safeRevalidatePath("/");
+  safeRevalidatePath("/devices");
+  safeRevalidatePath("/devices/pending");
+  safeRevalidatePath(`/devices/${updatedDevice.deviceType.toLowerCase().trim()}`);
+  safeRevalidatePath(`/devices/${updatedDevice.deviceType.toLowerCase().trim()}/${updatedDevice._id}`);
+
+  return JSON.parse(JSON.stringify(updatedDevice)) as IDevice;
 }
 
 // ==========================================
@@ -713,35 +787,51 @@ export async function rejectDevice(id: string, reason?: string) {
 
   const cleanReason = reason?.trim() || "No specific reason provided.";
 
-  // Idempotent safety check: if already Rejected with same reason, return cleanly
-  if (device.status === "Rejected" && device.rejectionReason === cleanReason) {
-    return JSON.parse(JSON.stringify(device)) as IDevice;
+  if (device.status === "Active") {
+    throw new Error("Device has already been approved and cannot be rejected.");
+  }
+  if (device.status === "Rejected") {
+    throw new Error("Device has already been rejected.");
+  }
+  if (device.status !== "Pending") {
+    throw new Error(`Device cannot be rejected because its current status is '${device.status}'. Only Pending devices can be rejected.`);
   }
 
-  device.status = "Rejected";
-  device.rejectedBy = {
-    email: actor.email,
-    name: actor.name || actor.email.split("@")[0],
-    role: actor.role,
-    userId: actor._id,
-    date: new Date(),
-    reason: cleanReason,
-  };
-  device.rejectionReason = cleanReason;
+  // Atomic state transition to prevent race conditions during concurrent rejection clicks
+  const updatedDevice = await Device.findOneAndUpdate(
+    { _id: id, status: "Pending" },
+    {
+      $set: {
+        status: "Rejected",
+        rejectedBy: {
+          email: actor.email,
+          name: actor.name || actor.email.split("@")[0],
+          role: actor.role,
+          userId: actor._id,
+          date: new Date(),
+          reason: cleanReason,
+        },
+        rejectionReason: cleanReason,
+      },
+    },
+    { new: true }
+  );
 
-  await device.save();
+  if (!updatedDevice) {
+    throw new Error("Device could not be rejected. It may have already been processed by another administrator.");
+  }
 
   await ActivityLog.create({
     actorEmail: actor.email,
     actorRole: actor.role,
     action: "REJECT_DEVICE",
     module: "devices",
-    resourceId: device.sl,
-    resourceName: `${device.deviceName} (${device.sl})`,
-    details: `${actor.name || actor.email} (${actor.role}) rejected device #${device.sl} (${device.deviceName}). Reason: ${cleanReason}`,
+    resourceId: updatedDevice.sl,
+    resourceName: `${updatedDevice.deviceName} (${updatedDevice.sl})`,
+    details: `${actor.name || actor.email} (${actor.role}) rejected device #${updatedDevice.sl} (${updatedDevice.deviceName}). Reason: ${cleanReason}`,
     metadata: {
-      deviceId: String(device._id),
-      sl: device.sl,
+      deviceId: String(updatedDevice._id),
+      sl: updatedDevice.sl,
       action: "REJECT",
       approverName: actor.name || actor.email,
       approverUserId: actor._id,
@@ -751,12 +841,127 @@ export async function rejectDevice(id: string, reason?: string) {
     },
   });
 
-  revalidatePath("/");
-  revalidatePath("/devices");
-  revalidatePath(`/devices/${device.deviceType.toLowerCase().trim()}`);
-  revalidatePath(`/devices/${device.deviceType.toLowerCase().trim()}/${device._id}`);
+  // Mark prior submission notifications as read
+  await Notification.updateMany(
+    {
+      action: "DEVICE_SUBMISSION",
+      module: "devices",
+      $or: [
+        { link: { $regex: String(id) } },
+        { message: { $regex: String(updatedDevice.sl) } },
+      ],
+    },
+    { $addToSet: { readBy: actor.email.toLowerCase() } }
+  );
 
-  return JSON.parse(JSON.stringify(device)) as IDevice;
+  // Send rejection notification
+  await Notification.create({
+    actorEmail: actor.email,
+    actorRole: actor.role,
+    action: "DEVICE_REJECTION",
+    module: "devices",
+    title: `Device Rejected: ${updatedDevice.deviceName}`,
+    message: `Device #${updatedDevice.sl} (${updatedDevice.deviceName}, ${updatedDevice.deviceType.toUpperCase()}) was rejected by ${actor.name || actor.email} (${actor.role}). Reason: ${cleanReason}`,
+    link: `/devices/${updatedDevice.deviceType.toLowerCase().trim()}/${updatedDevice._id}`,
+    readBy: [actor.email.toLowerCase()],
+  });
+
+  safeRevalidatePath("/");
+  safeRevalidatePath("/devices");
+  safeRevalidatePath("/devices/pending");
+  safeRevalidatePath(`/devices/${updatedDevice.deviceType.toLowerCase().trim()}`);
+  safeRevalidatePath(`/devices/${updatedDevice.deviceType.toLowerCase().trim()}/${updatedDevice._id}`);
+
+  return JSON.parse(JSON.stringify(updatedDevice)) as IDevice;
+}
+
+// ==========================================
+// GET PENDING DEVICES FOR APPROVAL
+// ==========================================
+export async function getPendingDevices(params?: {
+  deviceType?: string;
+  search?: string;
+  sortBy?: string;
+  page?: number;
+  limit?: number;
+}) {
+  await requirePermission("devices", "read");
+  await connectToDatabase();
+
+  const {
+    deviceType,
+    search = "",
+    sortBy = "newest",
+    page = 1,
+    limit = 25,
+  } = params || {};
+
+  const skip = (Math.max(1, page) - 1) * limit;
+  const query: FilterQuery<typeof Device> = { status: "Pending" };
+
+  if (deviceType && deviceType !== "all") {
+    query.deviceType = deviceType.toLowerCase().trim();
+  }
+
+  if (search && search.trim()) {
+    const term = search.trim();
+    const regex = new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+    query.$or = [
+      { sl: regex },
+      { deviceName: regex },
+      { brand: regex },
+      { model: regex },
+      { ipAddress: regex },
+      { macAddress: regex },
+      { customerName: regex },
+      { "submittedBy.name": regex },
+      { "submittedBy.email": regex },
+      { description: regex },
+    ];
+  }
+
+  let sortObj: Record<string, 1 | -1> = { createdAt: -1 };
+  if (sortBy === "oldest") sortObj = { createdAt: 1 };
+  else if (sortBy === "sl_asc") sortObj = { sl: 1 };
+  else if (sortBy === "sl_desc") sortObj = { sl: -1 };
+  else if (sortBy === "name_asc") sortObj = { deviceName: 1 };
+
+  const [rawDevices, total, typeCountsResult] = await Promise.all([
+    Device.find(query)
+      .populate("uplinkSwitch", "sl deviceName brand model totalPorts ipAddress status")
+      .populate("server", "sl deviceName brand model ipAddress status")
+      .sort(sortObj)
+      .skip(skip)
+      .limit(limit)
+      .lean(),
+    Device.countDocuments(query),
+    Device.aggregate([
+      { $match: { status: "Pending" } },
+      { $group: { _id: "$deviceType", count: { $sum: 1 } } },
+    ]),
+  ]);
+
+  const byType: Record<string, number> = {};
+  typeCountsResult.forEach((item: { _id: string; count: number }) => {
+    if (item._id) byType[item._id.toLowerCase()] = item.count;
+  });
+
+  return {
+    devices: JSON.parse(JSON.stringify(rawDevices)) as IDevice[],
+    total,
+    page,
+    limit,
+    totalPages: Math.ceil(total / limit) || 1,
+    byType,
+  };
+}
+
+// ==========================================
+// GET PENDING DEVICES COUNT (FAST BADGE QUERY)
+// ==========================================
+export async function getPendingDevicesCount(): Promise<number> {
+  await connectToDatabase();
+  return Device.countDocuments({ status: "Pending" });
 }
 
 // ==========================================
@@ -817,9 +1022,9 @@ export async function updateDeviceStatus(
     link: `/devices/${device.deviceType}`,
   });
 
-  revalidatePath("/");
-  revalidatePath("/devices");
-  revalidatePath(`/devices/${device.deviceType}`);
+  safeRevalidatePath("/");
+  safeRevalidatePath("/devices");
+  safeRevalidatePath(`/devices/${device.deviceType}`);
 
   return JSON.parse(JSON.stringify(device));
 }
@@ -869,9 +1074,9 @@ export async function toggleDeviceActive(id: string) {
     link: `/devices/${device.deviceType}`,
   });
 
-  revalidatePath("/");
-  revalidatePath("/devices");
-  revalidatePath(`/devices/${device.deviceType}`);
+  safeRevalidatePath("/");
+  safeRevalidatePath("/devices");
+  safeRevalidatePath(`/devices/${device.deviceType}`);
 
   return { success: true, newStatus };
 }
@@ -922,9 +1127,9 @@ export async function deleteDevice(id: string) {
     link: "/devices",
   });
 
-  revalidatePath("/");
-  revalidatePath("/devices");
-  revalidatePath(`/devices/${device.deviceType.toLowerCase().trim()}`);
+  safeRevalidatePath("/");
+  safeRevalidatePath("/devices");
+  safeRevalidatePath(`/devices/${device.deviceType.toLowerCase().trim()}`);
 
   return { success: true };
 }
@@ -1002,6 +1207,8 @@ export async function getAllDevicesForExport(params?: {
   }
   if (params?.status && params.status !== "all") {
     query.status = params.status;
+  } else {
+    query.status = { $nin: ["Pending", "Rejected"] };
   }
   if (params?.brand && params.brand !== "all") {
     query.brand = params.brand;
@@ -1364,8 +1571,8 @@ export async function importDevicesBulk(
       readBy: [],
     });
 
-    revalidatePath("/");
-    revalidatePath("/devices");
+    safeRevalidatePath("/");
+    safeRevalidatePath("/devices");
   }
 
   return {

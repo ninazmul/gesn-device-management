@@ -31,11 +31,20 @@ export {
   hasPermissionLevel,
 };
 
+let _testProfileOverride: IAdminUser | null = null;
+export function setTestProfileOverride(profile: IAdminUser | null) {
+  _testProfileOverride = profile;
+}
+
 /**
  * Fetches the currently authenticated admin profile with resolved effective permissions.
  * Auto-promotes the first user in the database to super_admin.
  */
 export async function getCurrentAdminProfile(): Promise<IAdminUser | null> {
+  if (_testProfileOverride) {
+    return _testProfileOverride;
+  }
+
   try {
     await connectToDatabase();
     const user = await currentUser();

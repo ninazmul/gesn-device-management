@@ -57,14 +57,25 @@ Track implementation progress for DMS device forms, engineer role, approval syst
   - [x] Ensure Super Admin retains full immutable access
 - [x] Notifications UI (`NotificationDropdown.tsx`)
   - [x] Allow Engineer and Super Admin to view and manage notifications
-  - [x] Show device submission details (Device Type, MAC, Submitter, Time, Action Link)
-- [ ] Testing & Verification
-  - [ ] Form validation and submission for Access Point, Router, Switch, Antenna
-  - [ ] More (Optional) collapsible behavior
-  - [ ] Approval and rejection flows
-  - [ ] Notification delivery to Super Admin and Engineer
-  - [ ] Granular permission checks at frontend and backend API levels
-  - [ ] Backward compatibility with existing records
-- [ ] Documentation
+  - [x] Show device submission details (Device Type, MAC, Submitter, Time, Action Link to `/devices/pending`)
+- [x] Dedicated Pending Devices Section (`app/(root)/devices/pending`)
+  - [x] Create server page `app/(root)/devices/pending/page.tsx`
+  - [x] Create client interface `PendingDevicesClient.tsx` with filter tabs, MAC copy, submitter metadata, and approve/reject actions
+  - [x] Add "Pending Devices" link with `ClockAlert` icon and live count badge to `AdminSidebar.tsx`
+  - [x] Add "Pending Approvals" quick button to `AllDevicesHeader.tsx`
+  - [x] Add Pending Devices alert banner to `DashboardClient.tsx`
+  - [x] Add `getPendingDevices` and `getPendingDevicesCount` to `lib/actions/device.actions.ts`
+  - [x] Exclude Pending and Rejected devices from `getDashboardStats`, `getAvailableSwitches`, `getAvailableServers`, and default `getDevices`
+- [x] Testing & Verification
+  - [x] Form validation and submission for Access Point, Router, Switch, Antenna
+  - [x] Duplicate MAC submission prevention
+  - [x] More (Optional) collapsible behavior
+  - [x] Approval and rejection flows (atomic state transition)
+  - [x] Notification delivery to Super Admin and Engineer with resolution updates
+  - [x] Granular permission checks at frontend and backend API levels (unauthorized staff blocked)
+  - [x] Ineligible/double approval blocked
+  - [x] Backward compatibility with existing records
+  - [x] Automated test suite passed (12 / 12 tests)
+- [x] Documentation
   - [x] Create persistent AI project context file `docs/AI_PROJECT_CONTEXT.md`
   - [x] Update final checklist state

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import {
   Boxes,
   Plus,
@@ -10,6 +11,7 @@ import {
   UploadCloud,
   ChevronDown,
   Loader2,
+  ClockAlert,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -212,8 +214,17 @@ export function AllDevicesHeader({ total }: AllDevicesHeaderProps) {
           </div>
         </div>
 
-        {/* Polished Actions Dropdown Menu */}
+        {/* Polished Actions Dropdown Menu & Pending Approvals */}
         <div className="flex items-center gap-2 shrink-0 ml-auto">
+          <Link
+            href="/devices/pending"
+            className="inline-flex items-center gap-1.5 px-3.5 h-10 rounded-xl border border-amber-200 dark:border-amber-900/60 bg-amber-50/70 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/50 text-amber-700 dark:text-amber-400 font-semibold text-xs shadow-xs transition-all"
+            title="View devices awaiting approval"
+          >
+            <ClockAlert className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+            <span>Pending Approvals</span>
+          </Link>
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button

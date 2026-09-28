@@ -237,6 +237,8 @@ Notable fields beyond basic device data:
 | Notification dropdown         | `components/layout/NotificationDropdown.tsx`             |
 | Mongoose device schema        | `lib/database/models/device.model.ts`                    |
 | Mongoose admin schema         | `lib/database/models/admin.model.ts`                     |
+| Pending devices page          | `app/(root)/devices/pending/page.tsx`                    |
+| Pending devices client UI     | `app/(root)/devices/pending/PendingDevicesClient.tsx`     |
 | Status enums & styling        | `lib/constants.ts`                                       |
 
 ---
@@ -308,6 +310,8 @@ importDevicesBulk(rows: Record<string, unknown>[], defaultDeviceType?: string)
 | `searchGlobalDevices(q)`  | `devices:read`                | Global search across all types                 |
 | `getDeviceFilterOptions(type?)` | `devices:read`           | Distinct brands/models for filter dropdowns    |
 | `getAllDevicesForExport()` | `devices:read`                | Full dataset for Excel/CSV export              |
+| `getPendingDevices(params?)` | `devices:read`             | Pending devices with pagination and type counts |
+| `getPendingDevicesCount()` | `none` (internal/fast)         | Total pending count for badges & alerts        |
 | `importDevicesBulk(rows)` | `devices:write`               | Batch import from parsed spreadsheet           |
 
 ---

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   Sidebar,
   SidebarContent,
@@ -28,12 +28,14 @@ import {
   Users,
   Receipt,
   History,
+  ClockAlert,
 } from "lucide-react";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { usePermissions } from "@/components/providers/PermissionContext";
 import { AppModule } from "@/types";
+import { getPendingDevicesCount } from "@/lib/actions/device.actions";
 
 interface SidebarItem {
   title: string;
@@ -83,6 +85,12 @@ const sidebarSections: SidebarSection[] = [
         title: "All Devices",
         url: "/devices",
         icon: Boxes,
+        module: "devices",
+      },
+      {
+        title: "Pending Devices",
+        url: "/devices/pending",
+        icon: ClockAlert,
         module: "devices",
       },
       {
@@ -158,6 +166,29 @@ const AppSidebar = () => {
   const { state, isMobile, setOpenMobile } = useSidebar();
   const { canRead } = usePermissions();
   const isCollapsed = state === "collapsed";
+  const [pendingCount, setPendingCount] = useState<number>(0);
+
+  // Fetch pending devices count for the sidebar badge
+  useEffect(() => {
+    let isMounted = true;
+    const updateCount = () => {
+      getPendingDevicesCount()
+        .then((c) => {
+          if (isMounted) setPendingCount(c);
+        })
+        .catch(() => {});
+    };
+
+    updateCount();
+    const handleVisChange = () => {
+      if (document.visibilityState === "visible") updateCount();
+    };
+    document.addEventListener("visibilitychange", handleVisChange);
+    return () => {
+      isMounted = false;
+      document.removeEventListener("visibilitychange", handleVisChange);
+    };
+  }, [currentPath]);
 
   // Automatically close mobile sidebar menu on route change
   useEffect(() => {
@@ -251,6 +282,11 @@ const AppSidebar = () => {
                             >
                               {item.title}
                             </span>
+                            {item.url === "/devices/pending" && pendingCount > 0 && (
+                              <span className="ml-auto inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30 group-data-[collapsible=icon]:hidden">
+                                {pendingCount}
+                              </span>
+                            )}
                           </span>
 
                           {isActive && !isCollapsed && (

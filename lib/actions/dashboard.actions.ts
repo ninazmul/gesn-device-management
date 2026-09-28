@@ -32,6 +32,11 @@ export async function getDashboardStats(): Promise<DashboardStats> {
             ],
             typeCounts: [
               {
+                $match: {
+                  status: { $nin: ["Pending", "Rejected"] },
+                },
+              },
+              {
                 $group: {
                   _id: "$deviceType",
                   count: { $sum: 1 },
@@ -39,6 +44,11 @@ export async function getDashboardStats(): Promise<DashboardStats> {
               },
             ],
             typeStatusCounts: [
+              {
+                $match: {
+                  status: { $nin: ["Pending", "Rejected"] },
+                },
+              },
               {
                 $group: {
                   _id: { type: "$deviceType", status: "$status" },
@@ -50,6 +60,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
               {
                 $match: {
                   deviceType: "server",
+                  status: { $nin: ["Pending", "Rejected"] },
                 },
               },
               {
@@ -67,10 +78,30 @@ export async function getDashboardStats(): Promise<DashboardStats> {
             ],
             totalCount: [
               {
+                $match: {
+                  status: { $nin: ["Pending", "Rejected"] },
+                },
+              },
+              {
+                $count: "total",
+              },
+            ],
+            pendingCount: [
+              {
+                $match: {
+                  status: "Pending",
+                },
+              },
+              {
                 $count: "total",
               },
             ],
             recent: [
+              {
+                $match: {
+                  status: { $nin: ["Pending", "Rejected"] },
+                },
+              },
               { $sort: { createdAt: -1 } },
               { $limit: 8 },
             ],
@@ -236,6 +267,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     maintenanceDevices: statusCountsMap["Maintenance"] || 0,
     inactiveDevices: statusCountsMap["Inactive"] || 0,
     retiredDevices: statusCountsMap["Retired"] || 0,
+    pendingDevices: devFacet.pendingCount?.[0]?.total || statusCountsMap["Pending"] || 0,
     byType,
     recentDevices: JSON.parse(JSON.stringify(devFacet.recent || [])),
     serverStats: {

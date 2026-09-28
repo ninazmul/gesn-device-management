@@ -17,6 +17,7 @@ import {
   Receipt,
   ArrowRight,
   Boxes,
+  ClockAlert,
 } from "lucide-react";
 import { DeviceFormDialog } from "@/components/devices/DeviceFormDialog";
 import { CustomerFormDialog } from "@/components/customers/CustomerFormDialog";
@@ -230,6 +231,38 @@ export function DashboardClient({ stats }: DashboardClientProps) {
             </button>
           </div>
         </section>
+      )}
+
+      {/* ========================================================================= */}
+      {/* PENDING APPROVALS ALERT BANNER                                            */}
+      {/* ========================================================================= */}
+      {stats.pendingDevices > 0 && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 sm:p-4.5 rounded-3xl bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border border-amber-500/25 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-2xl bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/25 shrink-0">
+              <ClockAlert className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100">
+                  {stats.pendingDevices} Device{stats.pendingDevices > 1 ? "s" : ""} Awaiting Approval
+                </span>
+                <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
+              </div>
+              <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Staff submissions are kept pending and isolated from the active network until authorized.
+              </p>
+            </div>
+          </div>
+
+          <Link
+            href="/devices/pending"
+            className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white shadow-sm transition-all shrink-0"
+          >
+            <span>Review Pending Devices</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
       )}
 
       {/* ========================================================================= */}
