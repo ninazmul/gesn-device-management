@@ -94,6 +94,7 @@ export function AllDevicesHeader({ total }: AllDevicesHeaderProps) {
         status: searchParams.get("status") || undefined,
         brand: searchParams.get("brand") || undefined,
         model: searchParams.get("model") || undefined,
+        server: searchParams.get("server") || undefined,
         search: searchParams.get("search") || undefined,
       });
 

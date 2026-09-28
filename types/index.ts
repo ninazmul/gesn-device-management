@@ -303,6 +303,7 @@ export interface GetDevicesParams {
   brand?: string;
   model?: string;
   status?: string;
+  server?: string;
   submittedBy?: string;
   search?: string;
   sortBy?: string;

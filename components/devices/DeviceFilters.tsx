@@ -35,6 +35,7 @@ export function DeviceFilters({ currentType, totalDevices }: DeviceFiltersProps)
   const currentStatus = searchParams.get("status") || "all";
   const currentBrand = searchParams.get("brand") || "all";
   const currentModel = searchParams.get("model") || "all";
+  const currentServer = searchParams.get("server") || "all";
   const currentSort = searchParams.get("sortBy") || "newest";
   const currentSubmittedBy = searchParams.get("submittedBy") || "";
 
@@ -47,6 +48,7 @@ export function DeviceFilters({ currentType, totalDevices }: DeviceFiltersProps)
   const [searchTerm, setSearchTerm] = useState(currentSearch);
   const [brands, setBrands] = useState<string[]>([]);
   const [models, setModels] = useState<Array<{ name: string; brand: string }>>([]);
+  const [servers, setServers] = useState<Array<{ _id: string; deviceName: string; sl: string }>>([]);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [scannerOpen, setScannerOpen] = useState(false);
 
@@ -76,6 +78,7 @@ export function DeviceFilters({ currentType, totalDevices }: DeviceFiltersProps)
     getDeviceFilterOptions(currentType).then((res) => {
       setBrands(res.brands || []);
       setModels(res.models || []);
+      setServers(res.servers || []);
     });
   }, [currentType]);
 
@@ -119,6 +122,7 @@ export function DeviceFilters({ currentType, totalDevices }: DeviceFiltersProps)
     currentStatus !== "all" ||
     currentBrand !== "all" ||
     currentModel !== "all" ||
+    currentServer !== "all" ||
     currentSort !== "newest" ||
     currentSubmittedBy !== "";
 
@@ -229,14 +233,14 @@ export function DeviceFilters({ currentType, totalDevices }: DeviceFiltersProps)
             variant="outline"
             onClick={() => setShowAdvanced(!showAdvanced)}
             className={`rounded-xl border-slate-200 dark:border-slate-800 text-xs font-semibold gap-1.5 h-10 px-3.5 ${
-              showAdvanced || (currentBrand !== "all" || currentModel !== "all")
+              showAdvanced || (currentBrand !== "all" || currentModel !== "all" || currentServer !== "all")
                 ? "bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 border-sky-200 dark:border-sky-800"
                 : "text-slate-600 dark:text-slate-300"
             }`}
           >
             <SlidersHorizontal className="w-3.5 h-3.5" />
             <span>More Filters</span>
-            {(currentBrand !== "all" || currentModel !== "all") && (
+            {(currentBrand !== "all" || currentModel !== "all" || currentServer !== "all") && (
               <span className="w-2 h-2 rounded-full bg-sky-500" />
             )}
           </Button>
@@ -258,7 +262,7 @@ export function DeviceFilters({ currentType, totalDevices }: DeviceFiltersProps)
 
       {/* Advanced Filters Drawer/Row */}
       {showAdvanced && (
-        <div className="pt-3 border-t border-slate-100 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 animate-in fade-in-50 duration-200">
+        <div className="pt-3 border-t border-slate-100 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 animate-in fade-in-50 duration-200">
           {/* Brand Filter */}
           <div className="space-y-1">
             <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
@@ -303,6 +307,26 @@ export function DeviceFilters({ currentType, totalDevices }: DeviceFiltersProps)
                 {Array.from(new Set(filteredModels.map((m) => m.name))).map((mName) => (
                   <SelectItem key={mName} value={mName}>
                     {mName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Server Filter */}
+          <div className="space-y-1">
+            <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+              Server
+            </label>
+            <Select value={currentServer} onValueChange={(val) => updateQuery("server", val)}>
+              <SelectTrigger className="rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm">
+                <SelectValue placeholder="All Servers" />
+              </SelectTrigger>
+              <SelectContent className="dark:bg-slate-900 dark:border-slate-800">
+                <SelectItem value="all">All Servers</SelectItem>
+                {servers.map((server) => (
+                  <SelectItem key={server._id} value={server._id}>
+                    {server.deviceName || `Server #${server.sl}`}
                   </SelectItem>
                 ))}
               </SelectContent>

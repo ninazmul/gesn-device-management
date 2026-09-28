@@ -12,6 +12,7 @@ interface DevicesPageProps {
     status?: string;
     brand?: string;
     model?: string;
+    server?: string;
     sortBy?: string;
     submittedBy?: string;
     page?: string;
@@ -27,6 +28,7 @@ export default async function AllDevicesPage({ searchParams }: DevicesPageProps)
     status: resolvedParams.status,
     brand: resolvedParams.brand,
     model: resolvedParams.model,
+    server: resolvedParams.server,
     sortBy: resolvedParams.sortBy,
     submittedBy: resolvedParams.submittedBy,
     page,

@@ -127,6 +127,7 @@ export async function getDevices(params?: GetDevicesParams) {
     brand,
     model,
     status,
+    server,
     search = "",
     sortBy = "newest",
     page = 1,
@@ -154,6 +155,10 @@ export async function getDevices(params?: GetDevicesParams) {
     // When viewing general device inventory without a specific status filter and not in "My Submissions",
     // exclude Pending and Rejected devices so unapproved hardware never appears in operational lists.
     query.status = { $nin: ["Pending", "Rejected"] };
+  }
+
+  if (server && server !== "all") {
+    query.server = server;
   }
 
   if (params?.submittedBy && params.submittedBy !== "all") {
@@ -1193,14 +1198,26 @@ export async function getDeviceFilterOptions(deviceType?: string) {
     modelQuery.deviceType = deviceType.toLowerCase().trim();
   }
 
-  const [brands, models] = await Promise.all([
+  const [brands, models, servers] = await Promise.all([
     Brand.find(brandQuery).select("name").sort({ name: 1 }).lean(),
     DeviceModel.find(modelQuery).select("name brand deviceType").sort({ name: 1 }).lean(),
+    Device.find({
+      deviceType: "server",
+      status: { $nin: ["Retired", "Rejected"] },
+    })
+      .select("deviceName sl")
+      .sort({ deviceName: 1, sl: 1 })
+      .lean(),
   ]);
 
   return {
     brands: brands.map((b) => b.name),
     models: JSON.parse(JSON.stringify(models)),
+    servers: servers.map((server) => ({
+      _id: String(server._id),
+      deviceName: server.deviceName,
+      sl: server.sl,
+    })),
   };
 }
 
@@ -1212,6 +1229,7 @@ export async function getAllDevicesForExport(params?: {
   status?: string;
   brand?: string;
   model?: string;
+  server?: string;
   search?: string;
 }) {
   await requirePermission("devices", "read");
@@ -1231,6 +1249,9 @@ export async function getAllDevicesForExport(params?: {
   }
   if (params?.model && params.model !== "all") {
     query.model = params.model;
+  }
+  if (params?.server && params.server !== "all") {
+    query.server = params.server;
   }
   if (params?.search && params.search.trim()) {
     const term = params.search.trim();

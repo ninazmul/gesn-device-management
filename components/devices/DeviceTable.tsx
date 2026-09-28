@@ -197,6 +197,11 @@ export function DeviceTable({
                 <TableHead className="w-24 font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
                   SL
                 </TableHead>
+                {currentType && (
+                  <TableHead className="font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 min-w-[160px]">
+                    Server
+                  </TableHead>
+                )}
                 <TableHead className="font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 min-w-[200px]">
                   Device / Model
                 </TableHead>
@@ -227,7 +232,7 @@ export function DeviceTable({
               {devices.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={currentType ? 7 : 8}
+                    colSpan={8}
                     className="py-16 text-center text-slate-400"
                   >
                     <div className="max-w-sm mx-auto space-y-3">
@@ -270,6 +275,14 @@ export function DeviceTable({
                           #{formatDisplaySL(device.sl)}
                         </Link>
                       </TableCell>
+
+                      {currentType && (
+                        <TableCell className="text-sm text-slate-700 dark:text-slate-300">
+                          {device.server && typeof device.server === "object"
+                            ? (device.server as IDevice).deviceName || `#${formatDisplaySL((device.server as IDevice).sl)}`
+                            : "-"}
+                        </TableCell>
+                      )}
 
                       {/* Device Name & Brand */}
                       <TableCell>
