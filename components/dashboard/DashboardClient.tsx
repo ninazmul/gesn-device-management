@@ -818,6 +818,7 @@ export function DashboardClient({ stats }: DashboardClientProps) {
         open={createDialogOpen}
         onOpenChange={setCreateDialogOpen}
         defaultDeviceType={createType}
+        hideDeviceType={true}
         onSuccess={() => {
           setCreateDialogOpen(false);
           router.refresh();

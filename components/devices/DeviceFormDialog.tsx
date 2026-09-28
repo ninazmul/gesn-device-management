@@ -72,6 +72,7 @@ interface DeviceFormDialogProps {
   defaultDeviceType?: string;
   deviceToEdit?: IDevice | null;
   onSuccess?: () => void;
+  hideDeviceType?: boolean;
 }
 
 const SWITCH_PORT_PRESETS = [4, 8, 16, 24, 48, 52];
@@ -82,6 +83,7 @@ export function DeviceFormDialog({
   defaultDeviceType = "antenna",
   deviceToEdit,
   onSuccess,
+  hideDeviceType = false,
 }: DeviceFormDialogProps) {
   const { isSuperAdmin, isEngineer, canApproveDevice } = usePermissions();
   const isEditing = !!deviceToEdit;
@@ -573,7 +575,7 @@ export function DeviceFormDialog({
 
         <form onSubmit={handleSubmit} className="space-y-4 pt-2">
           {/* Device Type Switcher */}
-          {!isEditing && (
+          {!isEditing && !hideDeviceType && (
             <div className="space-y-1.5 bg-slate-50 dark:bg-slate-950/50 p-2.5 rounded-xl border border-slate-200/70 dark:border-slate-800">
               <div className="flex items-center justify-between">
                 <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">

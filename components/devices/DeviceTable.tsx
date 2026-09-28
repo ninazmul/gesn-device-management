@@ -610,6 +610,7 @@ export function DeviceTable({
         open={isCreateOpen}
         onOpenChange={setIsCreateOpen}
         defaultDeviceType={currentType || "antenna"}
+        hideDeviceType={Boolean(currentType && currentType !== "all")}
         onSuccess={() => {
           setIsCreateOpen(false);
           router.refresh();

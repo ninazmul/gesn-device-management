@@ -291,6 +291,7 @@ export function DeviceSectionHeader({
         open={isAddOpen}
         onOpenChange={setIsAddOpen}
         defaultDeviceType={typeSlug}
+        hideDeviceType={true}
         onSuccess={() => {
           setIsAddOpen(false);
           router.refresh();
