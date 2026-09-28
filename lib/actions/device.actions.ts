@@ -443,7 +443,7 @@ export async function createDevice(data: {
     link: `/devices/${type}`,
   });
 
-  // When submitted as Pending, ensure both Super Admin and Developer receive notification
+  // When submitted as Pending, ensure both Super Admin and Engineer receive notification
   if (finalStatus === "Pending") {
     await Notification.create({
       actorEmail: actor.email,
@@ -620,7 +620,7 @@ export async function updateDevice(
 }
 
 // ==========================================
-// APPROVE DEVICE (SUPER ADMIN OR DEVELOPER)
+// APPROVE DEVICE (SUPER ADMIN OR ENGINEER)
 // ==========================================
 export async function approveDevice(id: string) {
   await connectToDatabase();
@@ -688,7 +688,7 @@ export async function approveDevice(id: string) {
 }
 
 // ==========================================
-// REJECT DEVICE (SUPER ADMIN OR DEVELOPER)
+// REJECT DEVICE (SUPER ADMIN OR ENGINEER)
 // ==========================================
 export async function rejectDevice(id: string, reason?: string) {
   await connectToDatabase();
@@ -825,7 +825,7 @@ export async function updateDeviceStatus(
 }
 
 // ==========================================
-// TOGGLE DEVICE ACTIVE (SUPER ADMIN OR DEVELOPER QUICK TOGGLE)
+// TOGGLE DEVICE ACTIVE (SUPER ADMIN OR ENGINEER QUICK TOGGLE)
 // ==========================================
 export async function toggleDeviceActive(id: string) {
   const actor = await requirePermission("devices", "write");

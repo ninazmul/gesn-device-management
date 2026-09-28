@@ -479,7 +479,7 @@ export default function AdminsClient({
       case "engineer":
         return (
           <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
-            <Terminal className="w-3 h-3 text-indigo-500" /> Developer
+            <Terminal className="w-3 h-3 text-indigo-500" /> Engineer
           </span>
         );
       case "admin":
