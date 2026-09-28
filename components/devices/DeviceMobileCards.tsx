@@ -106,6 +106,7 @@ export function DeviceMobileCards({
   total,
   page,
   totalPages,
+  limit = 25,
 }: DeviceMobileCardsProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -179,8 +180,9 @@ export function DeviceMobileCards({
 
   return (
     <div className="space-y-3 block lg:hidden">
-      {devices.map((device) => {
+      {devices.map((device, index) => {
         const Icon = getDeviceIcon(device.deviceType);
+        const displaySerial = (page - 1) * limit + index + 1;
         return (
           <div
             key={device._id}
@@ -273,7 +275,7 @@ export function DeviceMobileCards({
 
               <div className="flex flex-col items-end gap-1.5 shrink-0">
                 <span className="font-mono text-xs font-bold text-sky-600 dark:text-sky-400">
-                  #{formatDisplaySL(device.sl)}
+                  #{displaySerial}
                 </span>
                 <div className="flex items-center gap-1.5">
                   <button

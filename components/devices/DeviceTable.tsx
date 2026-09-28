@@ -279,20 +279,21 @@ export function DeviceTable({
                   </TableCell>
                 </TableRow>
               ) : (
-                devices.map((device) => {
+                devices.map((device, index) => {
                   const Icon = getDeviceIcon(device.deviceType);
+                  const displaySerial = (page - 1) * limit + index + 1;
                   return (
                     <TableRow
                       key={device._id}
                       className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 border-b border-slate-100 dark:border-slate-800/60 transition-colors"
                     >
-                      {/* SL Number */}
+                      {/* Display serial is based on the current filtered table order. */}
                       <TableCell className="font-mono text-xs font-bold text-sky-600 dark:text-sky-400 whitespace-nowrap">
                         <Link
                           href={`/devices/${device.deviceType}/${device._id}`}
                           className="hover:underline"
                         >
-                          #{formatDisplaySL(device.sl)}
+                          #{displaySerial}
                         </Link>
                       </TableCell>
 
