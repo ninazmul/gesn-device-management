@@ -36,7 +36,7 @@ export function DeviceFilters({ currentType, totalDevices }: DeviceFiltersProps)
   const currentBrand = searchParams.get("brand") || "all";
   const currentModel = searchParams.get("model") || "all";
   const currentServer = searchParams.get("server") || "all";
-  const currentSort = searchParams.get("sortBy") || "newest";
+  const currentSort = searchParams.get("sortBy") || "sl_asc";
   const currentSubmittedBy = searchParams.get("submittedBy") || "";
 
   const { admin } = usePermissions();
@@ -123,7 +123,7 @@ export function DeviceFilters({ currentType, totalDevices }: DeviceFiltersProps)
     currentBrand !== "all" ||
     currentModel !== "all" ||
     currentServer !== "all" ||
-    currentSort !== "newest" ||
+    currentSort !== "sl_asc" ||
     currentSubmittedBy !== "";
 
   return (

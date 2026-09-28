@@ -129,7 +129,7 @@ export async function getDevices(params?: GetDevicesParams) {
     status,
     server,
     search = "",
-    sortBy = "newest",
+    sortBy = "sl_asc",
     page = 1,
     limit = 25,
   } = params || {};
@@ -180,7 +180,7 @@ export async function getDevices(params?: GetDevicesParams) {
   }
 
   // Sorting
-  let sortObj: Record<string, 1 | -1> = { createdAt: -1 };
+  let sortObj: Record<string, 1 | -1> = { sl: 1 };
   switch (sortBy) {
     case "oldest":
       sortObj = { createdAt: 1 };
@@ -201,8 +201,10 @@ export async function getDevices(params?: GetDevicesParams) {
       sortObj = { status: 1, createdAt: -1 };
       break;
     case "newest":
-    default:
       sortObj = { createdAt: -1 };
+      break;
+    default:
+      sortObj = { sl: 1 };
       break;
   }
 
@@ -903,7 +905,7 @@ export async function getPendingDevices(params?: {
   const {
     deviceType,
     search = "",
-    sortBy = "newest",
+    sortBy = "sl_asc",
     page = 1,
     limit = 25,
   } = params || {};
@@ -932,7 +934,7 @@ export async function getPendingDevices(params?: {
     ];
   }
 
-  let sortObj: Record<string, 1 | -1> = { createdAt: -1 };
+  let sortObj: Record<string, 1 | -1> = { sl: 1 };
   if (sortBy === "oldest") sortObj = { createdAt: 1 };
   else if (sortBy === "sl_asc") sortObj = { sl: 1 };
   else if (sortBy === "sl_desc") sortObj = { sl: -1 };

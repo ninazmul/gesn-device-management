@@ -77,7 +77,7 @@ export function PendingDevicesClient({
   const [isPending, startTransition] = useTransition();
   const [searchTerm, setSearchTerm] = useState(searchParams.get("search") || "");
   const [selectedType, setSelectedType] = useState(searchParams.get("deviceType") || "all");
-  const [selectedSort, setSelectedSort] = useState(searchParams.get("sortBy") || "newest");
+  const [selectedSort, setSelectedSort] = useState(searchParams.get("sortBy") || "sl_asc");
 
   // State for active device actions
   const [approvingId, setApprovingId] = useState<string | null>(null);
