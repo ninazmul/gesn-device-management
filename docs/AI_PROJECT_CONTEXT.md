@@ -72,13 +72,13 @@ docs/
 ### 3.1 Roles (`AdminRole`)
 
 ```
-super_admin → developer → admin → editor → moderator → viewer → custom
+super_admin → engineer → admin → editor → moderator → viewer → custom
 ```
 
 | Role          | Summary                                                    |
 | ------------- | ---------------------------------------------------------- |
 | `super_admin` | Full immutable access to everything                        |
-| `developer`   | Device CRUD + **approval authority** + read-only elsewhere |
+| `engineer`   | Device CRUD + **approval authority** + read-only elsewhere |
 | `admin`       | Full CRUD on devices/customers/billing, read-only admins   |
 | `editor`      | Write on devices/customers/catalog, read elsewhere         |
 | `moderator`   | Write on devices, read on dashboard/customers/catalog      |
@@ -102,7 +102,7 @@ server_view, server_manage, customer_view, user_manage, report_view, setting_man
 
 - Defaults per role: `lib/rbac-utils.ts → DEFAULT_GRANULAR_PERMISSIONS`
 - Resolver: `resolveEffectiveGranularPermissions(role, customOverrides)`
-- **Developer role always forces `device_approve: true`** (enforced in resolver).
+- **Engineer role always forces `device_approve: true`** (enforced in resolver).
 - Super Admin overrides are immutable (always all `true`).
 
 ### 3.4 Permission Enforcement
@@ -123,7 +123,7 @@ server_view, server_manage, customer_view, user_manage, report_view, setting_man
 2. Backend validates MAC, type-specific required fields, and IP format.
 3. **Non-super-admins**: status forced to `"Pending"`, `submittedBy` recorded.
 4. **Super Admins**: can set status directly (defaults to `"Active"`).
-5. On `Pending` submission, a `Notification` is created targeting Super Admin + Developer.
+5. On `Pending` submission, a `Notification` is created targeting Super Admin + Engineer.
 
 ### 4.2 Required Fields by Device Type (Backend Enforced)
 
@@ -139,7 +139,7 @@ server_view, server_manage, customer_view, user_manage, report_view, setting_man
 - `approveDevice(id)`: Sets status to `"Active"`, records `approvedBy`, clears rejection.
 - `rejectDevice(id, reason)`: Sets status to `"Rejected"`, records `rejectedBy` + `rejectionReason`.
 - Both are **idempotent** (no error if already in target state).
-- Authorized for: `super_admin`, `developer`, or anyone with `device_approve` granular permission.
+- Authorized for: `super_admin`, `engineer`, or anyone with `device_approve` granular permission.
 
 ### 4.4 Device Statuses
 
@@ -161,7 +161,7 @@ Notable fields beyond basic device data:
 
 ### Admin (`lib/database/models/admin.model.ts`)
 
-- `role: AdminRole` — enum includes `developer`
+- `role: AdminRole` — enum includes `engineer`
 - `permissions: Map<String, String>` — module-level overrides
 - `granularPermissions: Map<String, Boolean>` — granular overrides
 
@@ -191,13 +191,13 @@ Notable fields beyond basic device data:
 
 ### AdminsClient
 
-- Role selector includes `developer` with Terminal icon.
+- Role selector includes `engineer` with Terminal icon.
 - Granular permissions accordion for configuring per-user overrides.
 - Super Admin permissions are read-only / immutable in the UI.
 
 ### NotificationDropdown
 
-- Accessible to `super_admin` and `developer` roles.
+- Accessible to `super_admin` and `engineer` roles.
 - Shows device submission notifications with action links.
 - Bell badge with unread count; refreshes on tab visibility change.
 

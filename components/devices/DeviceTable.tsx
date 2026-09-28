@@ -122,7 +122,7 @@ export function DeviceTable({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { canWrite, isSuperAdmin, isDeveloper, admin, canApproveDevice, canDeleteDevice, canEditDevice } = usePermissions();
+  const { canWrite, isSuperAdmin, isEngineer, admin, canApproveDevice, canDeleteDevice, canEditDevice } = usePermissions();
   const canWriteDevices = canWrite("devices");
 
   // Modals state
@@ -351,7 +351,7 @@ export function DeviceTable({
                                       <span className="inline-flex items-center px-1.5 py-0.2 rounded-full bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-sky-800 text-[10px] font-semibold">
                                         Submitted by you
                                       </span>
-                                    ) : (isSuperAdmin || isDeveloper) ? (
+                                    ) : (isSuperAdmin || isEngineer) ? (
                                       <span className="text-[10px] text-slate-400" title={`Submitted by ${device.submittedBy.email}`}>
                                         By: {device.submittedBy.name || device.submittedBy.email.split("@")[0]}
                                       </span>

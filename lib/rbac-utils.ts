@@ -29,7 +29,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<AdminRole, ModulePermissions> = {
     activity_logs: "write",
     settings: "write",
   },
-  developer: {
+  engineer: {
     dashboard: "read",
     devices: "write",
     customers: "read",
@@ -108,7 +108,7 @@ export const DEFAULT_GRANULAR_PERMISSIONS: Record<
     report_view: true,
     setting_manage: true,
   },
-  developer: {
+  engineer: {
     device_add: true,
     device_view: true,
     device_edit: true,
@@ -330,8 +330,8 @@ export function resolveEffectiveGranularPermissions(
     }
   }
 
-  // Developer must have the Approval/Reject permission (Requirement 9)
-  if (role === "developer") {
+  // Engineer must have the Approval/Reject permission (Requirement 9)
+  if (role === "engineer") {
     base.device_approve = true;
   }
 

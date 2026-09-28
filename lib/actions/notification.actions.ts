@@ -6,13 +6,13 @@ import { getCurrentAdminProfile } from "@/lib/auth-guard";
 import { INotification } from "@/types";
 
 /**
- * Fetches notifications for super admins and developers along with the unread count.
+ * Fetches notifications for super admins and engineers along with the unread count.
  */
 export async function getSuperAdminNotifications() {
   await connectToDatabase();
   const profile = await getCurrentAdminProfile();
 
-  if (!profile || (profile.role !== "super_admin" && profile.role !== "developer")) {
+  if (!profile || (profile.role !== "super_admin" && profile.role !== "engineer")) {
     return { notifications: [], unreadCount: 0 };
   }
 
@@ -36,7 +36,7 @@ export async function getSuperAdminUnreadCount() {
   await connectToDatabase();
   const profile = await getCurrentAdminProfile();
 
-  if (!profile || (profile.role !== "super_admin" && profile.role !== "developer")) {
+  if (!profile || (profile.role !== "super_admin" && profile.role !== "engineer")) {
     return 0;
   }
 
@@ -49,14 +49,14 @@ export async function getSuperAdminUnreadCount() {
 export const getAdminNotifications = getSuperAdminNotifications;
 
 /**
- * Marks a single notification as read by the current super admin or developer.
+ * Marks a single notification as read by the current super admin or engineer.
  */
 export async function markNotificationAsRead(notificationId: string) {
   await connectToDatabase();
   const profile = await getCurrentAdminProfile();
 
-  if (!profile || (profile.role !== "super_admin" && profile.role !== "developer")) {
-    throw new Error("Only Super Admins and Developers can manage notifications.");
+  if (!profile || (profile.role !== "super_admin" && profile.role !== "engineer")) {
+    throw new Error("Only Super Admins and Engineers can manage notifications.");
   }
 
   await Notification.findByIdAndUpdate(notificationId, {
@@ -67,14 +67,14 @@ export async function markNotificationAsRead(notificationId: string) {
 }
 
 /**
- * Marks all notifications as read for the current super admin or developer.
+ * Marks all notifications as read for the current super admin or engineer.
  */
 export async function markAllNotificationsAsRead() {
   await connectToDatabase();
   const profile = await getCurrentAdminProfile();
 
-  if (!profile || (profile.role !== "super_admin" && profile.role !== "developer")) {
-    throw new Error("Only Super Admins and Developers can manage notifications.");
+  if (!profile || (profile.role !== "super_admin" && profile.role !== "engineer")) {
+    throw new Error("Only Super Admins and Engineers can manage notifications.");
   }
 
   await Notification.updateMany(

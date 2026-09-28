@@ -104,9 +104,9 @@ const ROLE_OPTIONS: RoleDetail[] = [
     cannotDo: [],
   },
   {
-    label: "Developer",
-    value: "developer",
-    badge: "Developer",
+    label: "Engineer",
+    value: "engineer",
+    badge: "Engineer",
     color: "text-indigo-600 dark:text-indigo-400",
     border: "border-indigo-500/30",
     bgLight: "bg-indigo-500/10",
@@ -476,7 +476,7 @@ export default function AdminsClient({
             <Crown className="w-3 h-3 text-rose-500" /> Super Admin
           </span>
         );
-      case "developer":
+      case "engineer":
         return (
           <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
             <Terminal className="w-3 h-3 text-indigo-500" /> Developer
@@ -672,7 +672,7 @@ export default function AdminsClient({
                   </div>
                 )}
 
-                {/* Granular Action Permissions (Configurable by Super Admin for Developer and Staff) */}
+                {/* Granular Action Permissions (Configurable by Super Admin for Engineer and Staff) */}
                 {isSuperAdmin && (
                   newRole === "super_admin" ? (
                     <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-700 dark:text-amber-400 flex items-center gap-2">
@@ -774,7 +774,7 @@ export default function AdminsClient({
                     }`}
                   >
                     {role.value === "super_admin" && <Crown className="w-3.5 h-3.5" />}
-                    {role.value === "developer" && <Terminal className="w-3.5 h-3.5" />}
+                    {role.value === "engineer" && <Terminal className="w-3.5 h-3.5" />}
                     {role.value === "admin" && <ShieldCheck className="w-3.5 h-3.5" />}
                     {role.value === "editor" && <Edit2 className="w-3.5 h-3.5" />}
                     {role.value === "moderator" && <UserCheck className="w-3.5 h-3.5" />}
@@ -797,7 +797,7 @@ export default function AdminsClient({
                     <div className="flex items-center gap-3">
                       <div className={`p-2 rounded-xl ${activeRole.bgLight} ${activeRole.color} border ${activeRole.border}`}>
                         {activeRole.value === "super_admin" && <Crown className="w-5 h-5" />}
-                        {activeRole.value === "developer" && <Terminal className="w-5 h-5" />}
+                        {activeRole.value === "engineer" && <Terminal className="w-5 h-5" />}
                         {activeRole.value === "admin" && <ShieldCheck className="w-5 h-5" />}
                         {activeRole.value === "editor" && <Edit2 className="w-5 h-5" />}
                         {activeRole.value === "moderator" && <UserCheck className="w-5 h-5" />}
@@ -983,7 +983,7 @@ export default function AdminsClient({
                           </span>
                         ) : (
                           <div className="flex flex-col gap-1">
-                            {admin.role === "developer" && (
+                            {admin.role === "engineer" && (
                               <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-indigo-600 dark:text-indigo-400">
                                 <Terminal className="w-3 h-3" /> Device Approvals Authorized
                               </span>
@@ -1178,7 +1178,7 @@ export default function AdminsClient({
                 </div>
               )}
 
-              {/* Granular Action Permissions (Configurable by Super Admin for Developer and Staff) */}
+              {/* Granular Action Permissions (Configurable by Super Admin for Engineer and Staff) */}
               {isSuperAdmin && (
                 editRole === "super_admin" ? (
                   <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-700 dark:text-amber-400 flex items-center gap-2">

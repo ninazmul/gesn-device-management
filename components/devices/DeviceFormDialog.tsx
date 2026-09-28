@@ -83,7 +83,7 @@ export function DeviceFormDialog({
   deviceToEdit,
   onSuccess,
 }: DeviceFormDialogProps) {
-  const { isSuperAdmin, isDeveloper, canApproveDevice } = usePermissions();
+  const { isSuperAdmin, isEngineer, canApproveDevice } = usePermissions();
   const isEditing = !!deviceToEdit;
 
   // Active Device Type
@@ -1399,7 +1399,7 @@ export function DeviceFormDialog({
                 </div>
               </div>
 
-              {/* Status Selection (Accessible to Super Admin / Developer or permitted staff) */}
+              {/* Status Selection (Accessible to Super Admin / Engineer or permitted staff) */}
               <div className="space-y-1">
                 <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                   Status
@@ -1420,7 +1420,7 @@ export function DeviceFormDialog({
                 </Select>
                 {!isSuperAdmin && !canApproveDevice && (
                   <p className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">
-                    New devices submitted by staff will be saved as Pending for Super Admin / Developer approval.
+                    New devices submitted by staff will be saved as Pending for Super Admin / Engineer approval.
                   </p>
                 )}
               </div>

@@ -163,7 +163,7 @@ export interface IBilling {
 
 export type AdminRole =
   | "super_admin"
-  | "developer"
+  | "engineer"
   | "admin"
   | "editor"
   | "moderator"

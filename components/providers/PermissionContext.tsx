@@ -19,7 +19,7 @@ interface PermissionContextValue {
   admin: IAdminUser | null;
   role: AdminRole;
   isSuperAdmin: boolean;
-  isDeveloper: boolean;
+  isEngineer: boolean;
   permissions: ModulePermissions;
   granularPermissions: Record<GranularPermissionKey, boolean>;
   hasPermission: (module: AppModule, requiredLevel: PermissionLevel) => boolean;
@@ -56,7 +56,7 @@ export function PermissionProvider({
 }) {
   const role: AdminRole = admin?.role || "viewer";
   const isSuperAdmin = role === "super_admin";
-  const isDeveloper = role === "developer";
+  const isEngineer = role === "engineer";
 
   const permissions: ModulePermissions = {
     ...defaultPermissions,
@@ -88,11 +88,11 @@ export function PermissionProvider({
 
   const can = (action: GranularPermissionKey): boolean => {
     if (isSuperAdmin) return true;
-    if (action === "device_approve" && isDeveloper) return true;
+    if (action === "device_approve" && isEngineer) return true;
     return Boolean(granularPermissions[action]);
   };
 
-  const canApproveDevice = isSuperAdmin || isDeveloper || can("device_approve");
+  const canApproveDevice = isSuperAdmin || isEngineer || can("device_approve");
   const canDeleteDevice = isSuperAdmin || can("device_delete");
   const canAddDevice = isSuperAdmin || can("device_add") || canWrite("devices");
   const canEditDevice = isSuperAdmin || can("device_edit") || canWrite("devices");
@@ -103,7 +103,7 @@ export function PermissionProvider({
         admin,
         role,
         isSuperAdmin,
-        isDeveloper,
+        isEngineer,
         permissions,
         granularPermissions,
         hasPermission,

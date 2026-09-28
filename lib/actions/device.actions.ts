@@ -330,8 +330,8 @@ export async function createDevice(data: {
   await connectToDatabase();
 
   const isSuperAdmin = actor.role === "super_admin";
-  const isDeveloper = actor.role === "developer";
-  const canAdd = isSuperAdmin || isDeveloper || (actor.granularPermissions && actor.granularPermissions.device_add !== false);
+  const isEngineer = actor.role === "engineer";
+  const canAdd = isSuperAdmin || isEngineer || (actor.granularPermissions && actor.granularPermissions.device_add !== false);
   if (!canAdd) {
     throw new Error("Forbidden: You do not have permission to add devices.");
   }
@@ -431,7 +431,7 @@ export async function createDevice(data: {
 
   const logDetails = isSuperAdmin
     ? `Added new ${data.deviceType} device: ${deviceName} (SL: ${sl}, IP: ${rawIp || "N/A"}, Status: ${finalStatus})`
-    : `Added new ${data.deviceType} device: ${deviceName} (SL: ${sl}, MAC: ${normalizedMAC}) - Pending Super Admin / Developer approval.`;
+    : `Added new ${data.deviceType} device: ${deviceName} (SL: ${sl}, MAC: ${normalizedMAC}) - Pending Super Admin / Engineer approval.`;
 
   await logActivityAndNotify({
     actor,
@@ -508,8 +508,8 @@ export async function updateDevice(
   }
 
   const isSuperAdmin = actor.role === "super_admin";
-  const isDeveloper = actor.role === "developer";
-  const canEdit = isSuperAdmin || isDeveloper || (actor.granularPermissions && actor.granularPermissions.device_edit !== false);
+  const isEngineer = actor.role === "engineer";
+  const canEdit = isSuperAdmin || isEngineer || (actor.granularPermissions && actor.granularPermissions.device_edit !== false);
   if (!canEdit) {
     throw new Error("Forbidden: You do not have permission to edit devices.");
   }
@@ -570,9 +570,9 @@ export async function updateDevice(
   }
 
   if (data.status) {
-    const canApprove = isSuperAdmin || isDeveloper || Boolean(actor.granularPermissions?.device_approve);
+    const canApprove = isSuperAdmin || isEngineer || Boolean(actor.granularPermissions?.device_approve);
     if ((data.status === "Active" || data.status === "Rejected") && !canApprove && device.status !== data.status) {
-      throw new Error("Only Super Admins and Developers can approve or reject devices.");
+      throw new Error("Only Super Admins and Engineers can approve or reject devices.");
     }
     updatePayload.status = data.status;
     if (data.status === "Active" && device.status !== "Active") {
@@ -630,14 +630,14 @@ export async function approveDevice(id: string) {
   }
 
   const isSuperAdmin = actor.role === "super_admin";
-  const isDeveloper = actor.role === "developer";
+  const isEngineer = actor.role === "engineer";
   const canApprove =
     isSuperAdmin ||
-    isDeveloper ||
+    isEngineer ||
     Boolean(actor.granularPermissions?.device_approve);
 
   if (!canApprove) {
-    throw new Error("Forbidden: Only Super Admins and Developers can approve devices.");
+    throw new Error("Forbidden: Only Super Admins and Engineers can approve devices.");
   }
 
   const device = await Device.findById(id);
@@ -698,14 +698,14 @@ export async function rejectDevice(id: string, reason?: string) {
   }
 
   const isSuperAdmin = actor.role === "super_admin";
-  const isDeveloper = actor.role === "developer";
+  const isEngineer = actor.role === "engineer";
   const canApprove =
     isSuperAdmin ||
-    isDeveloper ||
+    isEngineer ||
     Boolean(actor.granularPermissions?.device_approve);
 
   if (!canApprove) {
-    throw new Error("Forbidden: Only Super Admins and Developers can reject devices.");
+    throw new Error("Forbidden: Only Super Admins and Engineers can reject devices.");
   }
 
   const device = await Device.findById(id);
@@ -771,14 +771,14 @@ export async function updateDeviceStatus(
   await connectToDatabase();
 
   const isSuperAdmin = actor.role === "super_admin";
-  const isDeveloper = actor.role === "developer";
+  const isEngineer = actor.role === "engineer";
   const canApprove =
     isSuperAdmin ||
-    isDeveloper ||
+    isEngineer ||
     Boolean(actor.granularPermissions?.device_approve);
 
   if ((status === "Active" || status === "Rejected") && !canApprove) {
-    throw new Error("Only Super Admins and Developers can approve or reject devices.");
+    throw new Error("Only Super Admins and Engineers can approve or reject devices.");
   }
 
   const updateFields: Record<string, unknown> = { status };
@@ -832,14 +832,14 @@ export async function toggleDeviceActive(id: string) {
   await connectToDatabase();
 
   const isSuperAdmin = actor.role === "super_admin";
-  const isDeveloper = actor.role === "developer";
+  const isEngineer = actor.role === "engineer";
   const canApprove =
     isSuperAdmin ||
-    isDeveloper ||
+    isEngineer ||
     Boolean(actor.granularPermissions?.device_approve);
 
   if (!canApprove) {
-    throw new Error("Only Super Admins and Developers can activate or approve devices.");
+    throw new Error("Only Super Admins and Engineers can activate or approve devices.");
   }
 
   const device = await Device.findById(id);
