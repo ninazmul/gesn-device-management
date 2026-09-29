@@ -30,21 +30,25 @@ import { toast } from "react-hot-toast";
 const CUSTOMER_EXPORT_HEADERS = [
   "Customer ID",
   "Customer Name",
+  "Service Type",
   "Contact Person",
   "Phone",
   "Email",
   "Address",
-  "Monthly Bill",
+  "GPS Location",
+  "Monthly Bill (SAR)",
   "Billing Day",
   "Status",
 ];
 
 const CUSTOMER_TEMPLATE_HEADERS = [
   "Customer Name",
+  "Service Type",
   "Contact Person",
   "Phone",
   "Email",
   "Address",
+  "GPS Location",
   "Monthly Bill",
   "Billing Day",
   "Status",
@@ -80,11 +84,13 @@ export function CustomersHeader({ total }: CustomersHeaderProps) {
       const rows = customers.map((c) => ({
         "Customer ID": c.customerId,
         "Customer Name": c.name,
+        "Service Type": c.serviceType || "Service C",
         "Contact Person": c.contactPerson || "",
         "Phone": c.phone || "",
         "Email": c.email || "",
         "Address": c.address || "",
-        "Monthly Bill": c.monthlyBill || 0,
+        "GPS Location": c.gpsLink || "",
+        "Monthly Bill (SAR)": c.monthlyBill || 0,
         "Billing Day": c.billingDay || 1,
         "Status": c.status,
       }));
@@ -107,18 +113,20 @@ export function CustomersHeader({ total }: CustomersHeaderProps) {
   const handleDownloadTemplate = async () => {
     try {
       await downloadTemplate(
-      CUSTOMER_TEMPLATE_HEADERS,
-      {
-        "Customer Name": "Green Enterprise Ltd",
-        "Contact Person": "Rahim Ahmed",
-        "Phone": "+8801711223344",
-        "Email": "info@greenenterprise.com",
-        "Address": "Plot 12, Road 4, Sector 7, Uttara, Dhaka",
-        "Monthly Bill": 2500,
-        "Billing Day": 1,
-        "Status": "Active",
-      },
-      "customers-import-template.xlsx"
+        CUSTOMER_TEMPLATE_HEADERS,
+        {
+          "Customer Name": "Apex Security Systems",
+          "Service Type": "CCTV",
+          "Contact Person": "Abdulrahman Al-Ghamdi",
+          "Phone": "+966 50 123 4567",
+          "Email": "info@apex-security.com",
+          "Address": "King Fahd Road, Olaya District, Riyadh",
+          "GPS Location": "https://maps.google.com/?q=24.7136,46.6753",
+          "Monthly Bill": 150,
+          "Billing Day": 1,
+          "Status": "Active",
+        },
+        "customers-import-template.xlsx"
       );
       toast.success("Excel template downloaded!");
     } catch {
@@ -130,11 +138,11 @@ export function CustomersHeader({ total }: CustomersHeaderProps) {
     <>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
         <div className="flex items-center gap-3.5">
-          <div className="p-3 rounded-2xl bg-sky-50 dark:bg-sky-950/50 text-sky-600 dark:text-sky-400 border border-sky-200/50 dark:border-sky-800/50">
+          <div className="p-3 rounded-2xl bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400 border border-purple-200/50 dark:border-purple-800/50">
             <Users className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">
+            <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
               Customer Management
             </h1>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
@@ -151,7 +159,7 @@ export function CustomersHeader({ total }: CustomersHeaderProps) {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
-                className="rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-semibold text-xs shadow-md shadow-sky-600/10 gap-1.5 h-10 px-4"
+                className="rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-semibold text-xs shadow-md shadow-purple-600/10 gap-1.5 h-10 px-4"
               >
                 <span>Actions</span>
                 <ChevronDown className="w-3.5 h-3.5 opacity-80" />
@@ -162,7 +170,7 @@ export function CustomersHeader({ total }: CustomersHeaderProps) {
                 <>
                   <DropdownMenuLabel>Customer Management</DropdownMenuLabel>
                   <DropdownMenuItem onClick={() => setIsAddOpen(true)}>
-                    <Plus className="w-4 h-4 text-sky-600 dark:text-sky-400" />
+                    <Plus className="w-4 h-4 text-purple-600 dark:text-purple-400" />
                     <span>Add New Customer</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setIsImportOpen(true)}>
@@ -176,7 +184,7 @@ export function CustomersHeader({ total }: CustomersHeaderProps) {
               <DropdownMenuLabel>Export & Templates</DropdownMenuLabel>
               <DropdownMenuItem onClick={handleExport} disabled={isExporting}>
                 {isExporting ? (
-                  <Loader2 className="w-4 h-4 animate-spin text-sky-600" />
+                  <Loader2 className="w-4 h-4 animate-spin text-purple-600" />
                 ) : (
                   <FileSpreadsheet className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                 )}
@@ -209,12 +217,14 @@ export function CustomersHeader({ total }: CustomersHeaderProps) {
         description="Upload an Excel or CSV file to register multiple client subscriber accounts at once."
         templateHeaders={CUSTOMER_TEMPLATE_HEADERS}
         sampleRow={{
-          "Customer Name": "Apex IT Solutions",
-          "Contact Person": "Mahmudul Hasan",
-          "Phone": "+8801819998877",
-          "Email": "support@apex-it.com",
-          "Address": "Dhanmondi 27, Dhaka",
-          "Monthly Bill": 3500,
+          "Customer Name": "Al-Naseem Trading",
+          "Service Type": "Service C",
+          "Contact Person": "Mohammed Al-Otaibi",
+          "Phone": "+966 55 987 6543",
+          "Email": "info@al-naseem.com",
+          "Address": "Exit 10, Al-Quds, Riyadh",
+          "GPS Location": "https://maps.google.com/?q=24.7743,46.7386",
+          "Monthly Bill": 200,
           "Billing Day": 1,
           "Status": "Active",
         }}

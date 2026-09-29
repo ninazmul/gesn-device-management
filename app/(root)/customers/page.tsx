@@ -10,6 +10,9 @@ interface CustomersPageProps {
   searchParams: Promise<{
     search?: string;
     status?: string;
+    serviceType?: string;
+    billingStatus?: string;
+    server?: string;
     sortBy?: string;
     page?: string;
   }>;
@@ -22,6 +25,9 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
   const { customers, total, totalPages, limit } = await getCustomers({
     search: resolvedParams.search,
     status: resolvedParams.status,
+    serviceType: resolvedParams.serviceType,
+    billingStatus: resolvedParams.billingStatus,
+    server: resolvedParams.server,
     sortBy: resolvedParams.sortBy,
     page,
     limit: 25,

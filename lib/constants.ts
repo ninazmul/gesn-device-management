@@ -23,6 +23,20 @@ export const CUSTOMER_STATUSES = [
   "Suspended",
 ] as const;
 
+export const CUSTOMER_SERVICE_TYPES = [
+  "CCTV",
+  "TV",
+  "Service C",
+] as const;
+
+export const PAYMENT_METHODS = [
+  "Cash",
+  "Bank Transfer",
+  "Card",
+  "STC Pay / Mobile",
+  "Other",
+] as const;
+
 export const BILLING_STATUSES = [
   "Pending",
   "Paid",
@@ -158,6 +172,33 @@ export const CUSTOMER_STATUS_CONFIG: Record<
     dot: "bg-rose-500",
     border: "border-rose-200 dark:border-rose-800/50",
     darkBg: "dark:bg-rose-950/40",
+  },
+};
+
+export const CUSTOMER_SERVICE_TYPE_CONFIG: Record<
+  string,
+  { label: string; bg: string; text: string; border: string; darkBg: string }
+> = {
+  CCTV: {
+    label: "CCTV",
+    bg: "bg-purple-50 text-purple-700 border-purple-200",
+    text: "text-purple-700 dark:text-purple-400",
+    border: "border-purple-200 dark:border-purple-800/50",
+    darkBg: "dark:bg-purple-950/40",
+  },
+  TV: {
+    label: "TV",
+    bg: "bg-blue-50 text-blue-700 border-blue-200",
+    text: "text-blue-700 dark:text-blue-400",
+    border: "border-blue-200 dark:border-blue-800/50",
+    darkBg: "dark:bg-blue-950/40",
+  },
+  "Service C": {
+    label: "Service C",
+    bg: "bg-indigo-50 text-indigo-700 border-indigo-200",
+    text: "text-indigo-700 dark:text-indigo-400",
+    border: "border-indigo-200 dark:border-indigo-800/50",
+    darkBg: "dark:bg-indigo-950/40",
   },
 };
 

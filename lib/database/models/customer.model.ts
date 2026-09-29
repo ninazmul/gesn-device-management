@@ -1,5 +1,5 @@
 import { Schema, model, models } from "mongoose";
-import { CUSTOMER_STATUSES } from "@/lib/constants";
+import { CUSTOMER_STATUSES, CUSTOMER_SERVICE_TYPES } from "@/lib/constants";
 
 export interface ICustomerDoc {
   _id?: string | Schema.Types.ObjectId;
@@ -9,6 +9,9 @@ export interface ICustomerDoc {
   phone?: string;
   email?: string;
   address?: string;
+  gpsLink?: string;
+  serviceType?: (typeof CUSTOMER_SERVICE_TYPES)[number];
+  server?: Schema.Types.ObjectId | null;
   monthlyBill: number;
   billingStartDate: Date;
   billingDay: number;
@@ -56,6 +59,23 @@ const CustomerSchema = new Schema(
       default: "",
       trim: true,
     },
+    gpsLink: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    serviceType: {
+      type: String,
+      enum: CUSTOMER_SERVICE_TYPES,
+      default: "Service C",
+      index: true,
+    },
+    server: {
+      type: Schema.Types.ObjectId,
+      ref: "Device",
+      default: null,
+      index: true,
+    },
     monthlyBill: {
       type: Number,
       required: true,
@@ -91,6 +111,8 @@ const CustomerSchema = new Schema(
 );
 
 CustomerSchema.index({ status: 1, createdAt: -1 });
+CustomerSchema.index({ serviceType: 1, status: 1 });
+CustomerSchema.index({ server: 1, status: 1 });
 CustomerSchema.index({ name: "text", customerId: "text", phone: "text", email: "text", contactPerson: "text" });
 
 const Customer = models.Customer || model<ICustomerDoc>("Customer", CustomerSchema);

@@ -8,7 +8,7 @@ import Device from "@/lib/database/models/device.model";
 import { formatSL } from "@/lib/utils";
 import { revalidatePath } from "next/cache";
 import type { FilterQuery } from "mongoose";
-import type { CustomerStatus, GetCustomersParams, ICustomer } from "@/types";
+import type { CustomerStatus, CustomerServiceType, GetCustomersParams, ICustomer } from "@/types";
 import { requirePermission, logActivityAndNotify } from "@/lib/auth-guard";
 
 // Helper to generate next sequential Customer ID (e.g. "CUS-000001")
@@ -22,6 +22,23 @@ async function getNextCustomerId(): Promise<string> {
 }
 
 // ==========================================
+// GET SERVER OPTIONS FOR CUSTOMER REGISTRATION
+// ==========================================
+export async function getServerOptions() {
+  await requirePermission("customers", "read");
+  await connectToDatabase();
+  const servers = await Device.find({
+    deviceType: "server",
+    status: { $nin: ["Rejected", "Retired"] },
+  })
+    .select("sl deviceName ipAddress status")
+    .sort({ deviceName: 1 })
+    .lean();
+
+  return JSON.parse(JSON.stringify(servers));
+}
+
+// ==========================================
 // GET CUSTOMERS (PAGINATED & SEARCHABLE)
 // ==========================================
 export async function getCustomers(params?: GetCustomersParams) {
@@ -30,6 +47,9 @@ export async function getCustomers(params?: GetCustomersParams) {
 
   const {
     status,
+    billingStatus,
+    serviceType,
+    server,
     search = "",
     sortBy = "newest",
     page = 1,
@@ -41,6 +61,20 @@ export async function getCustomers(params?: GetCustomersParams) {
 
   if (status && status !== "all") {
     query.status = status;
+  }
+
+  if (serviceType && serviceType !== "all") {
+    query.serviceType = serviceType;
+  }
+
+  if (server && server !== "all") {
+    query.server = server;
+  }
+
+  if (billingStatus && billingStatus !== "all") {
+    const billsWithStatus = await Billing.find({ status: billingStatus }).select("customer").lean();
+    const matchedCustomerIds = Array.from(new Set(billsWithStatus.map((b) => String(b.customer))));
+    query._id = { $in: matchedCustomerIds };
   }
 
   if (search && search.trim()) {
@@ -89,6 +123,11 @@ export async function getCustomers(params?: GetCustomersParams) {
   const [customers, total] = await Promise.all([
     Customer.find(query)
       .populate({
+        path: "server",
+        select: "sl deviceName deviceType ipAddress status",
+        model: Device,
+      })
+      .populate({
         path: "assignedDevices",
         select: "sl deviceName deviceType ipAddress status",
         model: Device,
@@ -100,8 +139,37 @@ export async function getCustomers(params?: GetCustomersParams) {
     Customer.countDocuments(query),
   ]);
 
+  // Attach latest bill summary for each customer
+  const customerIds = customers.map((c: any) => c._id);
+  const recentBills = await Billing.find({ customer: { $in: customerIds } })
+    .sort({ billingMonth: -1, createdAt: -1 })
+    .lean();
+
+  const billMap = new Map();
+  for (const b of recentBills) {
+    const cId = String(b.customer);
+    if (!billMap.has(cId)) {
+      billMap.set(cId, {
+        billingId: b.billingId,
+        billingMonth: b.billingMonth,
+        billingAmount: b.billingAmount,
+        paidAmount: b.paidAmount,
+        dueAmount: b.dueAmount,
+        dueDate: b.dueDate,
+        paymentDate: b.paymentDate,
+        paymentMethod: b.paymentMethod,
+        status: b.status,
+      });
+    }
+  }
+
+  const customersWithBills = customers.map((c: any) => ({
+    ...c,
+    currentBill: billMap.get(String(c._id)) || null,
+  }));
+
   return {
-    customers: JSON.parse(JSON.stringify(customers)),
+    customers: JSON.parse(JSON.stringify(customersWithBills)),
     total,
     page,
     limit,
@@ -117,6 +185,11 @@ export async function getCustomerById(id: string) {
   await connectToDatabase();
   const customer = await Customer.findById(id)
     .populate({
+      path: "server",
+      select: "sl deviceName deviceType ipAddress macAddress status",
+      model: Device,
+    })
+    .populate({
       path: "assignedDevices",
       select: "sl deviceName deviceType ipAddress macAddress status onlineLink",
       model: Device,
@@ -124,7 +197,30 @@ export async function getCustomerById(id: string) {
     .lean();
 
   if (!customer) return null;
-  return JSON.parse(JSON.stringify(customer)) as ICustomer;
+
+  // Fetch current bill summary
+  const latestBill = await Billing.findOne({ customer: (customer as any)._id })
+    .sort({ billingMonth: -1, createdAt: -1 })
+    .lean() as any;
+
+  const customerObj = {
+    ...customer,
+    currentBill: latestBill
+      ? {
+          billingId: latestBill.billingId,
+          billingMonth: latestBill.billingMonth,
+          billingAmount: latestBill.billingAmount,
+          paidAmount: latestBill.paidAmount,
+          dueAmount: latestBill.dueAmount,
+          dueDate: latestBill.dueDate,
+          paymentDate: latestBill.paymentDate,
+          paymentMethod: latestBill.paymentMethod,
+          status: latestBill.status,
+        }
+      : null,
+  };
+
+  return JSON.parse(JSON.stringify(customerObj)) as ICustomer;
 }
 
 // ==========================================
@@ -136,6 +232,9 @@ export async function createCustomer(data: {
   phone?: string;
   email?: string;
   address?: string;
+  gpsLink?: string;
+  serviceType?: CustomerServiceType;
+  server?: string | null;
   monthlyBill: number;
   billingStartDate?: string | Date;
   billingDay?: number;
@@ -154,6 +253,9 @@ export async function createCustomer(data: {
     phone: data.phone?.trim() || "",
     email: data.email?.trim().toLowerCase() || "",
     address: data.address?.trim() || "",
+    gpsLink: data.gpsLink?.trim() || "",
+    serviceType: data.serviceType || "Service C",
+    server: data.server || null,
     monthlyBill: Number(data.monthlyBill) || 0,
     billingStartDate: data.billingStartDate ? new Date(data.billingStartDate) : new Date(),
     billingDay: data.billingDay ? Math.min(31, Math.max(1, Number(data.billingDay))) : 1,
@@ -167,7 +269,7 @@ export async function createCustomer(data: {
     module: "customers",
     resourceId: customerId,
     resourceName: `${data.name.trim()} (${customerId})`,
-    details: `Added new customer: ${data.name.trim()} (ID: ${customerId}, Monthly Bill: ৳${Number(data.monthlyBill) || 0})`,
+    details: `Added new customer: ${data.name.trim()} (ID: ${customerId}, Service: ${data.serviceType || "Service C"}, Monthly Bill: SAR ${Number(data.monthlyBill) || 0})`,
     link: `/customers/${customer._id}`,
   });
 
@@ -189,6 +291,9 @@ export async function updateCustomer(
     phone?: string;
     email?: string;
     address?: string;
+    gpsLink?: string;
+    serviceType?: CustomerServiceType;
+    server?: string | null;
     monthlyBill?: number;
     billingStartDate?: string | Date;
     billingDay?: number;
@@ -205,6 +310,9 @@ export async function updateCustomer(
   if (data.phone !== undefined) updatePayload.phone = data.phone.trim();
   if (data.email !== undefined) updatePayload.email = data.email.trim().toLowerCase();
   if (data.address !== undefined) updatePayload.address = data.address.trim();
+  if (data.gpsLink !== undefined) updatePayload.gpsLink = data.gpsLink.trim();
+  if (data.serviceType !== undefined) updatePayload.serviceType = data.serviceType;
+  if (data.server !== undefined) updatePayload.server = data.server || null;
   if (data.monthlyBill !== undefined) updatePayload.monthlyBill = Number(data.monthlyBill);
   if (data.billingStartDate) updatePayload.billingStartDate = new Date(data.billingStartDate);
   if (data.billingDay !== undefined) {
@@ -376,6 +484,18 @@ export async function importCustomersBulk(rows: Record<string, unknown>[]) {
     const phone = String(r["Phone"] || r["Mobile"] || r["phone"] || r["Contact No"] || "").trim();
     const email = String(r["Email"] || r["email"] || "").trim().toLowerCase();
     const address = String(r["Address"] || r["address"] || r["Location"] || "").trim();
+    const gpsLink = String(r["GPS Location"] || r["GPS"] || r["gpsLink"] || r["Location Pin"] || "").trim();
+
+    const rawServiceType = String(r["Service Type"] || r["Service"] || r["serviceType"] || "").trim();
+    let serviceType: CustomerServiceType = "Service C";
+    if (/cctv/i.test(rawServiceType)) {
+      serviceType = "CCTV";
+    } else if (/tv/i.test(rawServiceType)) {
+      serviceType = "TV";
+    } else {
+      serviceType = "Service C";
+    }
+
     const rawBill = r["Monthly Bill"] || r["MonthlyBill"] || r["Bill"] || r["monthlyBill"] || 0;
     const monthlyBill = Math.max(0, Number(String(rawBill).replace(/[^0-9.-]/g, "")) || 0);
     const rawDay = r["Billing Day"] || r["BillingDay"] || r["Day"] || r["billingDay"] || 1;
@@ -394,6 +514,8 @@ export async function importCustomersBulk(rows: Record<string, unknown>[]) {
         phone,
         email,
         address,
+        gpsLink,
+        serviceType,
         monthlyBill,
         billingDay,
         billingStartDate: new Date(),

@@ -19,6 +19,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { GenerateBillsDialog } from "@/components/billing/GenerateBillsDialog";
+import { CollectBillDialog } from "@/components/billing/CollectBillDialog";
 import { usePermissions } from "@/components/providers/PermissionContext";
 import { getAllBillingsForExport } from "@/lib/actions/billing.actions";
 import { exportToExcel } from "@/lib/excel";
@@ -30,12 +31,14 @@ const BILLING_EXPORT_HEADERS = [
   "Customer Name",
   "Customer Phone",
   "Billing Month",
-  "Billing Amount (BDT)",
-  "Paid Amount (BDT)",
-  "Due Amount (BDT)",
+  "Billing Amount (SAR)",
+  "Paid Amount (SAR)",
+  "Due Amount (SAR)",
   "Due Date",
   "Status",
+  "Payment Method",
   "Payment Date",
+  "Collected By",
   "Payment Ref",
 ];
 
@@ -47,6 +50,7 @@ export function BillingHeader({ total }: BillingHeaderProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isGenerateOpen, setIsGenerateOpen] = useState(false);
+  const [isCollectOpen, setIsCollectOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
 
   const { canWrite } = usePermissions();
@@ -74,12 +78,14 @@ export function BillingHeader({ total }: BillingHeaderProps) {
         "Customer Name": b.customer ? b.customer.name : "Unknown",
         "Customer Phone": b.customer ? b.customer.phone || "" : "",
         "Billing Month": b.billingMonth,
-        "Billing Amount (BDT)": b.billingAmount || 0,
-        "Paid Amount (BDT)": b.paidAmount || 0,
-        "Due Amount (BDT)": b.dueAmount || 0,
+        "Billing Amount (SAR)": b.billingAmount || 0,
+        "Paid Amount (SAR)": b.paidAmount || 0,
+        "Due Amount (SAR)": b.dueAmount || 0,
         "Due Date": b.dueDate ? new Date(b.dueDate).toLocaleDateString("en-GB") : "",
         "Status": b.status,
+        "Payment Method": b.paymentMethod || "Cash",
         "Payment Date": b.paymentDate ? new Date(b.paymentDate).toLocaleDateString("en-GB") : "",
+        "Collected By": b.collectedBy?.name || b.collectedBy?.email || "",
         "Payment Ref": b.paymentReference || "",
       }));
 
@@ -110,11 +116,16 @@ export function BillingHeader({ total }: BillingHeaderProps) {
             <Receipt className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">
-              Monthly Billing
-            </h1>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
+                Monthly Billing
+              </h1>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                SAR
+              </span>
+            </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Manage subscriber invoices and payment collections:{" "}
+              Manage subscriber invoices and audit-tracked payment collections:{" "}
               <span className="font-bold text-slate-800 dark:text-slate-200">
                 {total.toLocaleString()}
               </span>{" "}
@@ -123,12 +134,23 @@ export function BillingHeader({ total }: BillingHeaderProps) {
           </div>
         </div>
 
-        {/* Polished Actions Dropdown Menu */}
+        {/* Polished Actions Dropdown Menu & Quick Collect Button */}
         <div className="flex items-center gap-2 shrink-0 ml-auto">
+          {canWriteBilling && (
+            <Button
+              onClick={() => setIsCollectOpen(true)}
+              className="rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-600/10 gap-1.5 h-10 px-4"
+            >
+              <Receipt className="w-4 h-4" />
+              <span>Collect Bill</span>
+            </Button>
+          )}
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
-                className="rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-md shadow-emerald-600/10 gap-1.5 h-10 px-4"
+                variant="outline"
+                className="rounded-xl border-slate-200 dark:border-slate-800 font-semibold text-xs gap-1.5 h-10 px-4"
               >
                 <span>Billing Actions</span>
                 <ChevronDown className="w-3.5 h-3.5 opacity-80" />
@@ -142,11 +164,15 @@ export function BillingHeader({ total }: BillingHeaderProps) {
                     <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                     <span>Generate Monthly Bills</span>
                   </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setIsCollectOpen(true)}>
+                    <Receipt className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                    <span>Collect Payment</span>
+                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
                 </>
               )}
 
-              <DropdownMenuLabel>Excel Reports</DropdownMenuLabel>
+              <DropdownMenuLabel>Excel Reports (SAR)</DropdownMenuLabel>
               <DropdownMenuItem onClick={() => handleExport(false)} disabled={isExporting}>
                 {isExporting ? (
                   <Loader2 className="w-4 h-4 animate-spin text-emerald-600" />
@@ -168,6 +194,13 @@ export function BillingHeader({ total }: BillingHeaderProps) {
       <GenerateBillsDialog
         open={isGenerateOpen}
         onOpenChange={setIsGenerateOpen}
+        onSuccess={() => router.refresh()}
+      />
+
+      {/* Collect Bill Dialog */}
+      <CollectBillDialog
+        open={isCollectOpen}
+        onOpenChange={setIsCollectOpen}
         onSuccess={() => router.refresh()}
       />
     </>

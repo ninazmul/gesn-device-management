@@ -20,9 +20,10 @@ import {
   Sparkles,
 } from "lucide-react";
 import { BillingStatusBadge } from "./BillingStatusBadge";
-import { PaymentUpdateDialog } from "./PaymentUpdateDialog";
+import { CollectBillDialog } from "./CollectBillDialog";
 import { GenerateBillsDialog } from "./GenerateBillsDialog";
-import { formatDate } from "@/lib/utils";
+import { formatDate, formatCurrency } from "@/lib/utils";
+import { CUSTOMER_SERVICE_TYPE_CONFIG } from "@/lib/constants";
 import type { IBilling } from "@/types";
 import { usePermissions } from "@/components/providers/PermissionContext";
 
@@ -161,21 +162,21 @@ export function BillingTable({
                     {/* Bill Amount */}
                     <TableCell className="text-right whitespace-nowrap">
                       <span className="font-mono font-bold text-sm text-slate-900 dark:text-slate-100">
-                        ৳{bill.billingAmount?.toLocaleString() || 0}
+                        {formatCurrency(bill.billingAmount)}
                       </span>
                     </TableCell>
 
                     {/* Paid Amount */}
                     <TableCell className="text-right whitespace-nowrap">
                       <span className="font-mono font-bold text-sm text-emerald-600 dark:text-emerald-400">
-                        ৳{bill.paidAmount?.toLocaleString() || 0}
+                        {formatCurrency(bill.paidAmount)}
                       </span>
                     </TableCell>
 
                     {/* Due Amount */}
                     <TableCell className="text-right whitespace-nowrap">
-                      <span className="font-mono font-bold text-sm text-rose-600 dark:text-rose-400">
-                        ৳{bill.dueAmount?.toLocaleString() || 0}
+                      <span className="font-mono font-black text-sm text-rose-600 dark:text-rose-400">
+                        {formatCurrency(bill.dueAmount)}
                       </span>
                     </TableCell>
 
@@ -196,10 +197,10 @@ export function BillingTable({
                           variant="outline"
                           size="sm"
                           onClick={() => setPaymentBilling(bill)}
-                          className="rounded-xl h-8 text-xs font-semibold border-slate-200 dark:border-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-700 dark:hover:text-emerald-300"
+                          className="rounded-xl h-8 text-xs font-bold border-slate-200 dark:border-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-700 dark:hover:text-emerald-300"
                         >
-                          <DollarSign className="w-3.5 h-3.5 mr-1 text-emerald-600" />
-                          Update Payment
+                          <Receipt className="w-3.5 h-3.5 mr-1 text-emerald-600" />
+                          Collect Bill
                         </Button>
                       ) : (
                         <span className="text-xs text-slate-400 italic">View only</span>
@@ -260,12 +261,16 @@ export function BillingTable({
         )}
       </div>
 
-      {/* Payment Update Dialog */}
-      <PaymentUpdateDialog
-        billing={paymentBilling}
+      {/* Collect Bill Dialog */}
+      <CollectBillDialog
         open={Boolean(paymentBilling)}
         onOpenChange={(open) => !open && setPaymentBilling(null)}
-        onSuccess={() => router.refresh()}
+        initialCustomer={paymentBilling?.customer as any}
+        initialBilling={paymentBilling}
+        onSuccess={() => {
+          setPaymentBilling(null);
+          router.refresh();
+        }}
       />
 
       {/* Generate Bills Dialog */}

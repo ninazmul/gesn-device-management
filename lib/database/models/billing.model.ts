@@ -1,5 +1,19 @@
 import { Schema, model, models } from "mongoose";
-import { BILLING_STATUSES } from "@/lib/constants";
+import { BILLING_STATUSES, PAYMENT_METHODS } from "@/lib/constants";
+
+export interface IPaymentRecordDoc {
+  amount: number;
+  paymentDate: Date;
+  paymentMethod: string;
+  collectedBy?: {
+    email: string;
+    name?: string;
+    role?: string;
+    userId?: string;
+  };
+  note?: string;
+  createdAt: Date;
+}
 
 export interface IBillingDoc {
   _id?: string | Schema.Types.ObjectId;
@@ -11,13 +25,54 @@ export interface IBillingDoc {
   dueAmount: number;
   dueDate: Date;
   paymentDate?: Date;
+  paymentMethod?: (typeof PAYMENT_METHODS)[number] | string;
   paymentNote?: string;
   paymentReference?: string;
+  collectedBy?: {
+    email: string;
+    name?: string;
+    role?: string;
+    userId?: string;
+  };
+  paymentHistory?: IPaymentRecordDoc[];
   status: (typeof BILLING_STATUSES)[number];
   notes?: string;
   createdAt: Date;
   updatedAt: Date;
 }
+
+const PaymentRecordSchema = new Schema(
+  {
+    amount: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+    paymentDate: {
+      type: Date,
+      default: Date.now,
+    },
+    paymentMethod: {
+      type: String,
+      default: "Cash",
+      trim: true,
+    },
+    collectedBy: {
+      email: { type: String, trim: true },
+      name: { type: String, trim: true },
+      role: { type: String, trim: true },
+      userId: { type: String, trim: true },
+    },
+    note: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+  },
+  {
+    timestamps: { createdAt: true, updatedAt: false },
+  }
+);
 
 const BillingSchema = new Schema(
   {
@@ -63,6 +118,11 @@ const BillingSchema = new Schema(
     paymentDate: {
       type: Date,
     },
+    paymentMethod: {
+      type: String,
+      enum: PAYMENT_METHODS,
+      default: "Cash",
+    },
     paymentNote: {
       type: String,
       default: "",
@@ -73,6 +133,13 @@ const BillingSchema = new Schema(
       default: "",
       trim: true,
     },
+    collectedBy: {
+      email: { type: String, trim: true },
+      name: { type: String, trim: true },
+      role: { type: String, trim: true },
+      userId: { type: String, trim: true },
+    },
+    paymentHistory: [PaymentRecordSchema],
     status: {
       type: String,
       enum: BILLING_STATUSES,

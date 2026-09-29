@@ -39,6 +39,14 @@ export function formatDateTime(date: Date | string | undefined | null): string {
 }
 
 /**
+ * Format currency with SAR symbol e.g. "SAR 150.00"
+ */
+export function formatCurrency(amount: number | undefined | null, currency = "SAR"): string {
+  if (amount === undefined || amount === null || isNaN(Number(amount))) return `${currency} 0`;
+  return `${currency} ${Number(amount).toLocaleString()}`;
+}
+
+/**
  * Format sequence number to standard SL e.g. "001", "002"
  */
 export function formatSL(seq: number, length: number = 3): string {

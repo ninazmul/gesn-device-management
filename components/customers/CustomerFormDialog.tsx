@@ -18,11 +18,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Loader2, UserPlus, Users } from "lucide-react";
+import { Loader2, UserPlus, Users, MapPin, Server, ExternalLink } from "lucide-react";
 import { toast } from "react-hot-toast";
-import { createCustomer, updateCustomer } from "@/lib/actions/customer.actions";
-import { CUSTOMER_STATUSES } from "@/lib/constants";
-import type { CustomerStatus, ICustomer } from "@/types";
+import { createCustomer, updateCustomer, getServerOptions } from "@/lib/actions/customer.actions";
+import { CUSTOMER_STATUSES, CUSTOMER_SERVICE_TYPES } from "@/lib/constants";
+import type { CustomerStatus, CustomerServiceType, ICustomer, IServerOption } from "@/types";
 
 interface CustomerFormDialogProps {
   open: boolean;
@@ -45,6 +45,17 @@ export function CustomerFormDialog({
   const [phone, setPhone] = useState(customerToEdit?.phone || "");
   const [email, setEmail] = useState(customerToEdit?.email || "");
   const [address, setAddress] = useState(customerToEdit?.address || "");
+  const [gpsLink, setGpsLink] = useState(customerToEdit?.gpsLink || "");
+  const [serviceType, setServiceType] = useState<CustomerServiceType>(
+    customerToEdit?.serviceType || "Service C"
+  );
+  const [serverId, setServerId] = useState<string>(
+    customerToEdit?.server
+      ? typeof customerToEdit.server === "object"
+        ? (customerToEdit.server as any)._id
+        : customerToEdit.server
+      : "none"
+  );
   const [monthlyBill, setMonthlyBill] = useState(
     customerToEdit?.monthlyBill !== undefined ? String(customerToEdit.monthlyBill) : ""
   );
@@ -59,33 +70,57 @@ export function CustomerFormDialog({
   const [status, setStatus] = useState<CustomerStatus>(
     (customerToEdit?.status as CustomerStatus) || "Active"
   );
+
+  const [serverOptions, setServerOptions] = useState<IServerOption[]>([]);
+  const [loadingServers, setLoadingServers] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (customerToEdit) {
-      setName(customerToEdit.name);
-      setContactPerson(customerToEdit.contactPerson || "");
-      setPhone(customerToEdit.phone || "");
-      setEmail(customerToEdit.email || "");
-      setAddress(customerToEdit.address || "");
-      setMonthlyBill(String(customerToEdit.monthlyBill || ""));
-      setBillingStartDate(
-        customerToEdit.billingStartDate
-          ? new Date(customerToEdit.billingStartDate).toISOString().split("T")[0]
-          : new Date().toISOString().split("T")[0]
-      );
-      setBillingDay(String(customerToEdit.billingDay || "1"));
-      setStatus(customerToEdit.status || "Active");
-    } else {
-      setName("");
-      setContactPerson("");
-      setPhone("");
-      setEmail("");
-      setAddress("");
-      setMonthlyBill("");
-      setBillingStartDate(new Date().toISOString().split("T")[0]);
-      setBillingDay("1");
-      setStatus("Active");
+    if (open) {
+      // Load server device options
+      setLoadingServers(true);
+      getServerOptions()
+        .then((options) => setServerOptions(options || []))
+        .catch(() => {})
+        .finally(() => setLoadingServers(false));
+
+      if (customerToEdit) {
+        setName(customerToEdit.name);
+        setContactPerson(customerToEdit.contactPerson || "");
+        setPhone(customerToEdit.phone || "");
+        setEmail(customerToEdit.email || "");
+        setAddress(customerToEdit.address || "");
+        setGpsLink(customerToEdit.gpsLink || "");
+        setServiceType(customerToEdit.serviceType || "Service C");
+        setServerId(
+          customerToEdit.server
+            ? typeof customerToEdit.server === "object"
+              ? (customerToEdit.server as any)._id
+              : customerToEdit.server
+            : "none"
+        );
+        setMonthlyBill(String(customerToEdit.monthlyBill || ""));
+        setBillingStartDate(
+          customerToEdit.billingStartDate
+            ? new Date(customerToEdit.billingStartDate).toISOString().split("T")[0]
+            : new Date().toISOString().split("T")[0]
+        );
+        setBillingDay(String(customerToEdit.billingDay || "1"));
+        setStatus(customerToEdit.status || "Active");
+      } else {
+        setName("");
+        setContactPerson("");
+        setPhone("");
+        setEmail("");
+        setAddress("");
+        setGpsLink("");
+        setServiceType("Service C");
+        setServerId("none");
+        setMonthlyBill("");
+        setBillingStartDate(new Date().toISOString().split("T")[0]);
+        setBillingDay("1");
+        setStatus("Active");
+      }
     }
   }, [customerToEdit, open]);
 
@@ -99,7 +134,7 @@ export function CustomerFormDialog({
 
     const billNum = parseFloat(monthlyBill);
     if (isNaN(billNum) || billNum < 0) {
-      toast.error("Please enter a valid monthly bill amount");
+      toast.error("Please enter a valid monthly bill amount (SAR)");
       return;
     }
 
@@ -117,6 +152,9 @@ export function CustomerFormDialog({
         phone: phone.trim(),
         email: email.trim(),
         address: address.trim(),
+        gpsLink: gpsLink.trim(),
+        serviceType,
+        server: serverId && serverId !== "none" ? serverId : null,
         monthlyBill: billNum,
         billingStartDate: new Date(billingStartDate),
         billingDay: dayNum,
@@ -145,15 +183,15 @@ export function CustomerFormDialog({
       <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-2xl">
         <DialogHeader className="border-b border-slate-100 dark:border-slate-800 pb-4">
           <DialogTitle className="text-xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2.5">
-            <span className="p-2 rounded-xl bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400">
+            <span className="p-2 rounded-xl bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400">
               {isEditing ? <Users className="w-5 h-5" /> : <UserPlus className="w-5 h-5" />}
             </span>
             {isEditing ? `Edit Customer (${customerToEdit?.customerId})` : "Add New Customer"}
           </DialogTitle>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
             {isEditing
-              ? "Update client profile, contact info, and billing parameters."
-              : "Register a client account with monthly subscription details."}
+              ? "Update client profile, service package, and monthly billing terms."
+              : "Register customer account with service type, server link, and monthly bill."}
           </p>
         </DialogHeader>
 
@@ -191,10 +229,10 @@ export function CustomerFormDialog({
 
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Phone Number
+                  Phone / Mobile Number
                 </Label>
                 <Input
-                  placeholder="e.g. 01712-345678"
+                  placeholder="e.g. +966 50 123 4567"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   className="rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm font-mono"
@@ -203,7 +241,7 @@ export function CustomerFormDialog({
 
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Email Address
+                  Email Address (Optional)
                 </Label>
                 <Input
                   type="email"
@@ -237,37 +275,130 @@ export function CustomerFormDialog({
 
               <div className="space-y-1.5 sm:col-span-2">
                 <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Physical Address
+                  Physical Address / Location
                 </Label>
                 <Textarea
-                  placeholder="Street, Tower location, Area, City..."
+                  placeholder="Street, Building, Flat / Tower, District..."
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
                   rows={2}
                   className="rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm resize-none"
                 />
               </div>
+
+              {/* GPS Link Field */}
+              <div className="space-y-1.5 sm:col-span-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5 text-rose-500" />
+                    GPS Location (Map Link / Pin)
+                  </Label>
+                  {gpsLink && (
+                    <a
+                      href={gpsLink.startsWith("http") ? gpsLink : `https://${gpsLink}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[11px] font-bold text-sky-600 dark:text-sky-400 hover:underline flex items-center gap-1"
+                    >
+                      <span>Open Link</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  )}
+                </div>
+                <Input
+                  placeholder="https://maps.google.com/?q=24.7136,46.6753"
+                  value={gpsLink}
+                  onChange={(e) => setGpsLink(e.target.value)}
+                  className="rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm font-mono text-xs"
+                />
+              </div>
             </div>
           </div>
 
-          {/* Section 2: Monthly Billing Configuration */}
+          {/* Section 2: Service & Infrastructure Setup */}
           <div className="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-800">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-              2. Monthly Billing Setup
+              2. Service & Infrastructure Connection
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              {/* Service Type */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  Service Type <span className="text-rose-500">*</span>
+                </Label>
+                <Select
+                  value={serviceType}
+                  onValueChange={(val) => setServiceType(val as CustomerServiceType)}
+                >
+                  <SelectTrigger className="rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm">
+                    <SelectValue placeholder="Select Service Type" />
+                  </SelectTrigger>
+                  <SelectContent className="dark:bg-slate-900 dark:border-slate-800">
+                    {CUSTOMER_SERVICE_TYPES.map((st) => (
+                      <SelectItem key={st} value={st}>
+                        {st}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] text-slate-400">
+                  Select service category (CCTV, TV, or Service C).
+                </p>
+              </div>
+
+              {/* Server Link */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                  <Server className="w-3.5 h-3.5 text-blue-500" />
+                  Connected Server
+                </Label>
+                <Select
+                  value={serverId}
+                  onValueChange={setServerId}
+                  disabled={loadingServers}
+                >
+                  <SelectTrigger className="rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm">
+                    <SelectValue placeholder={loadingServers ? "Loading servers..." : "None / Unassigned"} />
+                  </SelectTrigger>
+                  <SelectContent className="dark:bg-slate-900 dark:border-slate-800">
+                    <SelectItem value="none">None / Unassigned</SelectItem>
+                    {serverOptions.map((srv) => (
+                      <SelectItem key={srv._id} value={srv._id}>
+                        {srv.deviceName} ({srv.sl}) {srv.ipAddress ? `• ${srv.ipAddress}` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] text-slate-400">
+                  Link customer to central gateway or distribution server.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 3: Monthly Billing Setup */}
+          <div className="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+              3. Monthly Billing Setup (SAR)
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Monthly Bill (৳) <span className="text-rose-500">*</span>
+                  Monthly Bill (SAR) <span className="text-rose-500">*</span>
                 </Label>
-                <Input
-                  type="number"
-                  placeholder="5000"
-                  min="0"
-                  value={monthlyBill}
-                  onChange={(e) => setMonthlyBill(e.target.value)}
-                  className="rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm font-semibold"
-                />
+                <div className="relative">
+                  <span className="absolute left-3 top-2.5 text-xs font-bold text-slate-400">
+                    SAR
+                  </span>
+                  <Input
+                    type="number"
+                    placeholder="150"
+                    min="0"
+                    value={monthlyBill}
+                    onChange={(e) => setMonthlyBill(e.target.value)}
+                    className="pl-13 rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm font-semibold"
+                  />
+                </div>
               </div>
 
               <div className="space-y-1.5">
@@ -313,7 +444,7 @@ export function CustomerFormDialog({
             <Button
               type="submit"
               disabled={submitting || !name.trim() || !monthlyBill}
-              className="rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-semibold shadow-md shadow-sky-600/10"
+              className="rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-semibold shadow-md shadow-purple-600/10 px-5"
             >
               {submitting ? (
                 <>

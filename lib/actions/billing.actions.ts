@@ -13,7 +13,7 @@ import { requirePermission, logActivityAndNotify } from "@/lib/auth-guard";
 const OVERDUE_SYNC_INTERVAL_MS = 5 * 60 * 1000;
 let lastOverdueSyncAt = 0;
 
-async function syncOverdueBillsIfNeeded() {
+export async function syncOverdueBillsIfNeeded() {
   const now = Date.now();
   if (now - lastOverdueSyncAt < OVERDUE_SYNC_INTERVAL_MS) return;
 
@@ -123,7 +123,12 @@ export async function getBillings(params?: GetBillingsParams) {
     Billing.find(query)
       .populate({
         path: "customer",
-        select: "customerId name phone email address monthlyBill billingDay status",
+        select: "customerId name phone email address monthlyBill billingDay status serviceType server",
+        populate: {
+          path: "server",
+          select: "sl deviceName deviceType ipAddress status",
+          model: "Device",
+        },
         model: Customer,
       })
       .sort(sortObj)
@@ -290,6 +295,7 @@ export async function updatePayment(
   id: string,
   data: {
     paidAmount: number;
+    paymentMethod?: string;
     paymentDate?: string | Date;
     paymentNote?: string;
     paymentReference?: string;
@@ -308,7 +314,7 @@ export async function updatePayment(
 
   if (paidAmount > bill.billingAmount) {
     throw new Error(
-      `Paid amount (৳${paidAmount.toLocaleString()}) cannot exceed billing amount (৳${bill.billingAmount.toLocaleString()})`
+      `Paid amount (SAR ${paidAmount.toLocaleString()}) cannot exceed billing amount (SAR ${bill.billingAmount.toLocaleString()})`
     );
   }
 
@@ -325,13 +331,36 @@ export async function updatePayment(
     status = bill.dueDate < new Date() ? "Overdue" : "Pending";
   }
 
-  const previousPaid = bill.paidAmount;
+  const previousPaid = bill.paidAmount || 0;
+  const incrementalPaid = paidAmount - previousPaid;
+
   bill.paidAmount = paidAmount;
   bill.dueAmount = dueAmount;
   bill.status = status;
   bill.paymentDate = data.paymentDate ? new Date(data.paymentDate) : paidAmount > 0 ? new Date() : undefined;
+  if (data.paymentMethod) bill.paymentMethod = data.paymentMethod;
   if (data.paymentNote !== undefined) bill.paymentNote = data.paymentNote.trim();
   if (data.paymentReference !== undefined) bill.paymentReference = data.paymentReference.trim();
+
+  bill.collectedBy = {
+    email: actor.email,
+    name: actor.name,
+    role: actor.role,
+    userId: actor._id,
+  };
+
+  // If there's a positive incremental payment, append to paymentHistory
+  if (incrementalPaid > 0) {
+    if (!bill.paymentHistory) bill.paymentHistory = [];
+    bill.paymentHistory.push({
+      amount: incrementalPaid,
+      paymentDate: data.paymentDate ? new Date(data.paymentDate) : new Date(),
+      paymentMethod: data.paymentMethod || "Cash",
+      collectedBy: bill.collectedBy,
+      note: data.paymentNote?.trim() || "",
+      createdAt: new Date(),
+    });
+  }
 
   await bill.save();
 
@@ -341,7 +370,7 @@ export async function updatePayment(
     module: "billing",
     resourceId: bill.billingId,
     resourceName: `${bill.billingId} (${bill.billingMonth})`,
-    details: `Updated payment for bill ${bill.billingId}: ৳${previousPaid} ➔ ৳${paidAmount} (Status: ${status})`,
+    details: `Updated payment for bill ${bill.billingId}: SAR ${previousPaid} ➔ SAR ${paidAmount} via ${data.paymentMethod || "Cash"} (Status: ${status})`,
     link: "/billing",
   });
 
@@ -350,6 +379,174 @@ export async function updatePayment(
   revalidatePath(`/customers/${bill.customer?._id || bill.customer}`);
 
   return JSON.parse(JSON.stringify(bill)) as IBilling;
+}
+
+// ==========================================
+// COLLECT BILL PAYMENT (Direct collection flow)
+// ==========================================
+export async function collectBillPayment(data: {
+  billingId?: string;
+  customerId?: string;
+  amount: number;
+  paymentMethod?: string;
+  paymentDate?: string | Date;
+  note?: string;
+  reference?: string;
+}) {
+  const actor = await requirePermission("billing", "write");
+  await connectToDatabase();
+
+  const amount = Number(data.amount);
+  if (isNaN(amount) || amount <= 0) {
+    throw new Error("Payment amount must be greater than 0");
+  }
+
+  let bill = null;
+
+  if (data.billingId) {
+    const isObjectId = /^[0-9a-fA-F]{24}$/.test(data.billingId);
+    bill = await Billing.findOne({
+      $or: [{ billingId: data.billingId }, ...(isObjectId ? [{ _id: data.billingId }] : [])],
+    }).populate("customer", "name customerId phone email");
+  }
+
+  if (!bill && data.customerId) {
+    const isObjectId = /^[0-9a-fA-F]{24}$/.test(data.customerId);
+    const customer = await Customer.findOne({
+      $or: [{ customerId: data.customerId }, ...(isObjectId ? [{ _id: data.customerId }] : [])],
+    });
+
+    if (!customer) throw new Error("Customer not found");
+
+    // Look for earliest outstanding bill
+    bill = await Billing.findOne({
+      customer: customer._id,
+      status: { $in: ["Overdue", "Pending", "Partial"] },
+      dueAmount: { $gt: 0 },
+    })
+      .sort({ dueDate: 1 })
+      .populate("customer", "name customerId phone email");
+
+    // If no existing unpaid bill, create or fetch the bill for the current month
+    if (!bill) {
+      const now = new Date();
+      const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+      bill = await Billing.findOne({
+        customer: customer._id,
+        billingMonth: currentMonth,
+      }).populate("customer", "name customerId phone email");
+
+      if (!bill) {
+        const newBillingId = await getNextBillingId();
+        const dueDate = new Date();
+        bill = await Billing.create({
+          billingId: newBillingId,
+          customer: customer._id,
+          billingMonth: currentMonth,
+          billingAmount: customer.monthlyBill || amount,
+          paidAmount: 0,
+          dueAmount: customer.monthlyBill || amount,
+          dueDate,
+          status: "Pending",
+        });
+        await bill.populate("customer", "name customerId phone email");
+      }
+    }
+  }
+
+  if (!bill) {
+    throw new Error("No bill record found or created for this customer.");
+  }
+
+  const previousPaid = bill.paidAmount || 0;
+  const newPaid = previousPaid + amount;
+  const newDue = Math.max(0, bill.billingAmount - newPaid);
+
+  let newStatus: BillingStatus = "Pending";
+  if (newDue <= 0) {
+    newStatus = "Paid";
+  } else if (newPaid > 0) {
+    newStatus = "Partial";
+  } else {
+    newStatus = bill.dueDate < new Date() ? "Overdue" : "Pending";
+  }
+
+  const paymentRecord = {
+    amount,
+    paymentDate: data.paymentDate ? new Date(data.paymentDate) : new Date(),
+    paymentMethod: data.paymentMethod || "Cash",
+    collectedBy: {
+      email: actor.email,
+      name: actor.name,
+      role: actor.role,
+      userId: actor._id,
+    },
+    note: data.note?.trim() || "",
+    createdAt: new Date(),
+  };
+
+  bill.paidAmount = newPaid;
+  bill.dueAmount = newDue;
+  bill.status = newStatus;
+  bill.paymentDate = paymentRecord.paymentDate;
+  bill.paymentMethod = data.paymentMethod || "Cash";
+  if (data.reference) bill.paymentReference = data.reference.trim();
+  if (data.note) bill.paymentNote = data.note.trim();
+  bill.collectedBy = paymentRecord.collectedBy;
+
+  if (!bill.paymentHistory) bill.paymentHistory = [];
+  bill.paymentHistory.push(paymentRecord);
+
+  await bill.save();
+
+  await logActivityAndNotify({
+    actor,
+    action: "PAYMENT_COLLECTED",
+    module: "billing",
+    resourceId: bill.billingId,
+    resourceName: `${bill.billingId} (${bill.billingMonth})`,
+    details: `Collected SAR ${amount.toLocaleString()} for bill ${bill.billingId} via ${data.paymentMethod || "Cash"}. Remaining due: SAR ${newDue.toLocaleString()} (Status: ${newStatus})`,
+    link: "/billing",
+  });
+
+  revalidatePath("/");
+  revalidatePath("/billing");
+  revalidatePath("/customers");
+  if (bill.customer?._id) {
+    revalidatePath(`/customers/${bill.customer._id}`);
+  }
+
+  return JSON.parse(JSON.stringify(bill)) as IBilling;
+}
+
+// ==========================================
+// GET PENDING BILL FOR CUSTOMER (QUICK LOOKUP)
+// ==========================================
+export async function getPendingBillForCustomer(customerId: string) {
+  await requirePermission("billing", "read");
+  await connectToDatabase();
+
+  const isObjectId = /^[0-9a-fA-F]{24}$/.test(customerId);
+  const customer = await Customer.findOne({
+    $or: [{ customerId }, ...(isObjectId ? [{ _id: customerId }] : [])],
+  }).lean() as any;
+
+  if (!customer) return null;
+
+  await syncOverdueBillsIfNeeded();
+
+  const bill = await Billing.findOne({
+    customer: customer._id,
+    dueAmount: { $gt: 0 },
+    status: { $in: ["Overdue", "Pending", "Partial"] },
+  })
+    .sort({ dueDate: 1 })
+    .lean();
+
+  return {
+    customer: JSON.parse(JSON.stringify(customer)),
+    bill: bill ? JSON.parse(JSON.stringify(bill)) : null,
+  };
 }
 
 // ==========================================

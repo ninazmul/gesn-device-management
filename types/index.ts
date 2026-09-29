@@ -116,6 +116,35 @@ export interface IServerOption {
   status: DeviceStatus;
 }
 
+export type CustomerServiceType = "CCTV" | "TV" | "Service C";
+export type PaymentMethod = "Cash" | "Bank Transfer" | "Card" | "STC Pay / Mobile" | "Other";
+
+export interface IPaymentRecord {
+  amount: number;
+  paymentDate: string | Date;
+  paymentMethod: PaymentMethod | string;
+  collectedBy?: {
+    email: string;
+    name?: string;
+    role?: string;
+    userId?: string;
+  };
+  note?: string;
+  createdAt: string | Date;
+}
+
+export interface ICustomerBillSummary {
+  billingId: string;
+  billingMonth: string;
+  billingAmount: number;
+  paidAmount: number;
+  dueAmount: number;
+  dueDate: string | Date;
+  paymentDate?: string | Date;
+  paymentMethod?: string;
+  status: BillingStatus;
+}
+
 export interface ICustomer {
   _id: string;
   customerId: string; // e.g. "CUS-000001"
@@ -124,11 +153,15 @@ export interface ICustomer {
   phone?: string;
   email?: string;
   address?: string;
+  gpsLink?: string;
+  serviceType?: CustomerServiceType;
+  server?: IDevice | IServerOption | string | null;
   monthlyBill: number;
   billingStartDate: string | Date;
   billingDay: number; // 1 - 31
   status: CustomerStatus;
   assignedDevices?: IDevice[];
+  currentBill?: ICustomerBillSummary | null;
   createdAt: string | Date;
   updatedAt: string | Date;
 }
@@ -143,8 +176,16 @@ export interface IBilling {
   dueAmount: number;
   dueDate: string | Date;
   paymentDate?: string | Date;
+  paymentMethod?: PaymentMethod | string;
   paymentNote?: string;
   paymentReference?: string;
+  collectedBy?: {
+    email: string;
+    name?: string;
+    role?: string;
+    userId?: string;
+  };
+  paymentHistory?: IPaymentRecord[];
   status: BillingStatus;
   notes?: string;
   createdAt: string | Date;
@@ -275,8 +316,26 @@ export interface DashboardStats {
     activeCustomers: number;
     suspendedCustomers: number;
     paidThisMonth: number;
+    pendingCount: number;
+    overdueCount: number;
+    totalOutstandingAmount: number;
     dueCustomers: number;
   };
+  awaitingCollectionCustomers?: Array<{
+    _id: string;
+    customerId: string;
+    name: string;
+    phone?: string;
+    serviceType?: string;
+    serverName?: string;
+    billingId: string;
+    billingMonth: string;
+    billingAmount: number;
+    paidAmount: number;
+    dueAmount: number;
+    dueDate: string | Date;
+    status: BillingStatus;
+  }>;
   billingStats: {
     currentMonth: string;
     monthlyBilled: number;
@@ -301,6 +360,9 @@ export interface GetDevicesParams {
 
 export interface GetCustomersParams {
   status?: string;
+  billingStatus?: string;
+  serviceType?: string;
+  server?: string;
   search?: string;
   sortBy?: string;
   page?: number;

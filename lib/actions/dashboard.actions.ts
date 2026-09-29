@@ -8,6 +8,7 @@ import Billing from "@/lib/database/models/billing.model";
 import { PRIMARY_DEVICE_TYPES } from "@/lib/constants";
 import type { DashboardStats } from "@/types";
 import { requirePermission } from "@/lib/auth-guard";
+import { syncOverdueBillsIfNeeded } from "./billing.actions";
 
 export async function getDashboardStats(): Promise<DashboardStats> {
   await requirePermission("dashboard", "read");
@@ -16,8 +17,10 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   const now = new Date();
   const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 
+  await syncOverdueBillsIfNeeded();
+
   // Run aggregations across Devices, Customers, and Billings in parallel
-  const [deviceFacetResult, allTypes, customerFacetResult, billingFacetResult] =
+  const [deviceFacetResult, allTypes, customerFacetResult, billingFacetResult, awaitingBills] =
     await Promise.all([
       Device.aggregate([
         {
@@ -130,38 +133,65 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       ]),
       Billing.aggregate([
         {
-          $match: {
-            billingMonth: currentMonth,
-          },
-        },
-        {
-          $group: {
-            _id: null,
-            monthlyBilled: { $sum: "$billingAmount" },
-            collected: { $sum: "$paidAmount" },
-            pending: {
-              $sum: {
-                $cond: [{ $in: ["$status", ["Pending", "Partial"]] }, "$dueAmount", 0],
+          $facet: {
+            currentMonth: [
+              {
+                $match: {
+                  billingMonth: currentMonth,
+                },
               },
-            },
-            overdue: {
-              $sum: {
-                $cond: [{ $eq: ["$status", "Overdue"] }, "$dueAmount", 0],
+              {
+                $group: {
+                  _id: null,
+                  monthlyBilled: { $sum: "$billingAmount" },
+                  collected: { $sum: "$paidAmount" },
+                  paidCount: {
+                    $sum: { $cond: [{ $eq: ["$status", "Paid"] }, 1, 0] },
+                  },
+                },
               },
-            },
-            paidCount: {
-              $sum: {
-                $cond: [{ $eq: ["$status", "Paid"] }, 1, 0],
+            ],
+            allOutstanding: [
+              {
+                $match: {
+                  status: { $in: ["Pending", "Partial", "Overdue"] },
+                  dueAmount: { $gt: 0 },
+                },
               },
-            },
-            dueCount: {
-              $sum: {
-                $cond: [{ $in: ["$status", ["Pending", "Partial", "Overdue"]] }, 1, 0],
+              {
+                $group: {
+                  _id: null,
+                  totalOutstanding: { $sum: "$dueAmount" },
+                  pendingCount: {
+                    $sum: { $cond: [{ $in: ["$status", ["Pending", "Partial"]] }, 1, 0] },
+                  },
+                  overdueCount: {
+                    $sum: { $cond: [{ $eq: ["$status", "Overdue"] }, 1, 0] },
+                  },
+                  totalDueCustomers: { $sum: 1 },
+                },
               },
-            },
+            ],
           },
         },
       ]),
+      Billing.find({
+        status: { $in: ["Overdue", "Pending", "Partial"] },
+        dueAmount: { $gt: 0 },
+      })
+        .sort({ status: 1, dueDate: 1 })
+        .limit(6)
+        .populate({
+          path: "customer",
+          select: "customerId name phone serviceType server",
+          populate: {
+            path: "server",
+            select: "sl deviceName",
+            model: "Device",
+          },
+          model: "Customer",
+        })
+        .lean(),
     ]);
 
   // Devices
@@ -247,17 +277,45 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   const totalCustomers = custFacet.totalCount?.[0]?.total || 0;
 
   // Billings
-  const billSummary = billingFacetResult[0] || {
+  const billFacet = billingFacetResult[0] || {};
+  const currentMonthData = billFacet.currentMonth?.[0] || {
     monthlyBilled: 0,
     collected: 0,
-    pending: 0,
-    overdue: 0,
     paidCount: 0,
-    dueCount: 0,
+  };
+  const allOutstandingData = billFacet.allOutstanding?.[0] || {
+    totalOutstanding: 0,
+    pendingCount: 0,
+    overdueCount: 0,
+    totalDueCustomers: 0,
   };
 
-  const paidThisMonth = billSummary.paidCount ?? 0;
-  const dueCustomers = billSummary.dueCount ?? 0;
+  const paidThisMonth = currentMonthData.paidCount || 0;
+  const pendingCount = allOutstandingData.pendingCount || 0;
+  const overdueCount = allOutstandingData.overdueCount || 0;
+  const totalOutstandingAmount = allOutstandingData.totalOutstanding || 0;
+  const dueCustomers = allOutstandingData.totalDueCustomers || 0;
+
+  // Format awaiting collection customers
+  const formattedAwaitingCustomers = (awaitingBills || []).map((b: any) => {
+    const cust = b.customer || {};
+    const srv = cust.server || {};
+    return {
+      _id: String(cust._id || b._id),
+      customerId: cust.customerId || "—",
+      name: cust.name || "Unknown Customer",
+      phone: cust.phone || "",
+      serviceType: cust.serviceType || "Service C",
+      serverName: srv.deviceName ? `${srv.deviceName} (${srv.sl})` : undefined,
+      billingId: b.billingId,
+      billingMonth: b.billingMonth,
+      billingAmount: b.billingAmount || 0,
+      paidAmount: b.paidAmount || 0,
+      dueAmount: b.dueAmount || 0,
+      dueDate: b.dueDate,
+      status: b.status,
+    };
+  });
 
   return {
     totalDevices,
@@ -281,16 +339,20 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       activeCustomers: custStatusMap["Active"] || 0,
       suspendedCustomers: custStatusMap["Suspended"] || 0,
       paidThisMonth,
+      pendingCount,
+      overdueCount,
+      totalOutstandingAmount,
       dueCustomers,
     },
+    awaitingCollectionCustomers: JSON.parse(JSON.stringify(formattedAwaitingCustomers)),
     billingStats: {
       currentMonth,
-      monthlyBilled: billSummary.monthlyBilled || 0,
-      collected: billSummary.collected || 0,
-      pending: billSummary.pending || 0,
-      overdue: billSummary.overdue || 0,
-      paidCount: billSummary.paidCount || 0,
-      dueCount: billSummary.dueCount || 0,
+      monthlyBilled: currentMonthData.monthlyBilled || 0,
+      collected: currentMonthData.collected || 0,
+      pending: pendingCount,
+      overdue: overdueCount,
+      paidCount: paidThisMonth,
+      dueCount: dueCustomers,
     },
   };
 }
