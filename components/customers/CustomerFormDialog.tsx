@@ -346,7 +346,7 @@ export function CustomerFormDialog({
                   placeholder="https://maps.google.com/?q=24.7136,46.6753"
                   value={gpsLink}
                   onChange={(e) => setGpsLink(e.target.value)}
-                  className="rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm font-mono text-xs"
+                  className="rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm font-mono"
                 />
               </div>
             </div>
