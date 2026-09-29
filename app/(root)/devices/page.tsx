@@ -26,8 +26,6 @@ export default async function AllDevicesPage({ searchParams }: DevicesPageProps)
   const { devices, total, totalPages, limit } = await getDevices({
     search: resolvedParams.search,
     status: resolvedParams.status,
-    brand: resolvedParams.brand,
-    model: resolvedParams.model,
     server: resolvedParams.server,
     sortBy: resolvedParams.sortBy,
     submittedBy: resolvedParams.submittedBy,

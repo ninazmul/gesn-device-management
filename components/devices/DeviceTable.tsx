@@ -306,7 +306,7 @@ export function DeviceTable({
                         </TableCell>
                       )}
 
-                      {/* Device Name & Brand */}
+                      {/* Device Name */}
                       <TableCell>
                         {(() => {
                           const devTheme = getDeviceTypeTheme(
@@ -374,9 +374,6 @@ export function DeviceTable({
                                   {device.deviceName}
                                 </Link>
                                 <div className="flex items-center gap-1.5 flex-wrap text-xs text-slate-400 font-medium">
-                                  <span>
-                                    {device.brand} • {device.model}
-                                  </span>
                                   {device.deviceType === "switch" &&
                                     device.totalPorts !== undefined && (
                                       <span className="inline-flex items-center px-1.5 py-0.2 rounded bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 font-semibold text-[10px]">
@@ -712,7 +709,7 @@ export function DeviceTable({
         open={Boolean(deletingDevice)}
         onOpenChange={(open) => !open && setDeletingDevice(null)}
         title={`Delete Device #${deletingDevice?.sl}?`}
-        description={`Are you sure you want to delete ${deletingDevice?.deviceName} (${deletingDevice?.brand})? This action cannot be undone.`}
+        description={`Are you sure you want to delete ${deletingDevice?.deviceName}? This action cannot be undone.`}
         onConfirm={handleDeleteConfirm}
         isLoading={isDeleting}
       />

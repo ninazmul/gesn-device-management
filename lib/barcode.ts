@@ -6,9 +6,7 @@ export interface ParsedBarcodeResult {
   raw: string;
   macAddress?: string;
   serialNumber?: string;
-  model?: string;
   ipAddress?: string;
-  brand?: string;
 }
 
 /**
@@ -60,9 +58,7 @@ export function parseScannedBarcode(raw: string): ParsedBarcodeResult {
       const json = JSON.parse(trimmed);
       if (json.mac || json.macAddress) result.macAddress = extractAndFormatMAC(json.mac || json.macAddress) || result.macAddress;
       if (json.sn || json.serialNumber || json.serial) result.serialNumber = String(json.sn || json.serialNumber || json.serial).trim();
-      if (json.model || json.modelName) result.model = String(json.model || json.modelName).trim();
       if (json.ip || json.ipAddress) result.ipAddress = String(json.ip || json.ipAddress).trim();
-      if (json.brand) result.brand = String(json.brand).trim();
     } catch {
       // Not JSON, continue with regex parsing
     }
@@ -82,10 +78,6 @@ export function parseScannedBarcode(raw: string): ParsedBarcodeResult {
       if (parsedMac) result.macAddress = parsedMac;
     }
 
-    const modelMatch = line.match(/(?:model|model_name|mod|pn|p\/n)\s*[:=-]\s*([^,;]+)/i);
-    if (modelMatch && !result.model) {
-      result.model = modelMatch[1].trim();
-    }
   }
 
   // If no specific MAC or serial was matched, and it's a typical serial/alphanumeric code

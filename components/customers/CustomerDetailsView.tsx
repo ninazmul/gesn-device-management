@@ -225,7 +225,7 @@ export function CustomerDetailsView({
                       <span className="font-bold text-xs text-slate-900 dark:text-slate-100 block truncate">
                         {dev.deviceName}
                       </span>
-                      <span className="text-[11px] text-slate-400">{dev.brand}</span>
+                      <span className="text-[11px] text-slate-400"><span className="capitalize">{dev.deviceType}</span></span>
                     </div>
                   </Link>
                 );

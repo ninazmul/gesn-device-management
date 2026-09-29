@@ -4,8 +4,6 @@ import { DEVICE_STATUSES } from "@/lib/constants";
 export interface IDeviceDoc {
   sl: string;
   deviceType: string;
-  brand: string;
-  model: string;
   deviceName: string;
   totalPorts?: number;
   uplinkSwitch?: Schema.Types.ObjectId | IDeviceDoc | null;
@@ -19,10 +17,6 @@ export interface IDeviceDoc {
   customerName?: string;
   customerMobile?: string;
   gpsLink?: string;
-  gps?: {
-    latitude?: number;
-    longitude?: number;
-  };
   status: (typeof DEVICE_STATUSES)[number];
   submittedBy?: {
     email: string;
@@ -63,18 +57,6 @@ const DeviceSchema = new Schema(
       type: String,
       required: true,
       lowercase: true,
-      trim: true,
-      index: true,
-    },
-    brand: {
-      type: String,
-      default: "",
-      trim: true,
-      index: true,
-    },
-    model: {
-      type: String,
-      default: "",
       trim: true,
       index: true,
     },
@@ -125,10 +107,6 @@ const DeviceSchema = new Schema(
     activationDate: {
       type: Date,
       index: true,
-    },
-    gps: {
-      latitude: { type: Number },
-      longitude: { type: Number },
     },
     apNumber: {
       type: String,
@@ -195,7 +173,6 @@ const DeviceSchema = new Schema(
 DeviceSchema.index({ deviceType: 1, status: 1 });
 DeviceSchema.index({ deviceType: 1, createdAt: -1 });
 DeviceSchema.index({ status: 1, createdAt: -1 });
-DeviceSchema.index({ brand: 1, model: 1 });
 DeviceSchema.index({
   deviceName: "text",
   sl: "text",

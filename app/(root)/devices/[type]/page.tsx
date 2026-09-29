@@ -55,8 +55,6 @@ export default async function DeviceTypePage({
     deviceType: typeSlug,
     search: resolvedSearchParams.search,
     status: resolvedSearchParams.status,
-    brand: resolvedSearchParams.brand,
-    model: resolvedSearchParams.model,
     server: resolvedSearchParams.server,
     sortBy: resolvedSearchParams.sortBy,
     submittedBy: resolvedSearchParams.submittedBy,

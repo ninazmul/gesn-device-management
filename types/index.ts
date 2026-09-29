@@ -52,8 +52,6 @@ export interface IDevice {
   _id: string;
   sl: string; // e.g. "000001"
   deviceType: string; // slug e.g. "antenna", "server", "switch"
-  brand: string;
-  model: string;
   deviceName: string;
   totalPorts?: number;
   uplinkSwitch?: IDevice | string | null;
@@ -71,10 +69,6 @@ export interface IDevice {
   customerName?: string;
   customerMobile?: string;
   gpsLink?: string;
-  gps?: {
-    latitude?: number;
-    longitude?: number;
-  };
   status: DeviceStatus;
   submittedBy?: {
     email: string;
@@ -107,8 +101,6 @@ export interface ISwitchOption {
   _id: string;
   sl: string;
   deviceName: string;
-  brand: string;
-  model: string;
   ipAddress?: string;
   status: DeviceStatus;
   totalPorts: number;
@@ -120,8 +112,6 @@ export interface IServerOption {
   _id: string;
   sl: string;
   deviceName: string;
-  brand: string;
-  model: string;
   ipAddress?: string;
   status: DeviceStatus;
 }
@@ -300,8 +290,6 @@ export interface DashboardStats {
 
 export interface GetDevicesParams {
   deviceType?: string;
-  brand?: string;
-  model?: string;
   status?: string;
   server?: string;
   submittedBy?: string;

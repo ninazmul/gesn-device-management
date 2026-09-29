@@ -174,7 +174,7 @@ Notable fields beyond basic device data:
 
 - Renders as a `Dialog` or `Sheet` depending on mode (create vs edit).
 - **Main form**: type-specific required fields only.
-- **"More (Optional)"**: collapsible section with Brand, Model, IP, Uplink Switch, etc.
+- **"More (Optional)"**: collapsible section with IP, Uplink Switch, etc.
 - Collapsed by default; toggling preserves field data.
 - Status selector filtered: non-super-admins cannot select `"Active"` directly.
 
@@ -309,7 +309,7 @@ importDevicesBulk(rows: Record<string, unknown>[], defaultDeviceType?: string)
 | `toggleDeviceActive(id)`  | `devices:write`               | Toggle Active ↔ Inactive                       |
 | `deleteDevice(id)`        | `device_delete` granular      | Hard delete (blocks if has connected children) |
 | `searchGlobalDevices(q)`  | `devices:read`                | Global search across all types                 |
-| `getDeviceFilterOptions(type?)` | `devices:read`           | Distinct brands/models for filter dropdowns    |
+| `getDeviceFilterOptions(type?)` | `devices:read`           | Filter options (e.g. server list) for dropdowns |
 | `getAllDevicesForExport()` | `devices:read`                | Full dataset for Excel/CSV export              |
 | `getPendingDevices(params?)` | `devices:read`             | Pending devices with pagination and type counts |
 | `getPendingDevicesCount()` | `none` (internal/fast)         | Total pending count for badges & alerts        |

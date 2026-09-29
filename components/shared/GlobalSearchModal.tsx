@@ -124,7 +124,7 @@ export function GlobalSearchModal({ open, onOpenChange }: GlobalSearchModalProps
                             {device.deviceName}
                           </span>
                           <span className="text-xs text-slate-400">
-                            ({device.brand})
+                            (<span className="capitalize">{device.deviceType}</span>)
                           </span>
                         </div>
                         <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 mt-0.5">

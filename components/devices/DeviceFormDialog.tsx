@@ -40,14 +40,12 @@ import {
   getAvailableSwitches,
   getAvailableServers,
 } from "@/lib/actions/device.actions";
-import { getBrands, getModels, getDeviceTypes } from "@/lib/actions/catalog.actions";
+import { getDeviceTypes } from "@/lib/actions/catalog.actions";
 import { PRIMARY_DEVICE_TYPES, DEVICE_STATUSES } from "@/lib/constants";
 import type {
   DeviceStatus,
   IDevice,
   IDeviceType,
-  IBrand,
-  IModel,
   ISwitchOption,
   IServerOption,
 } from "@/types";
@@ -105,8 +103,6 @@ export function DeviceFormDialog({
 
   // More (Optional) Toggle & Fields
   const [showMore, setShowMore] = useState(false);
-  const [brand, setBrand] = useState(deviceToEdit?.brand || "");
-  const [model, setModel] = useState(deviceToEdit?.model || "");
   const [deviceName, setDeviceName] = useState(deviceToEdit?.deviceName || "");
   const [ipAddress, setIpAddress] = useState(deviceToEdit?.ipAddress || "");
   const [onlineLink, setOnlineLink] = useState(deviceToEdit?.onlineLink || "");
@@ -120,12 +116,6 @@ export function DeviceFormDialog({
       ? deviceToEdit.uplinkSwitch
       : ""
   );
-  const [latitude, setLatitude] = useState(
-    deviceToEdit?.gps?.latitude !== undefined ? String(deviceToEdit.gps.latitude) : ""
-  );
-  const [longitude, setLongitude] = useState(
-    deviceToEdit?.gps?.longitude !== undefined ? String(deviceToEdit.gps.longitude) : ""
-  );
   const [activationDate, setActivationDate] = useState(
     deviceToEdit?.activationDate
       ? new Date(deviceToEdit.activationDate).toISOString().split("T")[0]
@@ -138,12 +128,8 @@ export function DeviceFormDialog({
 
   // Catalog, Switch & Server Options
   const [availableTypes, setAvailableTypes] = useState<IDeviceType[]>([]);
-  const [availableBrands, setAvailableBrands] = useState<IBrand[]>([]);
-  const [availableModels, setAvailableModels] = useState<IModel[]>([]);
   const [availableSwitches, setAvailableSwitches] = useState<ISwitchOption[]>([]);
   const [availableServers, setAvailableServers] = useState<IServerOption[]>([]);
-  const [loadingBrands, setLoadingBrands] = useState(false);
-  const [loadingModels, setLoadingModels] = useState(false);
   const [loadingSwitches, setLoadingSwitches] = useState(false);
   const [loadingServers, setLoadingServers] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -199,24 +185,10 @@ export function DeviceFormDialog({
       highlighted.add("ipAddress");
     }
 
-    if (result.model) {
-      setModel(result.model);
-      if (!deviceName || deviceName === model) {
-        setDeviceName(result.model);
-        highlighted.add("deviceName");
-      }
-      filledFields.push(`Model: ${result.model}`);
-      highlighted.add("model");
-    }
 
-    if (result.brand && !brand) {
-      setBrand(result.brand);
-      filledFields.push(`Brand: ${result.brand}`);
-      highlighted.add("brand");
-    }
 
     // Fallback: raw value wasn't categorized at all
-    if (!result.macAddress && !result.ipAddress && !result.model && result.raw) {
+    if (!result.macAddress && !result.ipAddress && result.raw) {
       const rawText = result.raw.trim();
       if (/^[0-9A-Fa-f:.-]{12,17}$/.test(rawText)) {
         const cleanedHex = rawText.replace(/[^0-9A-Fa-f]/g, "").toUpperCase();
@@ -283,8 +255,6 @@ export function DeviceFormDialog({
       setDescription(deviceToEdit.description || "");
 
       // More fields
-      setBrand(deviceToEdit.brand || "");
-      setModel(deviceToEdit.model || "");
       setDeviceName(deviceToEdit.deviceName || "");
       setIpAddress(deviceToEdit.ipAddress || "");
       setOnlineLink(deviceToEdit.onlineLink || "");
@@ -297,12 +267,6 @@ export function DeviceFormDialog({
           : typeof deviceToEdit.uplinkSwitch === "string"
           ? deviceToEdit.uplinkSwitch
           : ""
-      );
-      setLatitude(
-        deviceToEdit.gps?.latitude !== undefined ? String(deviceToEdit.gps.latitude) : ""
-      );
-      setLongitude(
-        deviceToEdit.gps?.longitude !== undefined ? String(deviceToEdit.gps.longitude) : ""
       );
       setActivationDate(
         deviceToEdit.activationDate
@@ -320,15 +284,11 @@ export function DeviceFormDialog({
       setCustomerMobile("");
       setGpsLink("");
       setDescription("");
-      setBrand("");
-      setModel("");
       setDeviceName("");
       setIpAddress("");
       setOnlineLink("");
       setTotalPorts(defaultDeviceType === "switch" ? "8" : "");
       setUplinkSwitch("");
-      setLatitude("");
-      setLongitude("");
       setActivationDate(new Date().toISOString().split("T")[0]);
       setFrequency("");
       setStatus("Pending");
@@ -387,47 +347,7 @@ export function DeviceFormDialog({
     };
   }, [open]);
 
-  // Load Brands when deviceType changes
-  useEffect(() => {
-    if (!open || !deviceType) return;
-    let isMounted = true;
-    setLoadingBrands(true);
-    getBrands(deviceType, true)
-      .then((brands) => {
-        if (isMounted) setAvailableBrands(brands);
-      })
-      .catch((err) => console.error("Error loading brands:", err))
-      .finally(() => {
-        if (isMounted) setLoadingBrands(false);
-      });
 
-    return () => {
-      isMounted = false;
-    };
-  }, [deviceType, open]);
-
-  // Load Models when brand changes
-  useEffect(() => {
-    if (!open) return;
-    if (!brand || !deviceType) {
-      setAvailableModels((prev) => (prev.length === 0 ? prev : []));
-      return;
-    }
-    let isMounted = true;
-    setLoadingModels(true);
-    getModels({ deviceType, brand, onlyActive: true })
-      .then((models) => {
-        if (isMounted) setAvailableModels(models);
-      })
-      .catch((err) => console.error("Error loading models:", err))
-      .finally(() => {
-        if (isMounted) setLoadingModels(false);
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [brand, deviceType, open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -538,8 +458,6 @@ export function DeviceFormDialog({
         customerMobile: ["access-point", "router"].includes(normalizedType) ? customerMobile.trim() : undefined,
         gpsLink: gpsLink.trim() || undefined,
         // More (Optional) fields
-        brand: brand.trim(),
-        model: model.trim(),
         deviceName: deviceName.trim(),
         ipAddress: ipAddress.trim() || undefined,
         onlineLink: onlineLink.trim() || undefined,
@@ -551,10 +469,6 @@ export function DeviceFormDialog({
           ["antenna", "access-point", "router", "switch"].includes(normalizedType) && uplinkSwitch
             ? uplinkSwitch
             : null,
-        gps: {
-          latitude: latitude ? parseFloat(latitude) : undefined,
-          longitude: longitude ? parseFloat(longitude) : undefined,
-        },
         activationDate: activationDate ? new Date(activationDate) : new Date(),
         status,
       };
@@ -626,8 +540,6 @@ export function DeviceFormDialog({
                 value={deviceType}
                 onValueChange={(val) => {
                   setDeviceType(val);
-                  setBrand("");
-                  setModel("");
                   if (val === "switch" && !totalPorts) {
                     setTotalPorts("8");
                   }
@@ -737,7 +649,7 @@ export function DeviceFormDialog({
                     <SelectContent className="dark:bg-slate-900 dark:border-slate-800 max-h-60">
                       {availableServers.map((srv) => (
                         <SelectItem key={srv._id} value={srv._id} className="py-2">
-                          #{srv.sl} — {srv.deviceName} ({srv.brand} {srv.model})
+                          #{srv.sl} — {srv.deviceName}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -858,7 +770,7 @@ export function DeviceFormDialog({
                     <SelectContent className="dark:bg-slate-900 dark:border-slate-800 max-h-60">
                       {availableServers.map((srv) => (
                         <SelectItem key={srv._id} value={srv._id} className="py-2">
-                          #{srv.sl} — {srv.deviceName} ({srv.brand} {srv.model})
+                          #{srv.sl} — {srv.deviceName}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -979,7 +891,7 @@ export function DeviceFormDialog({
                     <SelectContent className="dark:bg-slate-900 dark:border-slate-800 max-h-60">
                       {availableServers.map((srv) => (
                         <SelectItem key={srv._id} value={srv._id} className="py-2">
-                          #{srv.sl} — {srv.deviceName} ({srv.brand} {srv.model})
+                          #{srv.sl} — {srv.deviceName}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -1073,7 +985,7 @@ export function DeviceFormDialog({
                     <SelectContent className="dark:bg-slate-900 dark:border-slate-800 max-h-60">
                       {availableServers.map((srv) => (
                         <SelectItem key={srv._id} value={srv._id} className="py-2">
-                          #{srv.sl} — {srv.deviceName} ({srv.brand} {srv.model})
+                          #{srv.sl} — {srv.deviceName}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -1168,7 +1080,7 @@ export function DeviceFormDialog({
               )}
               <span>More (Optional)</span>
               <span className="text-[10px] text-slate-400 font-normal">
-                {showMore ? "(click to collapse)" : "(Brand, Model, IP, Uplink, etc.)"}
+                {showMore ? "(click to collapse)" : "(IP, Uplink, etc.)"}
               </span>
             </button>
           </div>}
@@ -1186,75 +1098,7 @@ export function DeviceFormDialog({
                 <span className="text-[10px] text-slate-400">All fields below are optional</span>
               </div>
 
-              {/* Brand & Model */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                    Brand
-                  </Label>
-                  <Select
-                    value={brand}
-                    onValueChange={(val) => {
-                      setBrand(val);
-                      setModel("");
-                    }}
-                    disabled={loadingBrands}
-                  >
-                    <SelectTrigger className="h-9 rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-xs">
-                      <SelectValue placeholder={loadingBrands ? "Loading..." : "Select Brand (Optional)"} />
-                    </SelectTrigger>
-                    <SelectContent className="dark:bg-slate-900 dark:border-slate-800">
-                      {availableBrands.map((b) => (
-                        <SelectItem key={b._id} value={b.name}>
-                          {b.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
 
-                <div className="space-y-1">
-                  <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                    Model
-                  </Label>
-                  {availableModels.length > 0 ? (
-                    <Select
-                      value={model}
-                      onValueChange={(val) => {
-                        setModel(val);
-                        if (!deviceName || deviceName === model) {
-                          setDeviceName(val);
-                        }
-                      }}
-                      disabled={loadingModels}
-                    >
-                      <SelectTrigger className="h-9 rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-xs">
-                        <SelectValue placeholder={loadingModels ? "Loading..." : "Select Model"} />
-                      </SelectTrigger>
-                      <SelectContent className="dark:bg-slate-900 dark:border-slate-800">
-                        {availableModels.map((m) => (
-                          <SelectItem key={m._id} value={m.name}>
-                            {m.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <Input
-                      placeholder="e.g. Rocket Prism 5AC"
-                      value={model}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setModel(val);
-                        if (!deviceName || deviceName === model) {
-                          setDeviceName(val);
-                        }
-                      }}
-                      className="h-9 rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-xs"
-                    />
-                  )}
-                </div>
-              </div>
 
               {/* Device Name */}
               <div className="space-y-1">
@@ -1370,7 +1214,7 @@ export function DeviceFormDialog({
                     <SelectContent className="dark:bg-slate-900 dark:border-slate-800 max-h-56">
                       {availableSwitches.map((sw) => (
                         <SelectItem key={sw._id} value={sw._id} className="py-1.5 text-xs">
-                          #{sw.sl} — {sw.deviceName} ({sw.brand} {sw.model}) [{sw.availablePorts}/{sw.totalPorts} Free]
+                          #{sw.sl} — {sw.deviceName} [{sw.availablePorts}/{sw.totalPorts} Free]
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -1403,41 +1247,17 @@ export function DeviceFormDialog({
                 </div>
               )}
 
-              {/* GPS Coordinates & Activation Date */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                    GPS Latitude
-                  </Label>
-                  <Input
-                    placeholder="e.g. 23.8103"
-                    value={latitude}
-                    onChange={(e) => setLatitude(e.target.value)}
-                    className="h-9 rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-xs"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                    GPS Longitude
-                  </Label>
-                  <Input
-                    placeholder="e.g. 90.4125"
-                    value={longitude}
-                    onChange={(e) => setLongitude(e.target.value)}
-                    className="h-9 rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-xs"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                    Date of Activation
-                  </Label>
-                  <Input
-                    type="date"
-                    value={activationDate}
-                    onChange={(e) => setActivationDate(e.target.value)}
-                    className="h-9 rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-xs"
-                  />
-                </div>
+              {/* Activation Date */}
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  Date of Activation
+                </Label>
+                <Input
+                  type="date"
+                  value={activationDate}
+                  onChange={(e) => setActivationDate(e.target.value)}
+                  className="h-9 rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-xs"
+                />
               </div>
 
               {/* Status Selection (Accessible to Super Admin / Engineer or permitted staff) */}

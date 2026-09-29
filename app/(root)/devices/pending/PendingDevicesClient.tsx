@@ -337,11 +337,6 @@ export function PendingDevicesClient({
 
                       {/* Technical specifications row */}
                       <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 flex-wrap">
-                        {device.brand && device.model && (
-                          <span>
-                            {device.brand} {device.model}
-                          </span>
-                        )}
 
                         {device.macAddress && (
                           <div className="flex items-center gap-1 font-mono font-medium text-slate-700 dark:text-slate-300">

@@ -90,7 +90,7 @@ export async function getCustomers(params?: GetCustomersParams) {
     Customer.find(query)
       .populate({
         path: "assignedDevices",
-        select: "sl deviceName deviceType brand model ipAddress status",
+        select: "sl deviceName deviceType ipAddress status",
         model: Device,
       })
       .sort(sortObj)
@@ -118,7 +118,7 @@ export async function getCustomerById(id: string) {
   const customer = await Customer.findById(id)
     .populate({
       path: "assignedDevices",
-      select: "sl deviceName deviceType brand model ipAddress macAddress status onlineLink",
+      select: "sl deviceName deviceType ipAddress macAddress status onlineLink",
       model: Device,
     })
     .lean();

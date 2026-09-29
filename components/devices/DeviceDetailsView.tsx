@@ -112,16 +112,6 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
     }
   };
 
-  const hasGps =
-    device.gps?.latitude !== undefined &&
-    device.gps?.longitude !== undefined &&
-    !isNaN(device.gps.latitude) &&
-    !isNaN(device.gps.longitude);
-
-  const mapsUrl = hasGps
-    ? `https://www.google.com/maps/search/?api=1&query=${device.gps?.latitude},${device.gps?.longitude}`
-    : null;
-
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-6xl mx-auto">
       {/* Top Breadcrumb & Return Link */}
@@ -185,7 +175,7 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
                 <DeviceStatusBadge status={device.status} size="lg" />
               </div>
               <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1">
-                {device.brand} • <span className="capitalize">{device.deviceType}</span> • Model: {device.model}
+                <span className="capitalize">{device.deviceType}</span>
               </p>
             </div>
           </div>
@@ -446,29 +436,7 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
               </div>
             )}
 
-            <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50">
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-xs text-slate-400 block">GPS Coordinates</span>
-                  <span className="font-mono text-sm font-bold text-slate-900 dark:text-slate-100 mt-1 block">
-                    {hasGps
-                      ? `${device.gps?.latitude}, ${device.gps?.longitude}`
-                      : "No GPS recorded"}
-                  </span>
-                </div>
-                {mapsUrl && (
-                  <a
-                    href={mapsUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 text-xs font-semibold hover:bg-emerald-100 transition-colors"
-                  >
-                    <MapPin className="w-3.5 h-3.5" />
-                    <span>View Map</span>
-                  </a>
-                )}
-              </div>
-            </div>
+
 
             <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50">
               <span className="text-xs text-slate-400 block">Serial Number (SL)</span>
@@ -486,25 +454,17 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
             <h2>Hardware Specifications & Description</h2>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50">
-              <span className="text-xs text-slate-400 block">Brand Manufacturer</span>
-              <span className="text-sm font-bold text-slate-900 dark:text-slate-100 mt-1 block">
-                {device.brand}
-              </span>
-            </div>
-
-            <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50">
-              <span className="text-xs text-slate-400 block">Catalog Model</span>
-              <span className="text-sm font-bold text-slate-900 dark:text-slate-100 mt-1 block">
-                {device.model}
-              </span>
-            </div>
-
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50">
               <span className="text-xs text-slate-400 block">Classification</span>
               <span className="text-sm font-bold capitalize text-slate-900 dark:text-slate-100 mt-1 block">
                 {device.deviceType}
+              </span>
+            </div>
+            <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50">
+              <span className="text-xs text-slate-400 block">Serial Number (SL)</span>
+              <span className="font-mono text-sm font-bold text-sky-600 dark:text-sky-400 mt-1 block">
+                #{device.sl}
               </span>
             </div>
           </div>
@@ -682,7 +642,6 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
                         <th className="py-3 px-4">SL #</th>
                         <th className="py-3 px-4">Device Name</th>
                         <th className="py-3 px-4">Type</th>
-                        <th className="py-3 px-4">Brand & Model</th>
                         <th className="py-3 px-4">IP Address</th>
                         <th className="py-3 px-4">Status</th>
                         <th className="py-3 px-4 text-right">Action</th>
@@ -704,9 +663,6 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
                             <span className="capitalize font-semibold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
                               {downlink.deviceType}
                             </span>
-                          </td>
-                          <td className="py-3 px-4 text-slate-600 dark:text-slate-400">
-                            {downlink.brand} • {downlink.model}
                           </td>
                           <td className="py-3 px-4 font-mono text-slate-700 dark:text-slate-300">
                             {downlink.ipAddress || "—"}
@@ -764,7 +720,6 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
                       <th className="py-3 px-4">SL #</th>
                       <th className="py-3 px-4">Device Name</th>
                       <th className="py-3 px-4">Type</th>
-                      <th className="py-3 px-4">Brand & Model</th>
                       <th className="py-3 px-4">IP Address</th>
                       <th className="py-3 px-4">Status</th>
                       <th className="py-3 px-4 text-right">Action</th>
@@ -786,9 +741,6 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
                           <span className="capitalize font-semibold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
                             {downlink.deviceType}
                           </span>
-                        </td>
-                        <td className="py-3 px-4 text-slate-600 dark:text-slate-400">
-                          {downlink.brand} • {downlink.model}
                         </td>
                         <td className="py-3 px-4 font-mono text-slate-700 dark:text-slate-300">
                           {downlink.ipAddress || "—"}
@@ -855,9 +807,9 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
                       />
                     </div>
                     <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                      {(device.server as IDevice).brand} • {(device.server as IDevice).model}
-                      {(device.server as IDevice).ipAddress &&
-                        ` • IP: ${(device.server as IDevice).ipAddress}`}
+                      {(device.server as IDevice).ipAddress
+                        ? `IP: ${(device.server as IDevice).ipAddress}`
+                        : "Server host"}
                     </p>
                   </div>
                 </div>
@@ -909,9 +861,8 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
                       />
                     </div>
                     <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                      {(device.uplinkSwitch as IDevice).brand} • {(device.uplinkSwitch as IDevice).model}
                       {(device.uplinkSwitch as IDevice).ipAddress &&
-                        ` • IP: ${(device.uplinkSwitch as IDevice).ipAddress}`}
+                        `IP: ${(device.uplinkSwitch as IDevice).ipAddress}`}
                       {(device.uplinkSwitch as IDevice).totalPorts &&
                         ` • ${(device.uplinkSwitch as IDevice).totalPorts} Port Switch`}
                     </p>
@@ -964,7 +915,7 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
         open={isDeleteOpen}
         onOpenChange={setIsDeleteOpen}
         title={`Delete Device #${formatDisplaySL(device.sl)}?`}
-        description={`Are you sure you want to permanently delete ${device.deviceName} (${device.brand})? This action cannot be undone.`}
+        description={`Are you sure you want to permanently delete ${device.deviceName}? This action cannot be undone.`}
         onConfirm={handleDeleteConfirm}
         isLoading={isDeleting}
       />

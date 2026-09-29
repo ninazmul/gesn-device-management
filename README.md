@@ -50,7 +50,7 @@
 - **Asset Lifecycle Management**: Track core hardware including Antennas, Access Points, Routers, Switches, and Servers with status tracking (`Active`, `Maintenance`, `Retired`, `Decommissioned`, `Backup`).
 - **Auto-Generated Serial Numbers**: Automatic prefix-based serial numbering (`ANT-0001`, `RTR-0001`, `SW-0001`, `AP-0001`, `SRV-0001`) via atomic MongoDB counter actions.
 - **Dynamic Hardware Catalog**: Maintain structured hardware specifications by Device Type, Brand (Ubiquiti, MikroTik, Cisco, TP-Link, Dell, HP, Huawei), and Model.
-- **Network & Spatial Details**: Store IP Addresses, MAC Addresses, Activation Dates, Documentation links, and GPS Coordinates (Latitude/Longitude) for physical deployment tracking.
+- **Network & Spatial Details**: Store IP Addresses, MAC Addresses, Activation Dates, Documentation links, and GPS Links for physical deployment tracking.
 - **High-Performance Search**: Multi-field text index search across SL, Device Name, IP, MAC address, and specifications.
 
 ### 👥 Customer Database & Bulk Operations

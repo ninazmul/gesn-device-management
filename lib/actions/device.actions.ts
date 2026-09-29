@@ -3,8 +3,6 @@
 import { connectToDatabase } from "@/lib/database";
 import Device from "@/lib/database/models/device.model";
 import Counter from "@/lib/database/models/counter.model";
-import Brand from "@/lib/database/models/brand.model";
-import DeviceModel from "@/lib/database/models/model.model";
 import Notification from "@/lib/database/models/notification.model";
 import ActivityLog from "@/lib/database/models/activityLog.model";
 import { formatSL, isValidIPv4, normalizeMAC } from "@/lib/utils";
@@ -46,7 +44,7 @@ export async function getAvailableSwitches(): Promise<ISwitchOption[]> {
     deviceType: "switch",
     status: { $nin: ["Retired", "Pending", "Rejected"] },
   })
-    .select("sl deviceName brand model ipAddress status totalPorts")
+    .select("sl deviceName ipAddress status totalPorts")
     .sort({ deviceName: 1 })
     .lean();
 
@@ -84,8 +82,6 @@ export async function getAvailableSwitches(): Promise<ISwitchOption[]> {
       _id: String(s._id),
       sl: s.sl,
       deviceName: s.deviceName,
-      brand: s.brand,
-      model: s.model,
       ipAddress: s.ipAddress,
       status: s.status,
       totalPorts,
@@ -108,7 +104,7 @@ export async function getAvailableServers(): Promise<IServerOption[]> {
     deviceType: "server",
     status: { $nin: ["Retired", "Pending", "Rejected"] },
   })
-    .select("sl deviceName brand model ipAddress status")
+    .select("sl deviceName ipAddress status")
     .sort({ deviceName: 1 })
     .lean();
 
@@ -124,8 +120,6 @@ export async function getDevices(params?: GetDevicesParams) {
 
   const {
     deviceType,
-    brand,
-    model,
     status,
     server,
     search = "",
@@ -139,14 +133,6 @@ export async function getDevices(params?: GetDevicesParams) {
 
   if (deviceType && deviceType !== "all") {
     query.deviceType = deviceType.toLowerCase().trim();
-  }
-
-  if (brand && brand !== "all") {
-    query.brand = brand.trim();
-  }
-
-  if (model && model !== "all") {
-    query.model = model.trim();
   }
 
   if (status && status !== "all") {
@@ -171,8 +157,6 @@ export async function getDevices(params?: GetDevicesParams) {
     query.$or = [
       { sl: regex },
       { deviceName: regex },
-      { brand: regex },
-      { model: regex },
       { ipAddress: regex },
       { macAddress: regex },
       { description: regex },
@@ -210,8 +194,8 @@ export async function getDevices(params?: GetDevicesParams) {
 
   const [rawDevices, total] = await Promise.all([
     Device.find(query)
-      .populate("uplinkSwitch", "sl deviceName brand model totalPorts ipAddress status")
-      .populate("server", "sl deviceName brand model ipAddress status")
+      .populate("uplinkSwitch", "sl deviceName totalPorts ipAddress status")
+      .populate("server", "sl deviceName ipAddress status")
       .sort(sortObj)
       .skip(skip)
       .limit(limit)
@@ -274,15 +258,15 @@ export async function getDeviceById(id: string) {
   await requirePermission("devices", "read");
   await connectToDatabase();
   const device = (await Device.findById(id)
-    .populate("uplinkSwitch", "sl deviceName brand model totalPorts ipAddress status")
-    .populate("server", "sl deviceName brand model ipAddress status")
+    .populate("uplinkSwitch", "sl deviceName totalPorts ipAddress status")
+    .populate("server", "sl deviceName ipAddress status")
     .lean()) as unknown as IDevice | null;
   if (!device) return null;
 
   // If the device is a switch, fetch connected downlink devices and compute metrics
   if (device.deviceType === "switch") {
     const connectedDevices = (await Device.find({ uplinkSwitch: id })
-      .select("sl deviceName deviceType brand model ipAddress macAddress status")
+      .select("sl deviceName deviceType ipAddress macAddress status")
       .sort({ sl: 1 })
       .lean()) as unknown as IDevice[];
 
@@ -303,7 +287,7 @@ export async function getDeviceById(id: string) {
   // If the device is a server, fetch all devices hosted/assigned to this server
   if (device.deviceType === "server") {
     const connectedDevices = (await Device.find({ server: id })
-      .select("sl deviceName deviceType brand model ipAddress macAddress status")
+      .select("sl deviceName deviceType ipAddress macAddress status")
       .sort({ sl: 1 })
       .lean()) as unknown as IDevice[];
 
@@ -323,8 +307,6 @@ export async function getDeviceById(id: string) {
 // ==========================================
 export async function createDevice(data: {
   deviceType: string;
-  brand?: string;
-  model?: string;
   deviceName?: string;
   totalPorts?: number;
   uplinkSwitch?: string | null;
@@ -338,10 +320,6 @@ export async function createDevice(data: {
   customerName?: string;
   customerMobile?: string;
   gpsLink?: string;
-  gps?: {
-    latitude?: number;
-    longitude?: number;
-  };
   status?: DeviceStatus;
 }) {
   const actor = await requirePermission("devices", "write");
@@ -427,7 +405,7 @@ export async function createDevice(data: {
     throw new Error("Invalid IPv4 Address format. Example: 192.168.1.100");
   }
 
-  const deviceName = data.deviceName?.trim() || data.model?.trim() || data.brand?.trim() || `${data.deviceType.toUpperCase()} ${normalizedMAC.slice(-5)}`;
+  const deviceName = data.deviceName?.trim() || `${data.deviceType.toUpperCase()} ${normalizedMAC.slice(-5)}`;
   const sl = await getNextSL();
 
   // Non-super-admins and non-engineers cannot activate devices directly; status is forced to "Pending"
@@ -437,8 +415,6 @@ export async function createDevice(data: {
   const device = await Device.create({
     sl,
     deviceType: type,
-    brand: data.brand?.trim() || "",
-    model: data.model?.trim() || "",
     deviceName,
     totalPorts: data.totalPorts !== undefined && !isNaN(Number(data.totalPorts)) ? Number(data.totalPorts) : undefined,
     uplinkSwitch: data.uplinkSwitch ? data.uplinkSwitch : null,
@@ -452,10 +428,6 @@ export async function createDevice(data: {
     customerName: data.customerName?.trim() || "",
     customerMobile: data.customerMobile?.trim() || "",
     gpsLink: data.gpsLink?.trim() || "",
-    gps: {
-      latitude: data.gps?.latitude !== undefined && !isNaN(Number(data.gps.latitude)) ? Number(data.gps.latitude) : undefined,
-      longitude: data.gps?.longitude !== undefined && !isNaN(Number(data.gps.longitude)) ? Number(data.gps.longitude) : undefined,
-    },
     status: finalStatus,
     submittedBy: {
       email: actor.email,
@@ -515,8 +487,6 @@ export async function updateDevice(
   id: string,
   data: {
     deviceType?: string;
-    brand?: string;
-    model?: string;
     deviceName?: string;
     totalPorts?: number;
     uplinkSwitch?: string | null;
@@ -530,10 +500,6 @@ export async function updateDevice(
     customerName?: string;
     customerMobile?: string;
     gpsLink?: string;
-    gps?: {
-      latitude?: number;
-      longitude?: number;
-    };
     status?: DeviceStatus;
   }
 ) {
@@ -560,8 +526,6 @@ export async function updateDevice(
   }
 
   if (data.deviceType) updatePayload.deviceType = data.deviceType.toLowerCase().trim();
-  if (data.brand !== undefined) updatePayload.brand = data.brand.trim();
-  if (data.model !== undefined) updatePayload.model = data.model.trim();
   if (data.deviceName !== undefined) updatePayload.deviceName = data.deviceName.trim();
   if (data.totalPorts !== undefined) {
     updatePayload.totalPorts = !isNaN(Number(data.totalPorts)) ? Number(data.totalPorts) : undefined;
@@ -604,13 +568,6 @@ export async function updateDevice(
   if (data.customerName !== undefined) updatePayload.customerName = data.customerName.trim();
   if (data.customerMobile !== undefined) updatePayload.customerMobile = data.customerMobile.trim();
   if (data.gpsLink !== undefined) updatePayload.gpsLink = data.gpsLink.trim();
-
-  if (data.gps !== undefined) {
-    updatePayload.gps = {
-      latitude: data.gps.latitude !== undefined && !isNaN(Number(data.gps.latitude)) ? Number(data.gps.latitude) : undefined,
-      longitude: data.gps.longitude !== undefined && !isNaN(Number(data.gps.longitude)) ? Number(data.gps.longitude) : undefined,
-    };
-  }
 
   if (data.status) {
     const canApprove = isSuperAdmin || isEngineer || Boolean(actor.granularPermissions?.device_approve);
@@ -923,8 +880,6 @@ export async function getPendingDevices(params?: {
     query.$or = [
       { sl: regex },
       { deviceName: regex },
-      { brand: regex },
-      { model: regex },
       { ipAddress: regex },
       { macAddress: regex },
       { customerName: regex },
@@ -942,8 +897,8 @@ export async function getPendingDevices(params?: {
 
   const [rawDevices, total, typeCountsResult] = await Promise.all([
     Device.find(query)
-      .populate("uplinkSwitch", "sl deviceName brand model totalPorts ipAddress status")
-      .populate("server", "sl deviceName brand model ipAddress status")
+      .populate("uplinkSwitch", "sl deviceName totalPorts ipAddress status")
+      .populate("server", "sl deviceName ipAddress status")
       .sort(sortObj)
       .skip(skip)
       .limit(limit)
@@ -1172,11 +1127,9 @@ export async function searchGlobalDevices(searchTerm: string) {
       { deviceName: regex },
       { ipAddress: regex },
       { macAddress: regex },
-      { brand: regex },
-      { model: regex },
     ],
   })
-    .select("sl deviceName deviceType brand model ipAddress macAddress status")
+    .select("sl deviceName deviceType ipAddress macAddress status")
     .limit(10)
     .lean();
 
@@ -1186,35 +1139,19 @@ export async function searchGlobalDevices(searchTerm: string) {
 // ==========================================
 // GET FILTER OPTIONS
 // ==========================================
-export async function getDeviceFilterOptions(deviceType?: string) {
+export async function getDeviceFilterOptions() {
   await requirePermission("devices", "read");
   await connectToDatabase();
 
-  const brandQuery: Record<string, unknown> = { isActive: true };
-  if (deviceType && deviceType !== "all") {
-    brandQuery.deviceTypes = deviceType.toLowerCase().trim();
-  }
-
-  const modelQuery: Record<string, unknown> = { isActive: true };
-  if (deviceType && deviceType !== "all") {
-    modelQuery.deviceType = deviceType.toLowerCase().trim();
-  }
-
-  const [brands, models, servers] = await Promise.all([
-    Brand.find(brandQuery).select("name").sort({ name: 1 }).lean(),
-    DeviceModel.find(modelQuery).select("name brand deviceType").sort({ name: 1 }).lean(),
-    Device.find({
-      deviceType: "server",
-      status: { $nin: ["Retired", "Rejected"] },
-    })
-      .select("deviceName sl")
-      .sort({ deviceName: 1, sl: 1 })
-      .lean(),
-  ]);
+  const servers = await Device.find({
+    deviceType: "server",
+    status: { $nin: ["Retired", "Rejected"] },
+  })
+    .select("deviceName sl")
+    .sort({ deviceName: 1, sl: 1 })
+    .lean();
 
   return {
-    brands: brands.map((b) => b.name),
-    models: JSON.parse(JSON.stringify(models)),
     servers: servers.map((server) => ({
       _id: String(server._id),
       deviceName: server.deviceName,
@@ -1229,8 +1166,6 @@ export async function getDeviceFilterOptions(deviceType?: string) {
 export async function getAllDevicesForExport(params?: {
   deviceType?: string;
   status?: string;
-  brand?: string;
-  model?: string;
   server?: string;
   search?: string;
 }) {
@@ -1246,12 +1181,6 @@ export async function getAllDevicesForExport(params?: {
   } else {
     query.status = { $nin: ["Pending", "Rejected"] };
   }
-  if (params?.brand && params.brand !== "all") {
-    query.brand = params.brand;
-  }
-  if (params?.model && params.model !== "all") {
-    query.model = params.model;
-  }
   if (params?.server && params.server !== "all") {
     query.server = params.server;
   }
@@ -1261,8 +1190,6 @@ export async function getAllDevicesForExport(params?: {
     query.$or = [
       { sl: regex },
       { deviceName: regex },
-      { brand: regex },
-      { model: regex },
       { ipAddress: regex },
       { macAddress: regex },
       { apNumber: regex },
@@ -1273,8 +1200,8 @@ export async function getAllDevicesForExport(params?: {
   }
 
   const devices = await Device.find(query)
-    .populate("server", "sl deviceName brand model")
-    .populate("uplinkSwitch", "sl deviceName brand model")
+    .populate("server", "sl deviceName")
+    .populate("uplinkSwitch", "sl deviceName")
     .sort({ sl: 1 })
     .lean();
   return JSON.parse(JSON.stringify(devices)) as IDevice[];
@@ -1305,7 +1232,7 @@ export async function importDevicesBulk(
     Device.find(
       { macAddress: { $ne: "" } },
       {
-        macAddress: 1, deviceType: 1, brand: 1, model: 1, deviceName: 1,
+        macAddress: 1, deviceType: 1, deviceName: 1,
         ipAddress: 1, status: 1, totalPorts: 1, apNumber: 1,
         customerName: 1, customerMobile: 1, description: 1,
         onlineLink: 1, gpsLink: 1,
@@ -1393,45 +1320,10 @@ export async function importDevicesBulk(
       }
       seenMacsInBatch.add(macAddress);
 
-      // 4b. Full-duplicate check against existing DB records
+      // 4b. Duplicate check against existing DB records (O(1))
       const existingDevice = existingByMac.get(macAddress.toUpperCase());
       if (existingDevice) {
-        // Resolve the status that would be assigned to this row (same logic as step 8)
-        const isSuperAdminForDup = actor.role === "super_admin";
-        const rawStatusForDup = String(r["Status"] || r["status"] || "").trim();
-        const resolvedStatus: DeviceStatus = isSuperAdminForDup
-          ? (["Pending", "Active", "Available", "Offline", "Maintenance", "Inactive", "Retired"].includes(rawStatusForDup)
-              ? (rawStatusForDup as DeviceStatus)
-              : "Active")
-          : "Pending";
-
-        const rawTypeForDup = String(
-          r["Device Type"] || r["Type"] || r["deviceType"] || defaultType(defaultDeviceType) || ""
-        ).trim().toLowerCase();
-
-        const isExactDuplicate =
-          (existingDevice.deviceType || "") === rawTypeForDup &&
-          (existingDevice.brand || "") === String(r["Brand"] || r["brand"] || "").trim() &&
-          (existingDevice.model || "") === String(r["Model"] || r["model"] || "").trim() &&
-          (existingDevice.ipAddress || "") === String(r["IP Address"] || r["IP"] || r["ipAddress"] || r["Ip Address"] || "").trim() &&
-          (existingDevice.status || "") === resolvedStatus &&
-          (existingDevice.description || "") === String(r["Description"] || r["Notes"] || r["description"] || "").trim() &&
-          (existingDevice.onlineLink || "") === String(r["Online Link"] || r["Portal"] || r["Management URL"] || r["onlineLink"] || "").trim() &&
-          (existingDevice.apNumber || "") === String(r["AP Number"] || r["AP"] || r["apNumber"] || "").trim() &&
-          (existingDevice.customerName || "") === String(r["Customer Name"] || r["Customer"] || r["customerName"] || "").trim() &&
-          (existingDevice.customerMobile || "") === String(r["Customer Mobile"] || r["Mobile Number"] || r["Mobile"] || r["Phone"] || r["customerMobile"] || "").trim() &&
-          (existingDevice.gpsLink || "") === String(r["GPS Link"] || r["Map Link"] || r["gpsLink"] || "").trim();
-
-        if (isExactDuplicate) {
-          // Identical record already in DB — skip silently
-          skippedCount++;
-          continue;
-        }
-
-        // MAC exists but data differs — report as conflict
-        errors.push(
-          `Row ${rowNum}: MAC Address "${macAddress}" already exists in the database with different data. Update the existing device instead.`
-        );
+        skippedCount++;
         continue;
       }
 
@@ -1450,15 +1342,17 @@ export async function importDevicesBulk(
         ipAddress = rawIp;
       }
 
-      // 6. Optional text fields (Brand, Model, Device Name, Notes, Online Link)
-      const brand = String(r["Brand"] || r["brand"] || "").trim();
-      const model = String(r["Model"] || r["model"] || "").trim();
+      // 6. Optional text fields (Device Name, Notes, Online Link)
       const rawName = String(
         r["Device Name"] || r["Name"] || r["deviceName"] || ""
       ).trim();
+      const rawBrand = String(r["Brand"] || r["brand"] || "").trim();
+      const rawModel = String(r["Model"] || r["model"] || "").trim();
+      const brandModelHint = [rawBrand, rawModel].filter(Boolean).join(" ");
       const deviceName =
-        rawName || model || brand || `${deviceType.toUpperCase()} ${macAddress.slice(-5)}`;
-      const description = String(r["Description"] || r["Notes"] || r["description"] || "").trim();
+        rawName || (brandModelHint ? `${brandModelHint} ${macAddress.slice(-5)}` : `${deviceType.toUpperCase()} ${macAddress.slice(-5)}`);
+      const rawDesc = String(r["Description"] || r["Notes"] || r["description"] || "").trim();
+      const description = rawDesc || `${deviceType.toUpperCase()} unit`;
       const onlineLink = String(
         r["Online Link"] || r["Portal"] || r["Management URL"] || r["onlineLink"] || ""
       ).trim();
@@ -1489,7 +1383,7 @@ export async function importDevicesBulk(
           : "Active";
       }
 
-      // 9. Verification: Optional Server lookup
+      // 9. Verification: Server lookup
       const rawServer = String(
         r["Server"] || r["Connected Server"] || r["Server SL"] || r["server"] || ""
       ).trim();
@@ -1501,7 +1395,24 @@ export async function importDevicesBulk(
             s.deviceName?.toLowerCase() === rawServer.toLowerCase() ||
             String(s._id) === rawServer
         );
-        if (found) serverId = String(found._id);
+        if (found) {
+          serverId = String(found._id);
+        } else {
+          errors.push(
+            `Row ${rowNum}: Server "${rawServer}" not found in database.`
+          );
+          continue;
+        }
+      } else if (!rawServer && deviceType !== "server") {
+        // Fallback: If there is at least one server, assign the primary server
+        if (servers.length > 0) {
+          serverId = String((servers[0] as { _id: unknown })._id);
+        } else if (["access-point", "router", "switch", "antenna"].includes(deviceType)) {
+          errors.push(
+            `Row ${rowNum}: Connected Server is required for ${deviceType}, but no servers are registered yet.`
+          );
+          continue;
+        }
       }
 
       // 10. Verification: Optional Uplink Switch lookup
@@ -1516,36 +1427,50 @@ export async function importDevicesBulk(
             sw.deviceName?.toLowerCase() === rawSwitch.toLowerCase() ||
             String(sw._id) === rawSwitch
         );
-        if (found) switchId = String(found._id);
+        if (found) {
+          switchId = String(found._id);
+        }
       }
 
-      // 11. Optional AP & Customer fields
-      const apNumber = String(r["AP Number"] || r["AP"] || r["apNumber"] || "").trim();
-      const customerName = String(r["Customer Name"] || r["Customer"] || r["customerName"] || "").trim();
-      const customerMobile = String(
-        r["Customer Mobile"] || r["Mobile Number"] || r["Mobile"] || r["Phone"] || r["customerMobile"] || ""
-      ).trim();
-      const gpsLink = String(r["GPS Link"] || r["Map Link"] || r["gpsLink"] || "").trim();
+      // 11. Optional AP & Customer fields & GPS Link
+      const apNumber =
+        String(r["AP Number"] || r["AP"] || r["apNumber"] || "").trim() ||
+        (deviceType === "access-point" ? `AP-${macAddress.slice(-5).replace(/:/g, "")}` : "");
+      const customerName =
+        String(r["Customer Name"] || r["Customer"] || r["customerName"] || "").trim() ||
+        (["access-point", "router"].includes(deviceType) ? "Office / Stock" : "");
+      const customerMobile =
+        String(
+          r["Customer Mobile"] ||
+          r["Mobile Number"] ||
+          r["Mobile"] ||
+          r["Phone"] ||
+          r["customerMobile"] ||
+          ""
+        ).trim() ||
+        (["access-point", "router"].includes(deviceType) ? "N/A" : "");
 
-      // 12. Verification: Optional GPS Coordinates
+      // Handle GPS Link & legacy Latitude/Longitude fallback
+      const rawGps = String(
+        r["GPS Link"] ||
+        r["Map Link"] ||
+        r["GPS"] ||
+        r["gpsLink"] ||
+        r["Location"] ||
+        r["Address"] ||
+        ""
+      ).trim();
       const rawLat = r["GPS Latitude"] ?? r["Latitude"] ?? r["Lat"] ?? r["gpsLatitude"];
       const rawLng = r["GPS Longitude"] ?? r["Longitude"] ?? r["Lng"] ?? r["Long"] ?? r["gpsLongitude"];
-      let latNum: number | undefined = undefined;
-      let lngNum: number | undefined = undefined;
-      if (rawLat !== undefined && rawLat !== null && rawLat !== "" && !isNaN(Number(rawLat))) {
-        const parsedLat = Number(rawLat);
-        if (parsedLat >= -90 && parsedLat <= 90) latNum = parsedLat;
+      let gpsLink = rawGps;
+      if (!gpsLink && rawLat !== undefined && rawLat !== null && rawLat !== "" && rawLng !== undefined && rawLng !== null && rawLng !== "") {
+        gpsLink = `https://maps.google.com/?q=${rawLat},${rawLng}`;
       }
-      if (rawLng !== undefined && rawLng !== null && rawLng !== "" && !isNaN(Number(rawLng))) {
-        const parsedLng = Number(rawLng);
-        if (parsedLng >= -180 && parsedLng <= 180) lngNum = parsedLng;
+      if (!gpsLink && ["access-point", "router", "switch", "antenna"].includes(deviceType)) {
+        gpsLink = "Deployment Location";
       }
-      const gps =
-        latNum !== undefined || lngNum !== undefined
-          ? { latitude: latNum, longitude: lngNum }
-          : undefined;
 
-      // 13. Verification: Optional Activation Date
+      // 12. Verification: Optional Activation Date
       const rawActDate = r["Activation Date"] ?? r["Date of Activation"] ?? r["activationDate"];
       let activationDate: Date | undefined;
       if (rawActDate) {
@@ -1560,8 +1485,6 @@ export async function importDevicesBulk(
       // Execute createDevice in isolated row try/catch
       await createDevice({
         deviceType,
-        brand,
-        model,
         deviceName,
         ipAddress,
         macAddress,
@@ -1571,8 +1494,7 @@ export async function importDevicesBulk(
         apNumber: ["access-point"].includes(deviceType) ? apNumber : undefined,
         customerName: ["access-point", "router"].includes(deviceType) ? customerName : undefined,
         customerMobile: ["access-point", "router"].includes(deviceType) ? customerMobile : undefined,
-        gpsLink: ["access-point", "router"].includes(deviceType) ? gpsLink : undefined,
-        gps,
+        gpsLink: gpsLink || undefined,
         activationDate,
         status,
         description,

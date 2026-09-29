@@ -2,9 +2,9 @@
 
 import { connectToDatabase } from "@/lib/database";
 import DeviceType from "@/lib/database/models/deviceType.model";
+import Device from "@/lib/database/models/device.model";
 import Brand from "@/lib/database/models/brand.model";
 import DeviceModel from "@/lib/database/models/model.model";
-import Device from "@/lib/database/models/device.model";
 import { PRIMARY_DEVICE_TYPES } from "@/lib/constants";
 import { revalidatePath } from "next/cache";
 import { requirePermission, logActivityAndNotify } from "@/lib/auth-guard";
@@ -272,11 +272,6 @@ export async function deleteBrand(id: string) {
   const brand = await Brand.findById(id);
   if (!brand) throw new Error("Brand not found");
 
-  const deviceCount = await Device.countDocuments({ brand: brand.name });
-  if (deviceCount > 0) {
-    throw new Error(`Cannot delete brand "${brand.name}" because ${deviceCount} devices are currently registered under it.`);
-  }
-
   // Also remove models belonging to this brand
   await DeviceModel.deleteMany({ brand: brand.name });
   await Brand.findByIdAndDelete(id);
@@ -388,17 +383,6 @@ export async function deleteModel(id: string) {
   await connectToDatabase();
   const model = await DeviceModel.findById(id);
   if (!model) throw new Error("Model not found");
-
-  const deviceCount = await Device.countDocuments({
-    brand: model.brand,
-    model: model.name,
-  });
-
-  if (deviceCount > 0) {
-    throw new Error(
-      `Cannot delete model "${model.name}" because ${deviceCount} active devices are currently using it.`
-    );
-  }
 
   await DeviceModel.findByIdAndDelete(id);
 
