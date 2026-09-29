@@ -20,191 +20,207 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   await syncOverdueBillsIfNeeded();
 
   // Run aggregations across Devices, Customers, and Billings in parallel
-  const [deviceFacetResult, allTypes, customerFacetResult, billingFacetResult, awaitingBills] =
-    await Promise.all([
-      Device.aggregate([
-        {
-          $facet: {
-            statusCounts: [
-              {
-                $group: {
-                  _id: "$status",
-                  count: { $sum: 1 },
+  const [
+    deviceFacetResult,
+    allTypes,
+    customerFacetResult,
+    billingFacetResult,
+    awaitingBills,
+  ] = await Promise.all([
+    Device.aggregate([
+      {
+        $facet: {
+          statusCounts: [
+            {
+              $group: {
+                _id: "$status",
+                count: { $sum: 1 },
+              },
+            },
+          ],
+          typeCounts: [
+            {
+              $match: {
+                status: { $nin: ["Pending", "Rejected"] },
+              },
+            },
+            {
+              $group: {
+                _id: "$deviceType",
+                count: { $sum: 1 },
+              },
+            },
+          ],
+          typeStatusCounts: [
+            {
+              $match: {
+                status: { $nin: ["Pending", "Rejected"] },
+              },
+            },
+            {
+              $group: {
+                _id: { type: "$deviceType", status: "$status" },
+                count: { $sum: 1 },
+              },
+            },
+          ],
+          serverLocations: [
+            {
+              $match: {
+                deviceType: "server",
+                status: { $nin: ["Pending", "Rejected"] },
+              },
+            },
+            {
+              $group: {
+                _id: {
+                  $cond: [
+                    {
+                      $gt: [
+                        { $strLenCP: { $ifNull: ["$description", ""] } },
+                        0,
+                      ],
+                    },
+                    "$description",
+                    "$_id",
+                  ],
                 },
               },
-            ],
-            typeCounts: [
-              {
-                $match: {
-                  status: { $nin: ["Pending", "Rejected"] },
-                },
+            },
+            { $count: "total" },
+          ],
+          totalCount: [
+            {
+              $match: {
+                status: { $nin: ["Pending", "Rejected"] },
               },
-              {
-                $group: {
-                  _id: "$deviceType",
-                  count: { $sum: 1 },
-                },
+            },
+            {
+              $count: "total",
+            },
+          ],
+          pendingCount: [
+            {
+              $match: {
+                status: "Pending",
               },
-            ],
-            typeStatusCounts: [
-              {
-                $match: {
-                  status: { $nin: ["Pending", "Rejected"] },
-                },
+            },
+            {
+              $count: "total",
+            },
+          ],
+          recent: [
+            {
+              $match: {
+                status: { $nin: ["Pending", "Rejected"] },
               },
-              {
-                $group: {
-                  _id: { type: "$deviceType", status: "$status" },
-                  count: { $sum: 1 },
-                },
-              },
-            ],
-            serverLocations: [
-              {
-                $match: {
-                  deviceType: "server",
-                  status: { $nin: ["Pending", "Rejected"] },
-                },
-              },
-              {
-                $group: {
-                  _id: {
-                    $cond: [
-                      { $gt: [{ $strLenCP: { $ifNull: ["$description", ""] } }, 0] },
-                      "$description",
-                      "$_id",
-                    ],
-                  },
-                },
-              },
-              { $count: "total" },
-            ],
-            totalCount: [
-              {
-                $match: {
-                  status: { $nin: ["Pending", "Rejected"] },
-                },
-              },
-              {
-                $count: "total",
-              },
-            ],
-            pendingCount: [
-              {
-                $match: {
-                  status: "Pending",
-                },
-              },
-              {
-                $count: "total",
-              },
-            ],
-            recent: [
-              {
-                $match: {
-                  status: { $nin: ["Pending", "Rejected"] },
-                },
-              },
-              { $sort: { createdAt: -1 } },
-              { $limit: 8 },
-            ],
-          },
+            },
+            { $sort: { createdAt: -1 } },
+            { $limit: 8 },
+          ],
         },
-      ]),
-      DeviceType.find({ isActive: true }).select("name slug").lean(),
-      Customer.aggregate([
-        {
-          $facet: {
-            statusCounts: [
-              {
-                $group: {
-                  _id: "$status",
-                  count: { $sum: 1 },
-                },
+      },
+    ]),
+    DeviceType.find({ isActive: true }).select("name slug").lean(),
+    Customer.aggregate([
+      {
+        $facet: {
+          statusCounts: [
+            {
+              $group: {
+                _id: "$status",
+                count: { $sum: 1 },
               },
-            ],
-            totalCount: [
-              {
-                $count: "total",
-              },
-            ],
-          },
+            },
+          ],
+          totalCount: [
+            {
+              $count: "total",
+            },
+          ],
         },
-      ]),
-      Billing.aggregate([
-        {
-          $facet: {
-            currentMonth: [
-              {
-                $match: {
-                  billingMonth: currentMonth,
+      },
+    ]),
+    Billing.aggregate([
+      {
+        $facet: {
+          currentMonth: [
+            {
+              $match: {
+                billingMonth: currentMonth,
+              },
+            },
+            {
+              $group: {
+                _id: null,
+                monthlyBilled: { $sum: "$billingAmount" },
+                collected: { $sum: "$paidAmount" },
+                paidCount: {
+                  $sum: { $cond: [{ $eq: ["$status", "Paid"] }, 1, 0] },
                 },
               },
-              {
-                $group: {
-                  _id: null,
-                  monthlyBilled: { $sum: "$billingAmount" },
-                  collected: { $sum: "$paidAmount" },
-                  paidCount: {
-                    $sum: { $cond: [{ $eq: ["$status", "Paid"] }, 1, 0] },
+            },
+          ],
+          allOutstanding: [
+            {
+              $match: {
+                status: { $in: ["Pending", "Partial", "Overdue"] },
+                dueAmount: { $gt: 0 },
+              },
+            },
+            {
+              $group: {
+                _id: null,
+                totalOutstanding: { $sum: "$dueAmount" },
+                pendingCount: {
+                  $sum: {
+                    $cond: [{ $in: ["$status", ["Pending", "Partial"]] }, 1, 0],
                   },
                 },
-              },
-            ],
-            allOutstanding: [
-              {
-                $match: {
-                  status: { $in: ["Pending", "Partial", "Overdue"] },
-                  dueAmount: { $gt: 0 },
+                overdueCount: {
+                  $sum: { $cond: [{ $eq: ["$status", "Overdue"] }, 1, 0] },
                 },
+                totalDueCustomers: { $sum: 1 },
               },
-              {
-                $group: {
-                  _id: null,
-                  totalOutstanding: { $sum: "$dueAmount" },
-                  pendingCount: {
-                    $sum: { $cond: [{ $in: ["$status", ["Pending", "Partial"]] }, 1, 0] },
-                  },
-                  overdueCount: {
-                    $sum: { $cond: [{ $eq: ["$status", "Overdue"] }, 1, 0] },
-                  },
-                  totalDueCustomers: { $sum: 1 },
-                },
-              },
-            ],
-          },
+            },
+          ],
         },
-      ]),
-      Billing.find({
-        status: { $in: ["Overdue", "Pending", "Partial"] },
-        dueAmount: { $gt: 0 },
+      },
+    ]),
+    Billing.find({
+      status: { $in: ["Overdue", "Pending", "Partial"] },
+      dueAmount: { $gt: 0 },
+    })
+      .sort({ status: 1, dueDate: 1 })
+      .limit(6)
+      .populate({
+        path: "customer",
+        select: "customerId name phone serviceType server",
+        populate: {
+          path: "server",
+          select: "sl deviceName",
+          model: "Device",
+        },
+        model: "Customer",
       })
-        .sort({ status: 1, dueDate: 1 })
-        .limit(6)
-        .populate({
-          path: "customer",
-          select: "customerId name phone serviceType server",
-          populate: {
-            path: "server",
-            select: "sl deviceName",
-            model: "Device",
-          },
-          model: "Customer",
-        })
-        .lean(),
-    ]);
+      .lean(),
+  ]);
 
   // Devices
   const devFacet = deviceFacetResult[0] || {};
   const statusCountsMap: Record<string, number> = {};
-  (devFacet.statusCounts || []).forEach((item: { _id: string; count: number }) => {
-    if (item._id) statusCountsMap[item._id] = item.count;
-  });
+  (devFacet.statusCounts || []).forEach(
+    (item: { _id: string; count: number }) => {
+      if (item._id) statusCountsMap[item._id] = item.count;
+    },
+  );
 
   const typeCountsMap: Record<string, number> = {};
-  (devFacet.typeCounts || []).forEach((item: { _id: string; count: number }) => {
-    if (item._id) typeCountsMap[item._id.toLowerCase()] = item.count;
-  });
+  (devFacet.typeCounts || []).forEach(
+    (item: { _id: string; count: number }) => {
+      if (item._id) typeCountsMap[item._id.toLowerCase()] = item.count;
+    },
+  );
 
   const totalDevices = devFacet.totalCount?.[0]?.total || 0;
 
@@ -216,12 +232,13 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       const t = item._id.type.toLowerCase();
       if (!typeStatusMap[t]) typeStatusMap[t] = {};
       typeStatusMap[t][item._id.status] = item.count;
-    }
+    },
   );
 
   const totalServers = typeCountsMap["server"] || 0;
   const activeServers = typeStatusMap["server"]?.["Active"] || 0;
-  const serverLocationsCount = devFacet.serverLocations?.[0]?.total || totalServers;
+  const serverLocationsCount =
+    devFacet.serverLocations?.[0]?.total || totalServers;
   const routersCount = typeCountsMap["router"] || 0;
 
   const knownSlugs = new Set<string>();
@@ -271,9 +288,11 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   // Customers
   const custFacet = customerFacetResult[0] || {};
   const custStatusMap: Record<string, number> = {};
-  (custFacet.statusCounts || []).forEach((item: { _id: string; count: number }) => {
-    if (item._id) custStatusMap[item._id] = item.count;
-  });
+  (custFacet.statusCounts || []).forEach(
+    (item: { _id: string; count: number }) => {
+      if (item._id) custStatusMap[item._id] = item.count;
+    },
+  );
   const totalCustomers = custFacet.totalCount?.[0]?.total || 0;
 
   // Billings
@@ -297,7 +316,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   const dueCustomers = allOutstandingData.totalDueCustomers || 0;
 
   // Format awaiting collection customers
-  const formattedAwaitingCustomers = (awaitingBills || []).map((b: any) => {
+  const formattedAwaitingCustomers = (awaitingBills || []).map((b) => {
     const cust = b.customer || {};
     const srv = cust.server || {};
     return {
@@ -325,7 +344,8 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     maintenanceDevices: statusCountsMap["Maintenance"] || 0,
     inactiveDevices: statusCountsMap["Inactive"] || 0,
     retiredDevices: statusCountsMap["Retired"] || 0,
-    pendingDevices: devFacet.pendingCount?.[0]?.total || statusCountsMap["Pending"] || 0,
+    pendingDevices:
+      devFacet.pendingCount?.[0]?.total || statusCountsMap["Pending"] || 0,
     byType,
     recentDevices: JSON.parse(JSON.stringify(devFacet.recent || [])),
     serverStats: {
@@ -344,7 +364,9 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       totalOutstandingAmount,
       dueCustomers,
     },
-    awaitingCollectionCustomers: JSON.parse(JSON.stringify(formattedAwaitingCustomers)),
+    awaitingCollectionCustomers: JSON.parse(
+      JSON.stringify(formattedAwaitingCustomers),
+    ),
     billingStats: {
       currentMonth,
       monthlyBilled: currentMonthData.monthlyBilled || 0,

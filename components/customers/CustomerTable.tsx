@@ -25,7 +25,6 @@ import {
   Receipt,
   Server,
   MapPin,
-  ExternalLink,
 } from "lucide-react";
 import { CustomerStatusBadge } from "./CustomerStatusBadge";
 import { CustomerFormDialog } from "./CustomerFormDialog";
@@ -35,7 +34,7 @@ import { deleteCustomer } from "@/lib/actions/customer.actions";
 import { toast } from "react-hot-toast";
 import type { ICustomer } from "@/types";
 import { usePermissions } from "@/components/providers/PermissionContext";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency } from "@/lib/utils";
 import { CUSTOMER_SERVICE_TYPE_CONFIG } from "@/lib/constants";
 
 interface CustomerTableProps {
@@ -60,14 +59,20 @@ export function CustomerTable({
   const canWriteCustomers = canWrite("customers");
   const canReadBilling = canRead("billing");
 
-  const [editingCustomer, setEditingCustomer] = useState<ICustomer | null>(null);
-  const [deletingCustomer, setDeletingCustomer] = useState<ICustomer | null>(null);
+  const [editingCustomer, setEditingCustomer] = useState<ICustomer | null>(
+    null,
+  );
+  const [deletingCustomer, setDeletingCustomer] = useState<ICustomer | null>(
+    null,
+  );
   const [isDeleting, setIsDeleting] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
 
   // Collect bill dialog state
   const [collectOpen, setCollectOpen] = useState(false);
-  const [customerToCollect, setCustomerToCollect] = useState<ICustomer | null>(null);
+  const [customerToCollect, setCustomerToCollect] = useState<ICustomer | null>(
+    null,
+  );
 
   const navigatePage = (newPage: number) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -84,7 +89,9 @@ export function CustomerTable({
       setDeletingCustomer(null);
       router.refresh();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to delete customer");
+      toast.error(
+        err instanceof Error ? err.message : "Failed to delete customer",
+      );
     } finally {
       setIsDeleting(false);
     }
@@ -162,16 +169,17 @@ export function CustomerTable({
               ) : (
                 customers.map((cust) => {
                   const serviceType = cust.serviceType || "Service C";
-                  const serviceConfig =
-                    CUSTOMER_SERVICE_TYPE_CONFIG[serviceType] || {
-                      label: serviceType,
-                      bg: "bg-slate-100 text-slate-700 border-slate-200",
-                      darkBg: "dark:bg-slate-800",
-                    };
+                  const serviceConfig = CUSTOMER_SERVICE_TYPE_CONFIG[
+                    serviceType
+                  ] || {
+                    label: serviceType,
+                    bg: "bg-slate-100 text-slate-700 border-slate-200",
+                    darkBg: "dark:bg-slate-800",
+                  };
 
                   const serverObj =
                     cust.server && typeof cust.server === "object"
-                      ? (cust.server as any)
+                      ? cust.server
                       : null;
 
                   const currentBill = cust.currentBill;
@@ -183,7 +191,10 @@ export function CustomerTable({
                     >
                       {/* Customer ID */}
                       <TableCell className="font-mono text-xs font-bold text-sky-600 dark:text-sky-400 whitespace-nowrap">
-                        <Link href={`/customers/${cust._id}`} className="hover:underline">
+                        <Link
+                          href={`/customers/${cust._id}`}
+                          className="hover:underline"
+                        >
                           {cust.customerId}
                         </Link>
                       </TableCell>
@@ -239,7 +250,9 @@ export function CustomerTable({
                               </span>
                             </div>
                           ) : (
-                            <div className="text-[11px] text-slate-400 italic">No Server</div>
+                            <div className="text-[11px] text-slate-400 italic">
+                              No Server
+                            </div>
                           )}
                         </div>
                       </TableCell>
@@ -261,7 +274,9 @@ export function CustomerTable({
                           {cust.email && (
                             <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
                               <Mail className="w-3 h-3 text-slate-400" />
-                              <span className="truncate max-w-[140px]">{cust.email}</span>
+                              <span className="truncate max-w-[140px]">
+                                {cust.email}
+                              </span>
                             </div>
                           )}
                         </div>
@@ -286,20 +301,23 @@ export function CustomerTable({
                                 currentBill.status === "Paid"
                                   ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-400 dark:border-emerald-800/60"
                                   : currentBill.status === "Overdue"
-                                  ? "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/60 dark:text-rose-400 dark:border-rose-800/60 animate-pulse"
-                                  : "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/60 dark:text-amber-400 dark:border-amber-800/60"
+                                    ? "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/60 dark:text-rose-400 dark:border-rose-800/60 animate-pulse"
+                                    : "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/60 dark:text-amber-400 dark:border-amber-800/60"
                               }`}
                             >
                               {currentBill.status}
                             </span>
-                            {currentBill.status !== "Paid" && currentBill.dueAmount > 0 && (
-                              <div className="font-mono text-[10px] text-rose-600 dark:text-rose-400 font-bold">
-                                Due: {formatCurrency(currentBill.dueAmount)}
-                              </div>
-                            )}
+                            {currentBill.status !== "Paid" &&
+                              currentBill.dueAmount > 0 && (
+                                <div className="font-mono text-[10px] text-rose-600 dark:text-rose-400 font-bold">
+                                  Due: {formatCurrency(currentBill.dueAmount)}
+                                </div>
+                              )}
                           </div>
                         ) : (
-                          <span className="text-[11px] text-slate-400 italic">No Bill</span>
+                          <span className="text-[11px] text-slate-400 italic">
+                            No Bill
+                          </span>
                         )}
                       </TableCell>
 
@@ -362,11 +380,19 @@ export function CustomerTable({
         {total > 0 && (
           <div className="p-4 border-t border-slate-200/80 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
             <div>
-              Showing <span className="font-bold text-slate-800 dark:text-slate-200">{(page - 1) * limit + 1}</span> to{" "}
+              Showing{" "}
+              <span className="font-bold text-slate-800 dark:text-slate-200">
+                {(page - 1) * limit + 1}
+              </span>{" "}
+              to{" "}
               <span className="font-bold text-slate-800 dark:text-slate-200">
                 {Math.min(page * limit, total)}
               </span>{" "}
-              of <span className="font-bold text-slate-800 dark:text-slate-200">{total}</span> customers
+              of{" "}
+              <span className="font-bold text-slate-800 dark:text-slate-200">
+                {total}
+              </span>{" "}
+              customers
             </div>
 
             <div className="flex items-center gap-2">
@@ -422,7 +448,7 @@ export function CustomerTable({
         open={collectOpen}
         onOpenChange={setCollectOpen}
         initialCustomer={customerToCollect}
-        initialBilling={customerToCollect?.currentBill as any}
+        initialBilling={customerToCollect?.currentBill}
         onSuccess={() => {
           setCollectOpen(false);
           router.refresh();

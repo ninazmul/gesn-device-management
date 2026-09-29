@@ -12,18 +12,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import {
-  DollarSign,
-  Receipt,
-  ChevronLeft,
-  ChevronRight,
-  Sparkles,
-} from "lucide-react";
+import { Receipt, ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
 import { BillingStatusBadge } from "./BillingStatusBadge";
 import { CollectBillDialog } from "./CollectBillDialog";
 import { GenerateBillsDialog } from "./GenerateBillsDialog";
 import { formatDate, formatCurrency } from "@/lib/utils";
-import { CUSTOMER_SERVICE_TYPE_CONFIG } from "@/lib/constants";
 import type { IBilling } from "@/types";
 import { usePermissions } from "@/components/providers/PermissionContext";
 
@@ -118,7 +111,8 @@ export function BillingTable({
                           onClick={() => setGenerateOpen(true)}
                           className="rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-semibold text-xs mt-2"
                         >
-                          <Sparkles className="w-4 h-4 mr-1.5" /> Generate Monthly Bills
+                          <Sparkles className="w-4 h-4 mr-1.5" /> Generate
+                          Monthly Bills
                         </Button>
                       )}
                     </div>
@@ -150,7 +144,9 @@ export function BillingTable({
                           </span>
                         </div>
                       ) : (
-                        <span className="text-xs text-slate-400">Unknown Client</span>
+                        <span className="text-xs text-slate-400">
+                          Unknown Client
+                        </span>
                       )}
                     </TableCell>
 
@@ -203,7 +199,9 @@ export function BillingTable({
                           Collect Bill
                         </Button>
                       ) : (
-                        <span className="text-xs text-slate-400 italic">View only</span>
+                        <span className="text-xs text-slate-400 italic">
+                          View only
+                        </span>
                       )}
                     </TableCell>
                   </TableRow>
@@ -265,7 +263,7 @@ export function BillingTable({
       <CollectBillDialog
         open={Boolean(paymentBilling)}
         onOpenChange={(open) => !open && setPaymentBilling(null)}
-        initialCustomer={paymentBilling?.customer as any}
+        initialCustomer={paymentBilling?.customer}
         initialBilling={paymentBilling}
         onSuccess={() => {
           setPaymentBilling(null);

@@ -18,11 +18,27 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Loader2, UserPlus, Users, MapPin, Server, ExternalLink } from "lucide-react";
+import {
+  Loader2,
+  UserPlus,
+  Users,
+  MapPin,
+  Server,
+  ExternalLink,
+} from "lucide-react";
 import { toast } from "react-hot-toast";
-import { createCustomer, updateCustomer, getServerOptions } from "@/lib/actions/customer.actions";
+import {
+  createCustomer,
+  updateCustomer,
+  getServerOptions,
+} from "@/lib/actions/customer.actions";
 import { CUSTOMER_STATUSES, CUSTOMER_SERVICE_TYPES } from "@/lib/constants";
-import type { CustomerStatus, CustomerServiceType, ICustomer, IServerOption } from "@/types";
+import type {
+  CustomerStatus,
+  CustomerServiceType,
+  ICustomer,
+  IServerOption,
+} from "@/types";
 
 interface CustomerFormDialogProps {
   open: boolean;
@@ -41,34 +57,38 @@ export function CustomerFormDialog({
 
   // Form states
   const [name, setName] = useState(customerToEdit?.name || "");
-  const [contactPerson, setContactPerson] = useState(customerToEdit?.contactPerson || "");
+  const [contactPerson, setContactPerson] = useState(
+    customerToEdit?.contactPerson || "",
+  );
   const [phone, setPhone] = useState(customerToEdit?.phone || "");
   const [email, setEmail] = useState(customerToEdit?.email || "");
   const [address, setAddress] = useState(customerToEdit?.address || "");
   const [gpsLink, setGpsLink] = useState(customerToEdit?.gpsLink || "");
   const [serviceType, setServiceType] = useState<CustomerServiceType>(
-    customerToEdit?.serviceType || "Service C"
+    customerToEdit?.serviceType || "Service C",
   );
   const [serverId, setServerId] = useState<string>(
     customerToEdit?.server
       ? typeof customerToEdit.server === "object"
-        ? (customerToEdit.server as any)._id
+        ? customerToEdit.server._id
         : customerToEdit.server
-      : "none"
+      : "none",
   );
   const [monthlyBill, setMonthlyBill] = useState(
-    customerToEdit?.monthlyBill !== undefined ? String(customerToEdit.monthlyBill) : ""
+    customerToEdit?.monthlyBill !== undefined
+      ? String(customerToEdit.monthlyBill)
+      : "",
   );
   const [billingStartDate, setBillingStartDate] = useState(
     customerToEdit?.billingStartDate
       ? new Date(customerToEdit.billingStartDate).toISOString().split("T")[0]
-      : new Date().toISOString().split("T")[0]
+      : new Date().toISOString().split("T")[0],
   );
   const [billingDay, setBillingDay] = useState(
-    customerToEdit?.billingDay ? String(customerToEdit.billingDay) : "1"
+    customerToEdit?.billingDay ? String(customerToEdit.billingDay) : "1",
   );
   const [status, setStatus] = useState<CustomerStatus>(
-    (customerToEdit?.status as CustomerStatus) || "Active"
+    (customerToEdit?.status as CustomerStatus) || "Active",
   );
 
   const [serverOptions, setServerOptions] = useState<IServerOption[]>([]);
@@ -95,15 +115,17 @@ export function CustomerFormDialog({
         setServerId(
           customerToEdit.server
             ? typeof customerToEdit.server === "object"
-              ? (customerToEdit.server as any)._id
+              ? customerToEdit.server._id
               : customerToEdit.server
-            : "none"
+            : "none",
         );
         setMonthlyBill(String(customerToEdit.monthlyBill || ""));
         setBillingStartDate(
           customerToEdit.billingStartDate
-            ? new Date(customerToEdit.billingStartDate).toISOString().split("T")[0]
-            : new Date().toISOString().split("T")[0]
+            ? new Date(customerToEdit.billingStartDate)
+                .toISOString()
+                .split("T")[0]
+            : new Date().toISOString().split("T")[0],
         );
         setBillingDay(String(customerToEdit.billingDay || "1"));
         setStatus(customerToEdit.status || "Active");
@@ -163,7 +185,9 @@ export function CustomerFormDialog({
 
       if (isEditing && customerToEdit) {
         await updateCustomer(customerToEdit._id, payload);
-        toast.success(`Customer ${customerToEdit.customerId} updated successfully`);
+        toast.success(
+          `Customer ${customerToEdit.customerId} updated successfully`,
+        );
       } else {
         const created = await createCustomer(payload);
         toast.success(`Customer ${created.customerId} created successfully`);
@@ -172,7 +196,9 @@ export function CustomerFormDialog({
       onOpenChange(false);
       if (onSuccess) onSuccess();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to save customer");
+      toast.error(
+        err instanceof Error ? err.message : "Failed to save customer",
+      );
     } finally {
       setSubmitting(false);
     }
@@ -184,9 +210,15 @@ export function CustomerFormDialog({
         <DialogHeader className="border-b border-slate-100 dark:border-slate-800 pb-4">
           <DialogTitle className="text-xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2.5">
             <span className="p-2 rounded-xl bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400">
-              {isEditing ? <Users className="w-5 h-5" /> : <UserPlus className="w-5 h-5" />}
+              {isEditing ? (
+                <Users className="w-5 h-5" />
+              ) : (
+                <UserPlus className="w-5 h-5" />
+              )}
             </span>
-            {isEditing ? `Edit Customer (${customerToEdit?.customerId})` : "Add New Customer"}
+            {isEditing
+              ? `Edit Customer (${customerToEdit?.customerId})`
+              : "Add New Customer"}
           </DialogTitle>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
             {isEditing
@@ -204,7 +236,8 @@ export function CustomerFormDialog({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <div className="space-y-1.5 sm:col-span-2">
                 <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Customer / Business Name <span className="text-rose-500">*</span>
+                  Customer / Business Name{" "}
+                  <span className="text-rose-500">*</span>
                 </Label>
                 <Input
                   placeholder="e.g. Apex Fiber Network or John Doe"
@@ -295,7 +328,11 @@ export function CustomerFormDialog({
                   </Label>
                   {gpsLink && (
                     <a
-                      href={gpsLink.startsWith("http") ? gpsLink : `https://${gpsLink}`}
+                      href={
+                        gpsLink.startsWith("http")
+                          ? gpsLink
+                          : `https://${gpsLink}`
+                      }
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-[11px] font-bold text-sky-600 dark:text-sky-400 hover:underline flex items-center gap-1"
@@ -328,7 +365,9 @@ export function CustomerFormDialog({
                 </Label>
                 <Select
                   value={serviceType}
-                  onValueChange={(val) => setServiceType(val as CustomerServiceType)}
+                  onValueChange={(val) =>
+                    setServiceType(val as CustomerServiceType)
+                  }
                 >
                   <SelectTrigger className="rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm">
                     <SelectValue placeholder="Select Service Type" />
@@ -358,13 +397,20 @@ export function CustomerFormDialog({
                   disabled={loadingServers}
                 >
                   <SelectTrigger className="rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm">
-                    <SelectValue placeholder={loadingServers ? "Loading servers..." : "None / Unassigned"} />
+                    <SelectValue
+                      placeholder={
+                        loadingServers
+                          ? "Loading servers..."
+                          : "None / Unassigned"
+                      }
+                    />
                   </SelectTrigger>
                   <SelectContent className="dark:bg-slate-900 dark:border-slate-800">
                     <SelectItem value="none">None / Unassigned</SelectItem>
                     {serverOptions.map((srv) => (
                       <SelectItem key={srv._id} value={srv._id}>
-                        {srv.deviceName} ({srv.sl}) {srv.ipAddress ? `• ${srv.ipAddress}` : ""}
+                        {srv.deviceName} ({srv.sl}){" "}
+                        {srv.ipAddress ? `• ${srv.ipAddress}` : ""}
                       </SelectItem>
                     ))}
                   </SelectContent>

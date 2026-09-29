@@ -32,7 +32,27 @@ import { GlobalSearchModal } from "@/components/shared/GlobalSearchModal";
 import type { DashboardStats } from "@/types";
 import { usePermissions } from "@/components/providers/PermissionContext";
 import { formatDisplaySL, formatCurrency, formatDate } from "@/lib/utils";
-import { CUSTOMER_SERVICE_TYPE_CONFIG, BILLING_STATUS_CONFIG } from "@/lib/constants";
+import { CUSTOMER_SERVICE_TYPE_CONFIG } from "@/lib/constants";
+
+type AwaitingCollectionCustomer = NonNullable<
+  DashboardStats["awaitingCollectionCustomers"]
+>[number];
+
+type CollectCustomer = Pick<
+  AwaitingCollectionCustomer,
+  "_id" | "customerId" | "name" | "phone" | "serviceType" | "serverName"
+> & { monthlyBill?: number };
+
+type CollectBill = Pick<
+  AwaitingCollectionCustomer,
+  | "billingId"
+  | "billingMonth"
+  | "billingAmount"
+  | "paidAmount"
+  | "dueAmount"
+  | "dueDate"
+  | "status"
+>;
 
 // ==========================================
 // CUSTOM ICONS TAILORED TO DASHBOARD THEME
@@ -145,13 +165,18 @@ export function DashboardClient({ stats }: DashboardClientProps) {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [createCustomerOpen, setCreateCustomerOpen] = useState(false);
   const [collectBillOpen, setCollectBillOpen] = useState(false);
-  const [selectedCustomerForBill, setSelectedCustomerForBill] = useState<any>(null);
-  const [selectedBillForCollection, setSelectedBillForCollection] = useState<any>(null);
+  const [selectedCustomerForBill, setSelectedCustomerForBill] =
+    useState<CollectCustomer | null>(null);
+  const [selectedBillForCollection, setSelectedBillForCollection] =
+    useState<CollectBill | null>(null);
   const [devicesCollapsed, setDevicesCollapsed] = useState(false);
   const [createType, setCreateType] = useState("antenna");
   const [searchModalOpen, setSearchModalOpen] = useState(false);
 
-  const handleOpenCollectFor = (customer?: any, bill?: any) => {
+  const handleOpenCollectFor = (
+    customer?: CollectCustomer,
+    bill?: CollectBill,
+  ) => {
     setSelectedCustomerForBill(customer || null);
     setSelectedBillForCollection(bill || null);
     setCollectBillOpen(true);
@@ -169,7 +194,8 @@ export function DashboardClient({ stats }: DashboardClientProps) {
   const switchStats = stats.byType.find((t) => t.type === "switch");
 
   const antennaCount = antennaStats?.count ?? 0;
-  const antennaOnline = (antennaStats?.active ?? 0) + (antennaStats?.available ?? 0);
+  const antennaOnline =
+    (antennaStats?.active ?? 0) + (antennaStats?.available ?? 0);
   const antennaOffline = Math.max(0, antennaCount - antennaOnline);
 
   const apCount = apStats?.count ?? 0;
@@ -177,11 +203,13 @@ export function DashboardClient({ stats }: DashboardClientProps) {
   const apOffline = Math.max(0, apCount - apOnline);
 
   const routerCount = routerStats?.count ?? 0;
-  const routerOnline = (routerStats?.active ?? 0) + (routerStats?.available ?? 0);
+  const routerOnline =
+    (routerStats?.active ?? 0) + (routerStats?.available ?? 0);
   const routerOffline = Math.max(0, routerCount - routerOnline);
 
   const switchCount = switchStats?.count ?? 0;
-  const switchOnline = (switchStats?.active ?? 0) + (switchStats?.available ?? 0);
+  const switchOnline =
+    (switchStats?.active ?? 0) + (switchStats?.available ?? 0);
   const switchOffline = Math.max(0, switchCount - switchOnline);
 
   // Server & Core Infrastructure actual DB stats
@@ -190,13 +218,8 @@ export function DashboardClient({ stats }: DashboardClientProps) {
   const routersCount = stats.serverStats?.routersCount ?? routerCount;
 
   // Customer & Billing actual DB stats
-  const totalCustomers = stats.customerStats?.totalCustomers ?? 0;
-  const paidThisMonth = stats.customerStats?.paidThisMonth ?? 0;
-  const dueCustomers = stats.customerStats?.dueCustomers ?? 0;
-
   return (
     <div className="p-3.5 sm:p-5 lg:p-6 space-y-4 sm:space-y-5 max-w-9xl mx-auto transition-all">
-
       {/* ========================================================================= */}
       {/* SECTION 1: QUICK ADD                                                      */}
       {/* ========================================================================= */}
@@ -262,12 +285,14 @@ export function DashboardClient({ stats }: DashboardClientProps) {
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100">
-                  {stats.pendingDevices} Device{stats.pendingDevices > 1 ? "s" : ""} Awaiting Approval
+                  {stats.pendingDevices} Device
+                  {stats.pendingDevices > 1 ? "s" : ""} Awaiting Approval
                 </span>
                 <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
               </div>
               <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Staff submissions are kept pending and isolated from the active network until authorized.
+                Staff submissions are kept pending and isolated from the active
+                network until authorized.
               </p>
             </div>
           </div>
@@ -418,7 +443,6 @@ export function DashboardClient({ stats }: DashboardClientProps) {
                 </div>
               </div>
             </div>
-
           </div>
 
           {/* Router Card */}
@@ -471,8 +495,6 @@ export function DashboardClient({ stats }: DashboardClientProps) {
                 </div>
               </div>
             </div>
-
-
           </div>
 
           {/* Switch Card */}
@@ -525,7 +547,6 @@ export function DashboardClient({ stats }: DashboardClientProps) {
                 </div>
               </div>
             </div>
-
           </div>
         </div>
       </section>
@@ -541,7 +562,9 @@ export function DashboardClient({ stats }: DashboardClientProps) {
             </h2>
           </div>
 
-          <div className={`grid ${canWriteDevices ? "grid-cols-2" : "grid-cols-1"} gap-2`}>
+          <div
+            className={`grid ${canWriteDevices ? "grid-cols-2" : "grid-cols-1"} gap-2`}
+          >
             {/* Top Action: Add Server */}
             {canWriteDevices && (
               <button
@@ -611,8 +634,6 @@ export function DashboardClient({ stats }: DashboardClientProps) {
               </div>
             </div>
           </div>
-
-
         </section>
       )}
 
@@ -636,7 +657,8 @@ export function DashboardClient({ stats }: DashboardClientProps) {
               </span>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Manage client subscriptions, active servers, and audit-tracked bill collections.
+              Manage client subscriptions, active servers, and audit-tracked
+              bill collections.
             </p>
           </div>
 
@@ -748,7 +770,9 @@ export function DashboardClient({ stats }: DashboardClientProps) {
                 Total Outstanding
               </span>
               <div className="text-base sm:text-lg font-black text-purple-700 dark:text-purple-300 leading-tight truncate">
-                {formatCurrency(stats.customerStats.totalOutstandingAmount ?? 0)}
+                {formatCurrency(
+                  stats.customerStats.totalOutstandingAmount ?? 0,
+                )}
               </div>
             </div>
           </div>
@@ -779,25 +803,28 @@ export function DashboardClient({ stats }: DashboardClientProps) {
             )}
           </div>
 
-          {!stats.awaitingCollectionCustomers || stats.awaitingCollectionCustomers.length === 0 ? (
+          {!stats.awaitingCollectionCustomers ||
+          stats.awaitingCollectionCustomers.length === 0 ? (
             <div className="p-6 rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border border-dashed border-slate-200 dark:border-slate-800 text-center space-y-1.5">
               <CheckCircle2 className="w-6 h-6 text-emerald-500 mx-auto" />
               <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
                 All bills collected or up to date!
               </p>
               <p className="text-[11px] text-slate-400">
-                There are currently no overdue or pending customer collections requiring attention.
+                There are currently no overdue or pending customer collections
+                requiring attention.
               </p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {stats.awaitingCollectionCustomers.map((cust) => {
-                const serviceConfig =
-                  CUSTOMER_SERVICE_TYPE_CONFIG[cust.serviceType || "Service C"] || {
-                    label: cust.serviceType || "Service C",
-                    bg: "bg-slate-100 text-slate-700 border-slate-200",
-                    darkBg: "dark:bg-slate-800",
-                  };
+                const serviceConfig = CUSTOMER_SERVICE_TYPE_CONFIG[
+                  cust.serviceType || "Service C"
+                ] || {
+                  label: cust.serviceType || "Service C",
+                  bg: "bg-slate-100 text-slate-700 border-slate-200",
+                  darkBg: "dark:bg-slate-800",
+                };
                 const isOverdue = cust.status === "Overdue";
 
                 return (
@@ -888,7 +915,7 @@ export function DashboardClient({ stats }: DashboardClientProps) {
                                 dueAmount: cust.dueAmount,
                                 dueDate: cust.dueDate,
                                 status: cust.status,
-                              }
+                              },
                             )
                           }
                           className="py-1.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1 shadow-xs transition-all active:scale-[0.98]"
@@ -954,8 +981,8 @@ export function DashboardClient({ stats }: DashboardClientProps) {
           </div>
         </div>
 
-        {!devicesCollapsed && (
-          stats.recentDevices.length === 0 ? (
+        {!devicesCollapsed &&
+          (stats.recentDevices.length === 0 ? (
             <div className="text-center py-8 text-slate-400">
               <Boxes className="w-7 h-7 mx-auto mb-1.5 opacity-30" />
               <p className="text-xs font-semibold">No devices registered yet</p>
@@ -964,7 +991,8 @@ export function DashboardClient({ stats }: DashboardClientProps) {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3 pt-1">
               {stats.recentDevices.map((d) => {
                 const devType = d.deviceType?.toLowerCase();
-                let IconComponent: React.ComponentType<{ className?: string }> = Network;
+                let IconComponent: React.ComponentType<{ className?: string }> =
+                  Network;
                 let iconTheme =
                   "bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400";
                 let typeLabel = d.deviceType;
@@ -1003,7 +1031,9 @@ export function DashboardClient({ stats }: DashboardClientProps) {
                     className="group flex items-center justify-between p-2.5 sm:p-3 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 shadow-xs transition-all active:scale-[0.99] text-left gap-2.5"
                   >
                     <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                      <div className={`p-2 rounded-xl border shrink-0 ${iconTheme}`}>
+                      <div
+                        className={`p-2 rounded-xl border shrink-0 ${iconTheme}`}
+                      >
                         <IconComponent className="w-3.5 h-3.5" />
                       </div>
                       <div className="min-w-0 flex-1">
@@ -1026,8 +1056,7 @@ export function DashboardClient({ stats }: DashboardClientProps) {
                 );
               })}
             </div>
-          )
-        )}
+          ))}
       </section>
 
       {/* ========================================================================= */}

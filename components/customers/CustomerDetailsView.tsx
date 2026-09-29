@@ -20,7 +20,6 @@ import {
   Network,
   MapPin,
   ExternalLink,
-  ShieldCheck,
   CheckCircle2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -72,7 +71,8 @@ export function CustomerDetailsView({
 
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isCollectOpen, setIsCollectOpen] = useState(false);
-  const [selectedBillingForCollect, setSelectedBillingForCollect] = useState<IBilling | null>(null);
+  const [selectedBillingForCollect, setSelectedBillingForCollect] =
+    useState<IBilling | null>(null);
 
   const navigateBillingPage = (newPage: number) => {
     router.push(`/customers/${customer._id}?page=${newPage}`);
@@ -81,16 +81,15 @@ export function CustomerDetailsView({
   const assignedDevices = (customer.assignedDevices || []) as IDevice[];
   const serverObj =
     customer.server && typeof customer.server === "object"
-      ? (customer.server as any)
+      ? customer.server
       : null;
 
   const serviceType = customer.serviceType || "Service C";
-  const serviceConfig =
-    CUSTOMER_SERVICE_TYPE_CONFIG[serviceType] || {
-      label: serviceType,
-      bg: "bg-slate-100 text-slate-700 border-slate-200",
-      darkBg: "dark:bg-slate-800",
-    };
+  const serviceConfig = CUSTOMER_SERVICE_TYPE_CONFIG[serviceType] || {
+    label: serviceType,
+    bg: "bg-slate-100 text-slate-700 border-slate-200",
+    darkBg: "dark:bg-slate-800",
+  };
 
   const handleOpenCollectForBill = (bill: IBilling) => {
     setSelectedBillingForCollect(bill);
@@ -138,8 +137,12 @@ export function CustomerDetailsView({
                 </span>
               </div>
               <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1">
-                Client ID: <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{customer.customerId}</span>
-                {customer.contactPerson && ` • Contact: ${customer.contactPerson}`}
+                Client ID:{" "}
+                <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
+                  {customer.customerId}
+                </span>
+                {customer.contactPerson &&
+                  ` • Contact: ${customer.contactPerson}`}
               </p>
             </div>
           </div>
@@ -270,7 +273,9 @@ export function CustomerDetailsView({
                   className="font-bold text-sky-600 dark:text-sky-400 hover:underline flex items-center gap-1"
                 >
                   <span>{serverObj.deviceName}</span>
-                  <span className="font-mono text-[10px]">({serverObj.sl})</span>
+                  <span className="font-mono text-[10px]">
+                    ({serverObj.sl})
+                  </span>
                 </Link>
               ) : (
                 <span className="text-slate-400 italic">Unassigned</span>
@@ -285,7 +290,9 @@ export function CustomerDetailsView({
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2 text-slate-900 dark:text-slate-100 font-bold text-base">
                 <Boxes className="w-5 h-5 text-indigo-500" />
-                <h2>Assigned Infrastructure Devices ({assignedDevices.length})</h2>
+                <h2>
+                  Assigned Infrastructure Devices ({assignedDevices.length})
+                </h2>
               </div>
             </div>
 
@@ -308,7 +315,9 @@ export function CustomerDetailsView({
                       <span className="font-bold text-xs text-slate-900 dark:text-slate-100 block truncate">
                         {dev.deviceName}
                       </span>
-                      <span className="text-[11px] text-slate-400"><span className="capitalize">{dev.deviceType}</span></span>
+                      <span className="text-[11px] text-slate-400">
+                        <span className="capitalize">{dev.deviceType}</span>
+                      </span>
                     </div>
                   </Link>
                 );
@@ -350,7 +359,9 @@ export function CustomerDetailsView({
           <div className="text-center py-10 text-slate-400 text-xs">
             <Receipt className="w-8 h-8 mx-auto mb-2 opacity-40" />
             <p className="font-semibold text-sm">No billing records yet</p>
-            <p className="mt-1">Invoices will appear here once monthly bills are generated.</p>
+            <p className="mt-1">
+              Invoices will appear here once monthly bills are generated.
+            </p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -395,7 +406,9 @@ export function CustomerDetailsView({
                     <td className="py-3.5 pr-4 text-slate-600 dark:text-slate-300 whitespace-nowrap">
                       <div className="space-y-0.5 text-[11px]">
                         {bill.paymentMethod && (
-                          <span className="font-semibold block">{bill.paymentMethod}</span>
+                          <span className="font-semibold block">
+                            {bill.paymentMethod}
+                          </span>
                         )}
                         {bill.collectedBy?.name && (
                           <span className="text-[10px] text-slate-400 block">
@@ -476,7 +489,7 @@ export function CustomerDetailsView({
         open={isCollectOpen}
         onOpenChange={setIsCollectOpen}
         initialCustomer={customer}
-        initialBilling={selectedBillingForCollect as any}
+        initialBilling={selectedBillingForCollect}
         onSuccess={() => {
           setIsCollectOpen(false);
           router.refresh();

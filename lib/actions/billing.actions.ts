@@ -25,7 +25,7 @@ export async function syncOverdueBillsIfNeeded() {
         dueDate: { $lt: new Date(now) },
         status: { $in: ["Pending", "Partial"] },
       },
-      { status: "Overdue" }
+      { status: "Overdue" },
     );
   } catch (error) {
     lastOverdueSyncAt = 0;
@@ -38,7 +38,7 @@ async function getNextBillingId(): Promise<string> {
   const counter = await Counter.findByIdAndUpdate(
     "billing_id",
     { $inc: { seq: 1 } },
-    { new: true, upsert: true }
+    { new: true, upsert: true },
   );
   return `BILL-${formatSL(counter.seq, 6)}`;
 }
@@ -123,7 +123,8 @@ export async function getBillings(params?: GetBillingsParams) {
     Billing.find(query)
       .populate({
         path: "customer",
-        select: "customerId name phone email address monthlyBill billingDay status serviceType server",
+        select:
+          "customerId name phone email address monthlyBill billingDay status serviceType server",
         populate: {
           path: "server",
           select: "sl deviceName deviceType ipAddress status",
@@ -153,7 +154,7 @@ export async function getBillings(params?: GetBillingsParams) {
 export async function getCustomerBillingHistory(
   customerId: string,
   page = 1,
-  limit = 10
+  limit = 10,
 ) {
   await requirePermission("billing", "read");
   await connectToDatabase();
@@ -223,7 +224,7 @@ export async function generateMonthlyBills(targetMonth?: string) {
   }).select("customer");
 
   const existingCustomerIds = new Set(
-    existingBills.map((b) => String(b.customer))
+    existingBills.map((b) => String(b.customer)),
   );
 
   let createdCount = 0;
@@ -239,7 +240,7 @@ export async function generateMonthlyBills(targetMonth?: string) {
     const billingId = await getNextBillingId();
     const billingDay = Math.min(
       Math.max(1, customer.billingDay || 1),
-      new Date(year, monthNum, 0).getDate()
+      new Date(year, monthNum, 0).getDate(),
     );
     const dueDate = new Date(year, monthNum - 1, billingDay, 23, 59, 59);
 
@@ -299,12 +300,15 @@ export async function updatePayment(
     paymentDate?: string | Date;
     paymentNote?: string;
     paymentReference?: string;
-  }
+  },
 ) {
   const actor = await requirePermission("billing", "write");
   await connectToDatabase();
 
-  const bill = await Billing.findById(id).populate("customer", "name customerId");
+  const bill = await Billing.findById(id).populate(
+    "customer",
+    "name customerId",
+  );
   if (!bill) throw new Error("Billing record not found");
 
   const paidAmount = Number(data.paidAmount);
@@ -314,7 +318,7 @@ export async function updatePayment(
 
   if (paidAmount > bill.billingAmount) {
     throw new Error(
-      `Paid amount (SAR ${paidAmount.toLocaleString()}) cannot exceed billing amount (SAR ${bill.billingAmount.toLocaleString()})`
+      `Paid amount (SAR ${paidAmount.toLocaleString()}) cannot exceed billing amount (SAR ${bill.billingAmount.toLocaleString()})`,
     );
   }
 
@@ -337,10 +341,16 @@ export async function updatePayment(
   bill.paidAmount = paidAmount;
   bill.dueAmount = dueAmount;
   bill.status = status;
-  bill.paymentDate = data.paymentDate ? new Date(data.paymentDate) : paidAmount > 0 ? new Date() : undefined;
+  bill.paymentDate = data.paymentDate
+    ? new Date(data.paymentDate)
+    : paidAmount > 0
+      ? new Date()
+      : undefined;
   if (data.paymentMethod) bill.paymentMethod = data.paymentMethod;
-  if (data.paymentNote !== undefined) bill.paymentNote = data.paymentNote.trim();
-  if (data.paymentReference !== undefined) bill.paymentReference = data.paymentReference.trim();
+  if (data.paymentNote !== undefined)
+    bill.paymentNote = data.paymentNote.trim();
+  if (data.paymentReference !== undefined)
+    bill.paymentReference = data.paymentReference.trim();
 
   bill.collectedBy = {
     email: actor.email,
@@ -406,14 +416,20 @@ export async function collectBillPayment(data: {
   if (data.billingId) {
     const isObjectId = /^[0-9a-fA-F]{24}$/.test(data.billingId);
     bill = await Billing.findOne({
-      $or: [{ billingId: data.billingId }, ...(isObjectId ? [{ _id: data.billingId }] : [])],
+      $or: [
+        { billingId: data.billingId },
+        ...(isObjectId ? [{ _id: data.billingId }] : []),
+      ],
     }).populate("customer", "name customerId phone email");
   }
 
   if (!bill && data.customerId) {
     const isObjectId = /^[0-9a-fA-F]{24}$/.test(data.customerId);
     const customer = await Customer.findOne({
-      $or: [{ customerId: data.customerId }, ...(isObjectId ? [{ _id: data.customerId }] : [])],
+      $or: [
+        { customerId: data.customerId },
+        ...(isObjectId ? [{ _id: data.customerId }] : []),
+      ],
     });
 
     if (!customer) throw new Error("Customer not found");
@@ -527,9 +543,12 @@ export async function getPendingBillForCustomer(customerId: string) {
   await connectToDatabase();
 
   const isObjectId = /^[0-9a-fA-F]{24}$/.test(customerId);
-  const customer = await Customer.findOne({
+  const customerResult = await Customer.findOne({
     $or: [{ customerId }, ...(isObjectId ? [{ _id: customerId }] : [])],
-  }).lean() as any;
+  }).lean();
+  const customer = Array.isArray(customerResult)
+    ? customerResult[0]
+    : customerResult;
 
   if (!customer) return null;
 
@@ -555,7 +574,11 @@ export async function getPendingBillForCustomer(customerId: string) {
 export async function updateBillingStatus(id: string, status: BillingStatus) {
   const actor = await requirePermission("billing", "write");
   await connectToDatabase();
-  const bill = (await Billing.findByIdAndUpdate(id, { status }, { new: true }).lean()) as IBilling | null;
+  const bill = (await Billing.findByIdAndUpdate(
+    id,
+    { status },
+    { new: true },
+  ).lean()) as IBilling | null;
   if (!bill) throw new Error("Billing record not found");
 
   await logActivityAndNotify({
@@ -579,7 +602,9 @@ export async function updateBillingStatus(id: string, status: BillingStatus) {
 export async function deleteBilling(id: string) {
   const actor = await requirePermission("billing", "write");
   await connectToDatabase();
-  const bill = (await Billing.findByIdAndDelete(id).lean()) as unknown as IBilling | null;
+  const bill = (await Billing.findByIdAndDelete(
+    id,
+  ).lean()) as unknown as IBilling | null;
   if (bill) {
     await logActivityAndNotify({
       actor,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -18,43 +18,43 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Loader2,
-  Receipt,
-  Search,
-  CheckCircle2,
-  Calendar,
-  CreditCard,
-  Building,
-  User,
-  AlertCircle,
-} from "lucide-react";
+import { Loader2, Receipt, Search, CheckCircle2, User } from "lucide-react";
 import { toast } from "react-hot-toast";
-import { collectBillPayment, getPendingBillForCustomer } from "@/lib/actions/billing.actions";
+import {
+  collectBillPayment,
+  getPendingBillForCustomer,
+} from "@/lib/actions/billing.actions";
 import { searchActiveCustomers } from "@/lib/actions/customer.actions";
 import { PAYMENT_METHODS } from "@/lib/constants";
 import { formatDate, formatCurrency } from "@/lib/utils";
-import type { IBilling, ICustomer } from "@/types";
+import type { ICustomer } from "@/types";
+
+interface CollectCustomer {
+  _id: string;
+  customerId: string;
+  name: string;
+  phone?: string;
+  serviceType?: string;
+  monthlyBill?: number;
+  serverName?: string;
+}
+
+interface CollectableBill {
+  _id?: string;
+  billingId: string;
+  billingMonth: string;
+  billingAmount: number;
+  paidAmount: number;
+  dueAmount: number;
+  dueDate: string | Date;
+  status: string;
+}
 
 interface CollectBillDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  initialCustomer?: {
-    _id: string;
-    customerId: string;
-    name: string;
-    phone?: string;
-    serviceType?: string;
-  } | null;
-  initialBilling?: {
-    billingId: string;
-    billingMonth: string;
-    billingAmount: number;
-    paidAmount: number;
-    dueAmount: number;
-    dueDate: string | Date;
-    status: string;
-  } | null;
+  initialCustomer?: CollectCustomer | null;
+  initialBilling?: CollectableBill | null;
   onSuccess?: () => void;
 }
 
@@ -65,21 +65,22 @@ export function CollectBillDialog({
   initialBilling = null,
   onSuccess,
 }: CollectBillDialogProps) {
-  const [isPending, startTransition] = useTransition();
-
   // Search & Selection state
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<ICustomer[]>([]);
   const [searching, setSearching] = useState(false);
-  const [selectedCustomer, setSelectedCustomer] = useState<any>(initialCustomer);
-  const [activeBill, setActiveBill] = useState<any>(initialBilling);
+  const [selectedCustomer, setSelectedCustomer] =
+    useState<CollectCustomer | null>(initialCustomer);
+  const [activeBill, setActiveBill] = useState<CollectableBill | null>(
+    initialBilling,
+  );
   const [loadingBill, setLoadingBill] = useState(false);
 
   // Form Fields
   const [collectAmount, setCollectAmount] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("Cash");
   const [paymentDate, setPaymentDate] = useState(
-    new Date().toISOString().split("T")[0]
+    new Date().toISOString().split("T")[0],
   );
   const [reference, setReference] = useState("");
   const [note, setNote] = useState("");
@@ -92,9 +93,15 @@ export function CollectBillDialog({
         setSelectedCustomer(initialCustomer);
         if (initialBilling) {
           setActiveBill(initialBilling);
-          setCollectAmount(String(initialBilling.dueAmount || initialBilling.billingAmount || 0));
+          setCollectAmount(
+            String(
+              initialBilling.dueAmount || initialBilling.billingAmount || 0,
+            ),
+          );
         } else {
-          loadBillForCustomer(initialCustomer.customerId || initialCustomer._id);
+          loadBillForCustomer(
+            initialCustomer.customerId || initialCustomer._id,
+          );
         }
       } else {
         setSelectedCustomer(null);
@@ -119,7 +126,9 @@ export function CollectBillDialog({
       }
       if (res?.bill) {
         setActiveBill(res.bill);
-        setCollectAmount(String(res.bill.dueAmount || res.bill.billingAmount || 0));
+        setCollectAmount(
+          String(res.bill.dueAmount || res.bill.billingAmount || 0),
+        );
       } else {
         setActiveBill(null);
         // Default to customer's monthly bill
@@ -151,7 +160,7 @@ export function CollectBillDialog({
     }
   };
 
-  const handleSelectCustomer = (cust: any) => {
+  const handleSelectCustomer = (cust: ICustomer) => {
     setSelectedCustomer(cust);
     setSearchQuery("");
     setSearchResults([]);
@@ -159,8 +168,8 @@ export function CollectBillDialog({
   };
 
   const dueAmount = activeBill
-    ? activeBill.dueAmount ?? activeBill.billingAmount
-    : selectedCustomer?.monthlyBill ?? 0;
+    ? (activeBill.dueAmount ?? activeBill.billingAmount)
+    : (selectedCustomer?.monthlyBill ?? 0);
 
   const handleSetFullAmount = () => {
     setCollectAmount(String(dueAmount));
@@ -193,12 +202,16 @@ export function CollectBillDialog({
       });
 
       toast.success(
-        `Collected SAR ${amountNum.toLocaleString()} for ${selectedCustomer.name}`
+        `Collected SAR ${amountNum.toLocaleString()} for ${selectedCustomer.name}`,
       );
       onOpenChange(false);
       if (onSuccess) onSuccess();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to record payment collection");
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : "Failed to record payment collection",
+      );
     } finally {
       setSubmitting(false);
     }
@@ -278,7 +291,8 @@ export function CollectBillDialog({
                       {selectedCustomer.name}
                     </h4>
                     <p className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
-                      {selectedCustomer.customerId} • {selectedCustomer.phone || "No phone"}
+                      {selectedCustomer.customerId} •{" "}
+                      {selectedCustomer.phone || "No phone"}
                     </p>
                   </div>
                 </div>
@@ -314,33 +328,44 @@ export function CollectBillDialog({
               {/* Current Bill Info Banner */}
               {loadingBill ? (
                 <div className="p-3 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" /> Fetching billing records...
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" /> Fetching
+                  billing records...
                 </div>
               ) : activeBill ? (
                 <div className="mt-2 p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 grid grid-cols-3 gap-2 text-center text-xs">
                   <div>
-                    <span className="text-[10px] text-slate-400 block font-medium">Month</span>
+                    <span className="text-[10px] text-slate-400 block font-medium">
+                      Month
+                    </span>
                     <span className="font-bold text-slate-800 dark:text-slate-200 font-mono text-xs">
                       {activeBill.billingMonth}
                     </span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-slate-400 block font-medium">Due Date</span>
+                    <span className="text-[10px] text-slate-400 block font-medium">
+                      Due Date
+                    </span>
                     <span className="font-medium text-slate-700 dark:text-slate-300 text-xs">
                       {formatDate(activeBill.dueDate)}
                     </span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-slate-400 block font-medium">Outstanding</span>
+                    <span className="text-[10px] text-slate-400 block font-medium">
+                      Outstanding
+                    </span>
                     <span className="font-bold text-rose-600 dark:text-rose-400 font-mono text-xs">
-                      {formatCurrency(activeBill.dueAmount ?? activeBill.billingAmount)}
+                      {formatCurrency(
+                        activeBill.dueAmount ?? activeBill.billingAmount,
+                      )}
                     </span>
                   </div>
                 </div>
               ) : (
                 <div className="mt-2 p-2 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200/60 dark:border-emerald-800/60 text-[11px] text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
                   <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                  <span>No overdue bill found. Collecting for current cycle.</span>
+                  <span>
+                    No overdue bill found. Collecting for current cycle.
+                  </span>
                 </div>
               )}
             </div>
@@ -353,7 +378,8 @@ export function CollectBillDialog({
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                    Collection Amount (SAR) <span className="text-rose-500">*</span>
+                    Collection Amount (SAR){" "}
+                    <span className="text-rose-500">*</span>
                   </Label>
                   {dueAmount > 0 && (
                     <button
@@ -388,7 +414,10 @@ export function CollectBillDialog({
                   <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                     Payment Method <span className="text-rose-500">*</span>
                   </Label>
-                  <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                  <Select
+                    value={paymentMethod}
+                    onValueChange={setPaymentMethod}
+                  >
                     <SelectTrigger className="rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-xs sm:text-sm">
                       <SelectValue placeholder="Select Method" />
                     </SelectTrigger>
@@ -444,7 +473,9 @@ export function CollectBillDialog({
 
               {/* Notice */}
               <p className="text-[11px] text-slate-400 dark:text-slate-500 leading-relaxed italic">
-                * Note: Collecting this bill will update the financial ledger and credit the customer's account. Line connectivity will remain unaffected.
+                * Note: Collecting this bill will update the financial ledger
+                and credit the customer&apos;s account. Line connectivity will
+                remain unaffected.
               </p>
             </div>
           )}
@@ -462,7 +493,12 @@ export function CollectBillDialog({
             </Button>
             <Button
               type="submit"
-              disabled={submitting || !selectedCustomer || !collectAmount || parseFloat(collectAmount) <= 0}
+              disabled={
+                submitting ||
+                !selectedCustomer ||
+                !collectAmount ||
+                parseFloat(collectAmount) <= 0
+              }
               className="rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm shadow-md shadow-emerald-600/10 px-5"
             >
               {submitting ? (

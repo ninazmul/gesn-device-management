@@ -47,13 +47,19 @@ export function CustomerMobileCards({
   const canWriteCustomers = canWrite("customers");
   const canReadBilling = canRead("billing");
 
-  const [editingCustomer, setEditingCustomer] = useState<ICustomer | null>(null);
-  const [deletingCustomer, setDeletingCustomer] = useState<ICustomer | null>(null);
+  const [editingCustomer, setEditingCustomer] = useState<ICustomer | null>(
+    null,
+  );
+  const [deletingCustomer, setDeletingCustomer] = useState<ICustomer | null>(
+    null,
+  );
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Collect bill dialog state
   const [collectOpen, setCollectOpen] = useState(false);
-  const [customerToCollect, setCustomerToCollect] = useState<ICustomer | null>(null);
+  const [customerToCollect, setCustomerToCollect] = useState<ICustomer | null>(
+    null,
+  );
 
   const navigatePage = (newPage: number) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -70,7 +76,9 @@ export function CustomerMobileCards({
       setDeletingCustomer(null);
       router.refresh();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to delete customer");
+      toast.error(
+        err instanceof Error ? err.message : "Failed to delete customer",
+      );
     } finally {
       setIsDeleting(false);
     }
@@ -87,17 +95,14 @@ export function CustomerMobileCards({
     <div className="space-y-3 block lg:hidden">
       {customers.map((cust) => {
         const serviceType = cust.serviceType || "Service C";
-        const serviceConfig =
-          CUSTOMER_SERVICE_TYPE_CONFIG[serviceType] || {
-            label: serviceType,
-            bg: "bg-slate-100 text-slate-700 border-slate-200",
-            darkBg: "dark:bg-slate-800",
-          };
+        const serviceConfig = CUSTOMER_SERVICE_TYPE_CONFIG[serviceType] || {
+          label: serviceType,
+          bg: "bg-slate-100 text-slate-700 border-slate-200",
+          darkBg: "dark:bg-slate-800",
+        };
 
         const serverObj =
-          cust.server && typeof cust.server === "object"
-            ? (cust.server as any)
-            : null;
+          cust.server && typeof cust.server === "object" ? cust.server : null;
 
         const currentBill = cust.currentBill;
 
@@ -164,7 +169,9 @@ export function CustomerMobileCards({
             {/* Financial Details Grid */}
             <div className="grid grid-cols-2 gap-2 text-xs pt-1 border-t border-slate-100 dark:border-slate-800/60">
               <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50">
-                <span className="text-slate-400 block text-[11px]">Monthly Subscription</span>
+                <span className="text-slate-400 block text-[11px]">
+                  Monthly Subscription
+                </span>
                 <span className="font-mono font-black text-sm text-slate-900 dark:text-slate-100">
                   {formatCurrency(cust.monthlyBill)}
                 </span>
@@ -175,21 +182,25 @@ export function CustomerMobileCards({
 
               <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 flex flex-col justify-between">
                 <div>
-                  <span className="text-slate-400 block text-[11px]">Current Bill</span>
+                  <span className="text-slate-400 block text-[11px]">
+                    Current Bill
+                  </span>
                   {currentBill ? (
                     <span
                       className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase mt-0.5 border ${
                         currentBill.status === "Paid"
                           ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-400 dark:border-emerald-800/60"
                           : currentBill.status === "Overdue"
-                          ? "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/60 dark:text-rose-400 dark:border-rose-800/60"
-                          : "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/60 dark:text-amber-400 dark:border-amber-800/60"
+                            ? "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/60 dark:text-rose-400 dark:border-rose-800/60"
+                            : "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/60 dark:text-amber-400 dark:border-amber-800/60"
                       }`}
                     >
                       {currentBill.status}
                     </span>
                   ) : (
-                    <span className="text-slate-400 text-xs italic">No Bill</span>
+                    <span className="text-slate-400 text-xs italic">
+                      No Bill
+                    </span>
                   )}
                 </div>
                 {currentBill && currentBill.dueAmount > 0 && (
@@ -314,7 +325,7 @@ export function CustomerMobileCards({
         open={collectOpen}
         onOpenChange={setCollectOpen}
         initialCustomer={customerToCollect}
-        initialBilling={customerToCollect?.currentBill as any}
+        initialBilling={customerToCollect?.currentBill}
         onSuccess={() => {
           setCollectOpen(false);
           router.refresh();
