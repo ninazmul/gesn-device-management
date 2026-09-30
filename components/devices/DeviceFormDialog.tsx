@@ -55,8 +55,11 @@ import { usePermissions } from "@/components/providers/PermissionContext";
 import { formatDisplaySL } from "@/lib/utils";
 
 const BarcodeScannerModal = dynamic(
-  () => import("./BarcodeScannerModal").then((module) => module.BarcodeScannerModal),
-  { ssr: false }
+  () =>
+    import("./BarcodeScannerModal").then(
+      (module) => module.BarcodeScannerModal,
+    ),
+  { ssr: false },
 );
 
 interface DeviceFormDialogProps {
@@ -83,7 +86,7 @@ export function DeviceFormDialog({
 
   // Active Device Type
   const [deviceType, setDeviceType] = useState(
-    deviceToEdit?.deviceType || defaultDeviceType
+    deviceToEdit?.deviceType || defaultDeviceType,
   );
 
   // Main Form Fields (Required based on deviceType)
@@ -93,13 +96,19 @@ export function DeviceFormDialog({
     typeof deviceToEdit?.server === "object" && deviceToEdit.server
       ? (deviceToEdit.server as IDevice)._id
       : typeof deviceToEdit?.server === "string"
-      ? deviceToEdit.server
-      : ""
+        ? deviceToEdit.server
+        : "",
   );
-  const [customerName, setCustomerName] = useState(deviceToEdit?.customerName || "");
-  const [customerMobile, setCustomerMobile] = useState(deviceToEdit?.customerMobile || "");
+  const [customerName, setCustomerName] = useState(
+    deviceToEdit?.customerName || "",
+  );
+  const [customerMobile, setCustomerMobile] = useState(
+    deviceToEdit?.customerMobile || "",
+  );
   const [gpsLink, setGpsLink] = useState(deviceToEdit?.gpsLink || "");
-  const [description, setDescription] = useState(deviceToEdit?.description || "");
+  const [description, setDescription] = useState(
+    deviceToEdit?.description || "",
+  );
 
   // More (Optional) Toggle & Fields
   const [showMore, setShowMore] = useState(false);
@@ -107,28 +116,32 @@ export function DeviceFormDialog({
   const [ipAddress, setIpAddress] = useState(deviceToEdit?.ipAddress || "");
   const [onlineLink, setOnlineLink] = useState(deviceToEdit?.onlineLink || "");
   const [totalPorts, setTotalPorts] = useState<string>(
-    deviceToEdit?.totalPorts !== undefined ? String(deviceToEdit.totalPorts) : "8"
+    deviceToEdit?.totalPorts !== undefined
+      ? String(deviceToEdit.totalPorts)
+      : "8",
   );
   const [uplinkSwitch, setUplinkSwitch] = useState<string>(
     typeof deviceToEdit?.uplinkSwitch === "object" && deviceToEdit.uplinkSwitch
       ? (deviceToEdit.uplinkSwitch as IDevice)._id
       : typeof deviceToEdit?.uplinkSwitch === "string"
-      ? deviceToEdit.uplinkSwitch
-      : ""
+        ? deviceToEdit.uplinkSwitch
+        : "",
   );
   const [activationDate, setActivationDate] = useState(
     deviceToEdit?.activationDate
       ? new Date(deviceToEdit.activationDate).toISOString().split("T")[0]
-      : new Date().toISOString().split("T")[0]
+      : new Date().toISOString().split("T")[0],
   );
   const [frequency, setFrequency] = useState("");
   const [status, setStatus] = useState<DeviceStatus>(
-    (deviceToEdit?.status as DeviceStatus) || "Pending"
+    (deviceToEdit?.status as DeviceStatus) || "Pending",
   );
 
   // Catalog, Switch & Server Options
   const [availableTypes, setAvailableTypes] = useState<IDeviceType[]>([]);
-  const [availableSwitches, setAvailableSwitches] = useState<ISwitchOption[]>([]);
+  const [availableSwitches, setAvailableSwitches] = useState<ISwitchOption[]>(
+    [],
+  );
   const [availableServers, setAvailableServers] = useState<IServerOption[]>([]);
   const [loadingSwitches, setLoadingSwitches] = useState(false);
   const [loadingServers, setLoadingServers] = useState(false);
@@ -136,17 +149,26 @@ export function DeviceFormDialog({
 
   // Scanner modal states
   const [scannerOpen, setScannerOpen] = useState(false);
-  const [scannerTargetField, setScannerTargetField] = useState<string>("MAC Address");
+  const [scannerTargetField, setScannerTargetField] =
+    useState<string>("MAC Address");
   const [scannedFields, setScannedFields] = useState<Set<string>>(new Set());
   const [scanPendingResult, setScanPendingResult] = useState<{
     raw: string;
     parsed: ParsedBarcodeResult;
   } | null>(null);
 
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) {
+      setScannerOpen(false);
+      setScanPendingResult(null);
+    }
+    onOpenChange(nextOpen);
+  };
+
   // Assign scan to field helper
   const assignScanToField = (
     value: string,
-    field: "macAddress" | "ipAddress" | "deviceName"
+    field: "macAddress" | "ipAddress" | "deviceName",
   ) => {
     const highlighted = new Set<string>();
     if (field === "macAddress") {
@@ -184,8 +206,6 @@ export function DeviceFormDialog({
       filledFields.push(`IP: ${result.ipAddress}`);
       highlighted.add("ipAddress");
     }
-
-
 
     // Fallback: raw value wasn't categorized at all
     if (!result.macAddress && !result.ipAddress && result.raw) {
@@ -246,8 +266,8 @@ export function DeviceFormDialog({
         typeof deviceToEdit.server === "object" && deviceToEdit.server
           ? (deviceToEdit.server as IDevice)._id
           : typeof deviceToEdit.server === "string"
-          ? deviceToEdit.server
-          : ""
+            ? deviceToEdit.server
+            : "",
       );
       setCustomerName(deviceToEdit.customerName || "");
       setCustomerMobile(deviceToEdit.customerMobile || "");
@@ -259,19 +279,22 @@ export function DeviceFormDialog({
       setIpAddress(deviceToEdit.ipAddress || "");
       setOnlineLink(deviceToEdit.onlineLink || "");
       setTotalPorts(
-        deviceToEdit.totalPorts !== undefined ? String(deviceToEdit.totalPorts) : "8"
+        deviceToEdit.totalPorts !== undefined
+          ? String(deviceToEdit.totalPorts)
+          : "8",
       );
       setUplinkSwitch(
-        typeof deviceToEdit.uplinkSwitch === "object" && deviceToEdit.uplinkSwitch
+        typeof deviceToEdit.uplinkSwitch === "object" &&
+          deviceToEdit.uplinkSwitch
           ? (deviceToEdit.uplinkSwitch as IDevice)._id
           : typeof deviceToEdit.uplinkSwitch === "string"
-          ? deviceToEdit.uplinkSwitch
-          : ""
+            ? deviceToEdit.uplinkSwitch
+            : "",
       );
       setActivationDate(
         deviceToEdit.activationDate
           ? new Date(deviceToEdit.activationDate).toISOString().split("T")[0]
-          : new Date().toISOString().split("T")[0]
+          : new Date().toISOString().split("T")[0],
       );
       setStatus(deviceToEdit.status || "Pending");
       setShowMore(false); // Collapsed by default
@@ -314,7 +337,7 @@ export function DeviceFormDialog({
               slug: p.slug,
               isProtected: p.isProtected,
               isActive: true,
-            }))
+            })),
           );
         }
       })
@@ -347,7 +370,12 @@ export function DeviceFormDialog({
     };
   }, [open]);
 
-
+  useEffect(() => {
+    if (!open) {
+      setScannerOpen(false);
+      setScanPendingResult(null);
+    }
+  }, [open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -453,9 +481,15 @@ export function DeviceFormDialog({
         server: normalizedType !== "server" && server ? server : null,
         description: combinedDescription,
         // AP & Customer fields
-        apNumber: ["access-point"].includes(normalizedType) ? apNumber.trim() : undefined,
-        customerName: ["access-point", "router"].includes(normalizedType) ? customerName.trim() : undefined,
-        customerMobile: ["access-point", "router"].includes(normalizedType) ? customerMobile.trim() : undefined,
+        apNumber: ["access-point"].includes(normalizedType)
+          ? apNumber.trim()
+          : undefined,
+        customerName: ["access-point", "router"].includes(normalizedType)
+          ? customerName.trim()
+          : undefined,
+        customerMobile: ["access-point", "router"].includes(normalizedType)
+          ? customerMobile.trim()
+          : undefined,
         gpsLink: gpsLink.trim() || undefined,
         // More (Optional) fields
         deviceName: deviceName.trim(),
@@ -466,7 +500,9 @@ export function DeviceFormDialog({
             ? Number(totalPorts)
             : undefined,
         uplinkSwitch:
-          ["antenna", "access-point", "router", "switch"].includes(normalizedType) && uplinkSwitch
+          ["antenna", "access-point", "router", "switch"].includes(
+            normalizedType,
+          ) && uplinkSwitch
             ? uplinkSwitch
             : null,
         activationDate: activationDate ? new Date(activationDate) : new Date(),
@@ -475,17 +511,19 @@ export function DeviceFormDialog({
 
       if (isEditing && deviceToEdit) {
         await updateDevice(deviceToEdit._id, payload);
-        toast.success(`Device #${formatDisplaySL(deviceToEdit.sl)} updated successfully`);
+        toast.success(
+          `Device #${formatDisplaySL(deviceToEdit.sl)} updated successfully`,
+        );
       } else {
         const created = await createDevice(payload);
         toast.success(
           created.status === "Pending"
             ? `Device #${formatDisplaySL(created.sl)} created — Pending approval`
-            : `Device #${formatDisplaySL(created.sl)} created successfully`
+            : `Device #${formatDisplaySL(created.sl)} created successfully`,
         );
       }
 
-      onOpenChange(false);
+      handleOpenChange(false);
       if (onSuccess) onSuccess();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to save device");
@@ -499,10 +537,12 @@ export function DeviceFormDialog({
     return found ? found.name : slug;
   };
 
-  const selectedSwitchData = availableSwitches.find((s) => s._id === uplinkSwitch);
+  const selectedSwitchData = availableSwitches.find(
+    (s) => s._id === uplinkSwitch,
+  );
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="w-[95vw] sm:max-w-2xl max-h-[92vh] overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl">
         <DialogHeader className="border-b border-slate-100 dark:border-slate-800 pb-3 sm:pb-4">
           <div className="flex items-center justify-between gap-3">
@@ -534,7 +574,9 @@ export function DeviceFormDialog({
                 <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                   Device Type <span className="text-rose-500">*</span>
                 </Label>
-                <span className="text-[11px] text-slate-400">Selecting type updates required form fields</span>
+                <span className="text-[11px] text-slate-400">
+                  Selecting type updates required form fields
+                </span>
               </div>
               <Select
                 value={deviceType}
@@ -543,7 +585,11 @@ export function DeviceFormDialog({
                   if (val === "switch" && !totalPorts) {
                     setTotalPorts("8");
                   }
-                  if (!["antenna", "access-point", "router", "switch"].includes(val)) {
+                  if (
+                    !["antenna", "access-point", "router", "switch"].includes(
+                      val,
+                    )
+                  ) {
                     setUplinkSwitch("");
                   }
                   if (val === "server") {
@@ -556,7 +602,11 @@ export function DeviceFormDialog({
                 </SelectTrigger>
                 <SelectContent className="dark:bg-slate-900 dark:border-slate-800">
                   {availableTypes.map((t) => (
-                    <SelectItem key={t.slug} value={t.slug} className="py-2 font-medium">
+                    <SelectItem
+                      key={t.slug}
+                      value={t.slug}
+                      className="py-2 font-medium"
+                    >
                       {t.name}
                     </SelectItem>
                   ))}
@@ -606,7 +656,9 @@ export function DeviceFormDialog({
                       value={macAddress}
                       onChange={(e) => setMacAddress(e.target.value)}
                       className={`h-10 rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 font-mono text-sm uppercase pr-10 ${
-                        scannedFields.has("macAddress") ? "scan-field-highlight" : ""
+                        scannedFields.has("macAddress")
+                          ? "scan-field-highlight"
+                          : ""
                       }`}
                     />
                     <button
@@ -639,8 +691,15 @@ export function DeviceFormDialog({
                 {/* 3. Connected Server */}
                 <div className="space-y-1">
                   <Label className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center justify-between">
-                    <span>3. Connected Server <span className="text-rose-500">*</span></span>
-                    {loadingServers && <span className="text-[10px] text-slate-400">Loading servers...</span>}
+                    <span>
+                      3. Connected Server{" "}
+                      <span className="text-rose-500">*</span>
+                    </span>
+                    {loadingServers && (
+                      <span className="text-[10px] text-slate-400">
+                        Loading servers...
+                      </span>
+                    )}
                   </Label>
                   <Select value={server} onValueChange={setServer}>
                     <SelectTrigger className="h-10 rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm">
@@ -648,7 +707,11 @@ export function DeviceFormDialog({
                     </SelectTrigger>
                     <SelectContent className="dark:bg-slate-900 dark:border-slate-800 max-h-60">
                       {availableServers.map((srv) => (
-                        <SelectItem key={srv._id} value={srv._id} className="py-2">
+                        <SelectItem
+                          key={srv._id}
+                          value={srv._id}
+                          className="py-2"
+                        >
                           #{srv.sl} — {srv.deviceName}
                         </SelectItem>
                       ))}
@@ -699,7 +762,8 @@ export function DeviceFormDialog({
                 {/* 7. Description (Free Text) */}
                 <div className="space-y-1">
                   <Label className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                    7. Description (Free Text) <span className="text-rose-500">*</span>
+                    7. Description (Free Text){" "}
+                    <span className="text-rose-500">*</span>
                   </Label>
                   <Textarea
                     placeholder="Enter any relevant deployment info, location notes, or subscriber details..."
@@ -740,7 +804,9 @@ export function DeviceFormDialog({
                       value={macAddress}
                       onChange={(e) => setMacAddress(e.target.value)}
                       className={`h-10 rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 font-mono text-sm uppercase pr-10 ${
-                        scannedFields.has("macAddress") ? "scan-field-highlight" : ""
+                        scannedFields.has("macAddress")
+                          ? "scan-field-highlight"
+                          : ""
                       }`}
                     />
                     <button
@@ -760,8 +826,15 @@ export function DeviceFormDialog({
                 {/* 2. Connected Server */}
                 <div className="space-y-1">
                   <Label className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center justify-between">
-                    <span>2. Connected Server <span className="text-rose-500">*</span></span>
-                    {loadingServers && <span className="text-[10px] text-slate-400">Loading servers...</span>}
+                    <span>
+                      2. Connected Server{" "}
+                      <span className="text-rose-500">*</span>
+                    </span>
+                    {loadingServers && (
+                      <span className="text-[10px] text-slate-400">
+                        Loading servers...
+                      </span>
+                    )}
                   </Label>
                   <Select value={server} onValueChange={setServer}>
                     <SelectTrigger className="h-10 rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm">
@@ -769,7 +842,11 @@ export function DeviceFormDialog({
                     </SelectTrigger>
                     <SelectContent className="dark:bg-slate-900 dark:border-slate-800 max-h-60">
                       {availableServers.map((srv) => (
-                        <SelectItem key={srv._id} value={srv._id} className="py-2">
+                        <SelectItem
+                          key={srv._id}
+                          value={srv._id}
+                          className="py-2"
+                        >
                           #{srv.sl} — {srv.deviceName}
                         </SelectItem>
                       ))}
@@ -820,7 +897,8 @@ export function DeviceFormDialog({
                 {/* 6. Description (Free Text) */}
                 <div className="space-y-1">
                   <Label className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                    6. Description (Free Text) <span className="text-rose-500">*</span>
+                    6. Description (Free Text){" "}
+                    <span className="text-rose-500">*</span>
                   </Label>
                   <Textarea
                     placeholder="Enter any deployment info, customer package or location details..."
@@ -861,7 +939,9 @@ export function DeviceFormDialog({
                       value={macAddress}
                       onChange={(e) => setMacAddress(e.target.value)}
                       className={`h-10 rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 font-mono text-sm uppercase pr-10 ${
-                        scannedFields.has("macAddress") ? "scan-field-highlight" : ""
+                        scannedFields.has("macAddress")
+                          ? "scan-field-highlight"
+                          : ""
                       }`}
                     />
                     <button
@@ -881,8 +961,15 @@ export function DeviceFormDialog({
                 {/* 2. Connected Server */}
                 <div className="space-y-1">
                   <Label className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center justify-between">
-                    <span>2. Connected Server <span className="text-rose-500">*</span></span>
-                    {loadingServers && <span className="text-[10px] text-slate-400">Loading servers...</span>}
+                    <span>
+                      2. Connected Server{" "}
+                      <span className="text-rose-500">*</span>
+                    </span>
+                    {loadingServers && (
+                      <span className="text-[10px] text-slate-400">
+                        Loading servers...
+                      </span>
+                    )}
                   </Label>
                   <Select value={server} onValueChange={setServer}>
                     <SelectTrigger className="h-10 rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm">
@@ -890,7 +977,11 @@ export function DeviceFormDialog({
                     </SelectTrigger>
                     <SelectContent className="dark:bg-slate-900 dark:border-slate-800 max-h-60">
                       {availableServers.map((srv) => (
-                        <SelectItem key={srv._id} value={srv._id} className="py-2">
+                        <SelectItem
+                          key={srv._id}
+                          value={srv._id}
+                          className="py-2"
+                        >
                           #{srv.sl} — {srv.deviceName}
                         </SelectItem>
                       ))}
@@ -901,7 +992,8 @@ export function DeviceFormDialog({
                 {/* 3. GPS Link / Location */}
                 <div className="space-y-1">
                   <Label className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                    3. GPS Link / Location <span className="text-rose-500">*</span>
+                    3. GPS Link / Location{" "}
+                    <span className="text-rose-500">*</span>
                   </Label>
                   <Input
                     placeholder="e.g. Rack A-02, Core Room or https://maps.google.com/..."
@@ -914,7 +1006,8 @@ export function DeviceFormDialog({
                 {/* 4. Description (Free Text) */}
                 <div className="space-y-1">
                   <Label className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                    4. Description (Free Text) <span className="text-rose-500">*</span>
+                    4. Description (Free Text){" "}
+                    <span className="text-rose-500">*</span>
                   </Label>
                   <Textarea
                     placeholder="Enter switch distribution role, building location, or cabinet notes..."
@@ -955,7 +1048,9 @@ export function DeviceFormDialog({
                       value={macAddress}
                       onChange={(e) => setMacAddress(e.target.value)}
                       className={`h-10 rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 font-mono text-sm uppercase pr-10 ${
-                        scannedFields.has("macAddress") ? "scan-field-highlight" : ""
+                        scannedFields.has("macAddress")
+                          ? "scan-field-highlight"
+                          : ""
                       }`}
                     />
                     <button
@@ -975,8 +1070,15 @@ export function DeviceFormDialog({
                 {/* 2. Connected Server */}
                 <div className="space-y-1">
                   <Label className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center justify-between">
-                    <span>2. Connected Server <span className="text-rose-500">*</span></span>
-                    {loadingServers && <span className="text-[10px] text-slate-400">Loading servers...</span>}
+                    <span>
+                      2. Connected Server{" "}
+                      <span className="text-rose-500">*</span>
+                    </span>
+                    {loadingServers && (
+                      <span className="text-[10px] text-slate-400">
+                        Loading servers...
+                      </span>
+                    )}
                   </Label>
                   <Select value={server} onValueChange={setServer}>
                     <SelectTrigger className="h-10 rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm">
@@ -984,7 +1086,11 @@ export function DeviceFormDialog({
                     </SelectTrigger>
                     <SelectContent className="dark:bg-slate-900 dark:border-slate-800 max-h-60">
                       {availableServers.map((srv) => (
-                        <SelectItem key={srv._id} value={srv._id} className="py-2">
+                        <SelectItem
+                          key={srv._id}
+                          value={srv._id}
+                          className="py-2"
+                        >
                           #{srv.sl} — {srv.deviceName}
                         </SelectItem>
                       ))}
@@ -995,7 +1101,8 @@ export function DeviceFormDialog({
                 {/* 3. Location / GPS Link */}
                 <div className="space-y-1">
                   <Label className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                    3. Location / GPS Link <span className="text-rose-500">*</span>
+                    3. Location / GPS Link{" "}
+                    <span className="text-rose-500">*</span>
                   </Label>
                   <Input
                     placeholder="e.g. Tower 3 North or https://maps.google.com/?q=..."
@@ -1008,7 +1115,8 @@ export function DeviceFormDialog({
                 {/* 4. Description (Free Text) */}
                 <div className="space-y-1">
                   <Label className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                    4. Description (Free Text) <span className="text-rose-500">*</span>
+                    4. Description (Free Text){" "}
+                    <span className="text-rose-500">*</span>
                   </Label>
                   <Textarea
                     placeholder="Enter tower antenna sector coverage, height, azimuth, or technical notes..."
@@ -1024,7 +1132,9 @@ export function DeviceFormDialog({
             {/* ------------------------------------------------------------- */}
             {/* 5. SERVER OR OTHER FORM */}
             {/* ------------------------------------------------------------- */}
-            {!["access-point", "router", "switch", "antenna"].includes(deviceType) && (
+            {!["access-point", "router", "switch", "antenna"].includes(
+              deviceType,
+            ) && (
               <div className="space-y-3">
                 <div className="space-y-1">
                   <Label className="text-xs font-bold text-slate-800 dark:text-slate-200">
@@ -1050,7 +1160,8 @@ export function DeviceFormDialog({
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                    3. Description (Free Text) <span className="text-rose-500">*</span>
+                    3. Description (Free Text){" "}
+                    <span className="text-rose-500">*</span>
                   </Label>
                   <Textarea
                     placeholder="Enter server operational purpose and location..."
@@ -1067,23 +1178,25 @@ export function DeviceFormDialog({
           {/* ========================================================================= */}
           {/* SMALL EXPANDABLE BUTTON: More (Optional) */}
           {/* ========================================================================= */}
-          {deviceType !== "server" && <div className="pt-1">
-            <button
-              type="button"
-              onClick={() => setShowMore((prev) => !prev)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors shadow-2xs"
-            >
-              {showMore ? (
-                <ChevronUp className="w-3.5 h-3.5 text-slate-500" />
-              ) : (
-                <ChevronDown className="w-3.5 h-3.5 text-slate-500" />
-              )}
-              <span>More (Optional)</span>
-              <span className="text-[10px] text-slate-400 font-normal">
-                {showMore ? "(click to collapse)" : "(IP, Uplink, etc.)"}
-              </span>
-            </button>
-          </div>}
+          {deviceType !== "server" && (
+            <div className="pt-1">
+              <button
+                type="button"
+                onClick={() => setShowMore((prev) => !prev)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors shadow-2xs"
+              >
+                {showMore ? (
+                  <ChevronUp className="w-3.5 h-3.5 text-slate-500" />
+                ) : (
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-500" />
+                )}
+                <span>More (Optional)</span>
+                <span className="text-[10px] text-slate-400 font-normal">
+                  {showMore ? "(click to collapse)" : "(IP, Uplink, etc.)"}
+                </span>
+              </button>
+            </div>
+          )}
 
           {/* ========================================================================= */}
           {/* MORE (OPTIONAL) SECTION - COLLAPSED BY DEFAULT */}
@@ -1095,10 +1208,10 @@ export function DeviceFormDialog({
                   <SlidersHorizontal className="w-3.5 h-3.5 text-sky-500" />
                   Additional & Advanced Specifications (Optional)
                 </span>
-                <span className="text-[10px] text-slate-400">All fields below are optional</span>
+                <span className="text-[10px] text-slate-400">
+                  All fields below are optional
+                </span>
               </div>
-
-
 
               {/* Device Name */}
               <div className="space-y-1">
@@ -1147,7 +1260,9 @@ export function DeviceFormDialog({
                     <Label className="text-xs font-bold text-sky-900 dark:text-sky-300">
                       Switch Port Capacity
                     </Label>
-                    <span className="text-[10px] text-sky-600 dark:text-sky-400">Total physical ports</span>
+                    <span className="text-[10px] text-sky-600 dark:text-sky-400">
+                      Total physical ports
+                    </span>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 items-center">
                     <Input
@@ -1180,7 +1295,9 @@ export function DeviceFormDialog({
               )}
 
               {/* Uplink Switch Assignment (For Antenna, AP, Router, Switch) */}
-              {["antenna", "access-point", "router", "switch"].includes(deviceType) && (
+              {["antenna", "access-point", "router", "switch"].includes(
+                deviceType,
+              ) && (
                 <div className="space-y-2 p-3 rounded-xl bg-indigo-50/40 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/40">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5">
@@ -1199,22 +1316,31 @@ export function DeviceFormDialog({
                       </button>
                     )}
                   </div>
-                  <Select value={uplinkSwitch} onValueChange={setUplinkSwitch} disabled={loadingSwitches}>
+                  <Select
+                    value={uplinkSwitch}
+                    onValueChange={setUplinkSwitch}
+                    disabled={loadingSwitches}
+                  >
                     <SelectTrigger className="h-9 rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-xs">
                       <SelectValue
                         placeholder={
                           loadingSwitches
                             ? "Loading switches..."
                             : availableSwitches.length === 0
-                            ? "No active switches found"
-                            : "Select Uplink Switch (Optional)"
+                              ? "No active switches found"
+                              : "Select Uplink Switch (Optional)"
                         }
                       />
                     </SelectTrigger>
                     <SelectContent className="dark:bg-slate-900 dark:border-slate-800 max-h-56">
                       {availableSwitches.map((sw) => (
-                        <SelectItem key={sw._id} value={sw._id} className="py-1.5 text-xs">
-                          #{sw.sl} — {sw.deviceName} [{sw.availablePorts}/{sw.totalPorts} Free]
+                        <SelectItem
+                          key={sw._id}
+                          value={sw._id}
+                          className="py-1.5 text-xs"
+                        >
+                          #{sw.sl} — {sw.deviceName} [{sw.availablePorts}/
+                          {sw.totalPorts} Free]
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -1265,13 +1391,17 @@ export function DeviceFormDialog({
                 <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                   Status
                 </Label>
-                <Select value={status} onValueChange={(val) => setStatus(val as DeviceStatus)}>
+                <Select
+                  value={status}
+                  onValueChange={(val) => setStatus(val as DeviceStatus)}
+                >
                   <SelectTrigger className="h-9 rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-xs">
                     <SelectValue placeholder="Select Status" />
                   </SelectTrigger>
                   <SelectContent className="dark:bg-slate-900 dark:border-slate-800">
                     {DEVICE_STATUSES.filter(
-                      (st) => isSuperAdmin || canApproveDevice || st !== "Active"
+                      (st) =>
+                        isSuperAdmin || canApproveDevice || st !== "Active",
                     ).map((st) => (
                       <SelectItem key={st} value={st}>
                         {st}
@@ -1281,7 +1411,8 @@ export function DeviceFormDialog({
                 </Select>
                 {!isSuperAdmin && !canApproveDevice && (
                   <p className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">
-                    New devices submitted by staff will be saved as Pending for Super Admin / Engineer approval.
+                    New devices submitted by staff will be saved as Pending for
+                    Super Admin / Engineer approval.
                   </p>
                 )}
               </div>
@@ -1293,7 +1424,7 @@ export function DeviceFormDialog({
             <Button
               type="button"
               variant="outline"
-              onClick={() => onOpenChange(false)}
+              onClick={() => handleOpenChange(false)}
               disabled={submitting}
               className="rounded-xl border-slate-200 dark:border-slate-800 h-10 px-4 text-xs font-semibold"
             >
@@ -1371,7 +1502,9 @@ export function DeviceFormDialog({
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
-                    onClick={() => assignScanToField(scanPendingResult.raw, "macAddress")}
+                    onClick={() =>
+                      assignScanToField(scanPendingResult.raw, "macAddress")
+                    }
                     className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-violet-50 dark:bg-violet-950/40 border border-violet-200 dark:border-violet-800/60 text-violet-700 dark:text-violet-300 text-xs font-semibold hover:bg-violet-100 transition-colors text-left"
                   >
                     <Fingerprint className="w-3.5 h-3.5 shrink-0" />
@@ -1380,7 +1513,9 @@ export function DeviceFormDialog({
 
                   <button
                     type="button"
-                    onClick={() => assignScanToField(scanPendingResult.raw, "ipAddress")}
+                    onClick={() =>
+                      assignScanToField(scanPendingResult.raw, "ipAddress")
+                    }
                     className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 text-emerald-700 dark:text-emerald-300 text-xs font-semibold hover:bg-emerald-100 transition-colors text-left"
                   >
                     <MapPin className="w-3.5 h-3.5 shrink-0" />
@@ -1389,7 +1524,9 @@ export function DeviceFormDialog({
 
                   <button
                     type="button"
-                    onClick={() => assignScanToField(scanPendingResult.raw, "deviceName")}
+                    onClick={() =>
+                      assignScanToField(scanPendingResult.raw, "deviceName")
+                    }
                     className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-orange-50 dark:bg-orange-950/40 border border-orange-200 dark:border-orange-800/60 text-orange-700 dark:text-orange-300 text-xs font-semibold hover:bg-orange-100 transition-colors text-left"
                   >
                     <Wifi className="w-3.5 h-3.5 shrink-0" />
