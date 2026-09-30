@@ -134,6 +134,7 @@ server_view, server_manage, customer_view, user_manage, report_view, setting_man
 | Router       | MAC, Connected Server, Customer Name, Mobile, GPS Link, Description      |
 | Switch       | MAC, Connected Server, GPS Link / Location, Description                  |
 | Antenna      | MAC, Connected Server, Location / GPS Link, Description                  |
+| Server       | MAC, Server Name, GPS Link, IPv4, Online Mgmt Link, Date of Activation, Status, Description |
 
 ### 4.3 Approval / Rejection
 
