@@ -154,12 +154,23 @@ export async function getDevices(params?: GetDevicesParams) {
   if (search && search.trim()) {
     const term = search.trim();
     const regex = new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+
+    // Find servers whose name matches the search term so we can match devices by server
+    const matchingServerIds = await Device.find({
+      deviceType: "server",
+      deviceName: regex,
+    })
+      .select("_id")
+      .lean()
+      .then((docs) => docs.map((d) => d._id));
+
     query.$or = [
       { sl: regex },
       { deviceName: regex },
       { ipAddress: regex },
       { macAddress: regex },
       { description: regex },
+      ...(matchingServerIds.length > 0 ? [{ server: { $in: matchingServerIds } }] : []),
     ];
   }
 

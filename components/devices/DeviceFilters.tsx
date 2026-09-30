@@ -122,7 +122,7 @@ export function DeviceFilters({ totalDevices }: DeviceFiltersProps) {
           <Input
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search by SL, Device Name, IP, MAC..."
+            placeholder="Search by SL, Device Name, IP, MAC, Server Name..."
             className="pl-10 pr-20 rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm focus-visible:ring-sky-500"
           />
           <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
@@ -161,6 +161,26 @@ export function DeviceFilters({ totalDevices }: DeviceFiltersProps) {
               {DEVICE_STATUSES.map((st) => (
                 <SelectItem key={st} value={st}>
                   {st}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Server Dropdown */}
+        <div className="w-full md:w-48">
+          <Select
+            value={currentServer}
+            onValueChange={(val) => updateQuery("server", val)}
+          >
+            <SelectTrigger className="rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm">
+              <SelectValue placeholder="All Servers" />
+            </SelectTrigger>
+            <SelectContent className="dark:bg-slate-900 dark:border-slate-800">
+              <SelectItem value="all">All Servers</SelectItem>
+              {servers.map((server) => (
+                <SelectItem key={server._id} value={server._id}>
+                  {server.deviceName || `Server #${server.sl}`}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -219,16 +239,13 @@ export function DeviceFilters({ totalDevices }: DeviceFiltersProps) {
             variant="outline"
             onClick={() => setShowAdvanced(!showAdvanced)}
             className={`rounded-xl border-slate-200 dark:border-slate-800 text-xs font-semibold gap-1.5 h-10 px-3.5 ${
-              showAdvanced || currentServer !== "all"
+              showAdvanced
                 ? "bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 border-sky-200 dark:border-sky-800"
                 : "text-slate-600 dark:text-slate-300"
             }`}
           >
             <SlidersHorizontal className="w-3.5 h-3.5" />
             <span>More Filters</span>
-            {currentServer !== "all" && (
-              <span className="w-2 h-2 rounded-full bg-sky-500" />
-            )}
           </Button>
 
           {hasActiveFilters && (
@@ -248,35 +265,11 @@ export function DeviceFilters({ totalDevices }: DeviceFiltersProps) {
 
       {/* Advanced Filters Drawer/Row */}
       {showAdvanced && (
-        <div className="pt-3 border-t border-slate-100 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 animate-in fade-in-50 duration-200">
-
-
-          {/* Server Filter */}
-          <div className="space-y-1">
-            <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-              Server
-            </label>
-            <Select value={currentServer} onValueChange={(val) => updateQuery("server", val)}>
-              <SelectTrigger className="rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm">
-                <SelectValue placeholder="All Servers" />
-              </SelectTrigger>
-              <SelectContent className="dark:bg-slate-900 dark:border-slate-800">
-                <SelectItem value="all">All Servers</SelectItem>
-                {servers.map((server) => (
-                  <SelectItem key={server._id} value={server._id}>
-                    {server.deviceName || `Server #${server.sl}`}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
+        <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-3 animate-in fade-in-50 duration-200">
           {/* Device Count Summary */}
-          <div className="flex items-end justify-between sm:justify-end gap-2">
-            <span className="text-xs text-slate-500 dark:text-slate-400 pb-2">
-              Found <span className="font-bold text-slate-900 dark:text-slate-100">{totalDevices.toLocaleString()}</span> matching records
-            </span>
-          </div>
+          <span className="text-xs text-slate-500 dark:text-slate-400">
+            Found <span className="font-bold text-slate-900 dark:text-slate-100">{totalDevices.toLocaleString()}</span> matching records
+          </span>
         </div>
       )}
 
