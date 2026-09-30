@@ -5,9 +5,7 @@ export interface ICustomerDoc {
   _id?: string | Schema.Types.ObjectId;
   customerId: string;
   name: string;
-  contactPerson?: string;
   phone?: string;
-  email?: string;
   address?: string;
   gpsLink?: string;
   serviceType?: (typeof CUSTOMER_SERVICE_TYPES)[number];
@@ -36,24 +34,14 @@ const CustomerSchema = new Schema(
       trim: true,
       index: true,
     },
-    contactPerson: {
-      type: String,
-      default: "",
-      trim: true,
-    },
+
     phone: {
       type: String,
       default: "",
       trim: true,
       index: true,
     },
-    email: {
-      type: String,
-      default: "",
-      trim: true,
-      lowercase: true,
-      index: true,
-    },
+
     address: {
       type: String,
       default: "",
@@ -113,7 +101,7 @@ const CustomerSchema = new Schema(
 CustomerSchema.index({ status: 1, createdAt: -1 });
 CustomerSchema.index({ serviceType: 1, status: 1 });
 CustomerSchema.index({ server: 1, status: 1 });
-CustomerSchema.index({ name: "text", customerId: "text", phone: "text", email: "text", contactPerson: "text" });
+CustomerSchema.index({ name: "text", customerId: "text", phone: "text" });
 
 const Customer = models.Customer || model<ICustomerDoc>("Customer", CustomerSchema);
 

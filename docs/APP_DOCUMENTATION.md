@@ -85,7 +85,6 @@ Customer fields include:
 - Customer code
 - Name
 - Phone
-- Email
 - Location
 - Package name
 - Monthly fee
@@ -335,7 +334,6 @@ Fields:
 - `customerCode`
 - `name`
 - `phone`
-- `email`
 - `location`
 - `packageName`
 - `monthlyFee`

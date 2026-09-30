@@ -11,7 +11,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Phone,
-  Mail,
   Receipt,
   Server,
   MapPin,
@@ -124,12 +123,6 @@ export function CustomerMobileCards({
                   <span className="font-mono font-bold text-sky-600 dark:text-sky-400">
                     {cust.customerId}
                   </span>
-                  {cust.contactPerson && (
-                    <>
-                      <span>•</span>
-                      <span className="truncate">{cust.contactPerson}</span>
-                    </>
-                  )}
                 </div>
               </div>
 
@@ -212,23 +205,15 @@ export function CustomerMobileCards({
             </div>
 
             {/* Contact Details */}
-            {(cust.phone || cust.email) && (
+            {cust.phone && (
               <div className="space-y-1 text-xs text-slate-600 dark:text-slate-400 pt-1">
-                {cust.phone && (
-                  <a
-                    href={`tel:${cust.phone}`}
-                    className="flex items-center gap-2 hover:text-sky-600 font-mono"
-                  >
-                    <Phone className="w-3.5 h-3.5 text-slate-400" />
-                    <span>{cust.phone}</span>
-                  </a>
-                )}
-                {cust.email && (
-                  <div className="flex items-center gap-2">
-                    <Mail className="w-3.5 h-3.5 text-slate-400" />
-                    <span className="truncate">{cust.email}</span>
-                  </div>
-                )}
+                <a
+                  href={`tel:${cust.phone}`}
+                  className="flex items-center gap-2 hover:text-sky-600 font-mono"
+                >
+                  <Phone className="w-3.5 h-3.5 text-slate-400" />
+                  <span>{cust.phone}</span>
+                </a>
               </div>
             )}
 

@@ -141,8 +141,6 @@ export function CustomerDetailsView({
                 <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
                   {customer.customerId}
                 </span>
-                {customer.contactPerson &&
-                  ` • Contact: ${customer.contactPerson}`}
               </p>
             </div>
           </div>
@@ -191,12 +189,7 @@ export function CustomerDetailsView({
               </span>
             </div>
 
-            <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 flex items-center justify-between">
-              <span className="text-slate-400">Email Address:</span>
-              <span className="font-semibold text-slate-800 dark:text-slate-200">
-                {customer.email || "Not recorded"}
-              </span>
-            </div>
+
 
             <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 space-y-1">
               <span className="text-slate-400 block">Physical Address:</span>

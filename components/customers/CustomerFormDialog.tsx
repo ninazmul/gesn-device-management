@@ -57,11 +57,7 @@ export function CustomerFormDialog({
 
   // Form states
   const [name, setName] = useState(customerToEdit?.name || "");
-  const [contactPerson, setContactPerson] = useState(
-    customerToEdit?.contactPerson || "",
-  );
   const [phone, setPhone] = useState(customerToEdit?.phone || "");
-  const [email, setEmail] = useState(customerToEdit?.email || "");
   const [address, setAddress] = useState(customerToEdit?.address || "");
   const [gpsLink, setGpsLink] = useState(customerToEdit?.gpsLink || "");
   const [serviceType, setServiceType] = useState<CustomerServiceType>(
@@ -106,9 +102,7 @@ export function CustomerFormDialog({
 
       if (customerToEdit) {
         setName(customerToEdit.name);
-        setContactPerson(customerToEdit.contactPerson || "");
         setPhone(customerToEdit.phone || "");
-        setEmail(customerToEdit.email || "");
         setAddress(customerToEdit.address || "");
         setGpsLink(customerToEdit.gpsLink || "");
         setServiceType(customerToEdit.serviceType || "Service C");
@@ -131,9 +125,7 @@ export function CustomerFormDialog({
         setStatus(customerToEdit.status || "Active");
       } else {
         setName("");
-        setContactPerson("");
         setPhone("");
-        setEmail("");
         setAddress("");
         setGpsLink("");
         setServiceType("Service C");
@@ -170,9 +162,7 @@ export function CustomerFormDialog({
       setSubmitting(true);
       const payload = {
         name: name.trim(),
-        contactPerson: contactPerson.trim(),
         phone: phone.trim(),
-        email: email.trim(),
         address: address.trim(),
         gpsLink: gpsLink.trim(),
         serviceType,
@@ -247,19 +237,6 @@ export function CustomerFormDialog({
                   autoFocus
                 />
               </div>
-
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Contact Person
-                </Label>
-                <Input
-                  placeholder="e.g. Mr. Rafiqul Islam"
-                  value={contactPerson}
-                  onChange={(e) => setContactPerson(e.target.value)}
-                  className="rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm"
-                />
-              </div>
-
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                   Phone / Mobile Number
@@ -269,19 +246,6 @@ export function CustomerFormDialog({
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   className="rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm font-mono"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Email Address (Optional)
-                </Label>
-                <Input
-                  type="email"
-                  placeholder="customer@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm"
                 />
               </div>
 

@@ -92,9 +92,7 @@ export async function getCustomers(params?: GetCustomersParams) {
     query.$or = [
       { customerId: regex },
       { name: regex },
-      { contactPerson: regex },
       { phone: regex },
-      { email: regex },
       { address: regex },
     ];
   }
@@ -243,9 +241,7 @@ export async function getCustomerById(id: string) {
 // ==========================================
 export async function createCustomer(data: {
   name: string;
-  contactPerson?: string;
   phone?: string;
-  email?: string;
   address?: string;
   gpsLink?: string;
   serviceType?: CustomerServiceType;
@@ -264,9 +260,7 @@ export async function createCustomer(data: {
   const customer = await Customer.create({
     customerId,
     name: data.name.trim(),
-    contactPerson: data.contactPerson?.trim() || "",
     phone: data.phone?.trim() || "",
-    email: data.email?.trim().toLowerCase() || "",
     address: data.address?.trim() || "",
     gpsLink: data.gpsLink?.trim() || "",
     serviceType: data.serviceType || "Service C",
@@ -306,9 +300,7 @@ export async function updateCustomer(
   id: string,
   data: {
     name?: string;
-    contactPerson?: string;
     phone?: string;
-    email?: string;
     address?: string;
     gpsLink?: string;
     serviceType?: CustomerServiceType;
@@ -325,11 +317,7 @@ export async function updateCustomer(
 
   const updatePayload: Record<string, unknown> = {};
   if (data.name) updatePayload.name = data.name.trim();
-  if (data.contactPerson !== undefined)
-    updatePayload.contactPerson = data.contactPerson.trim();
   if (data.phone !== undefined) updatePayload.phone = data.phone.trim();
-  if (data.email !== undefined)
-    updatePayload.email = data.email.trim().toLowerCase();
   if (data.address !== undefined) updatePayload.address = data.address.trim();
   if (data.gpsLink !== undefined) updatePayload.gpsLink = data.gpsLink.trim();
   if (data.serviceType !== undefined)
@@ -481,9 +469,7 @@ export async function getAllCustomersForExport(params?: {
     query.$or = [
       { customerId: regex },
       { name: regex },
-      { contactPerson: regex },
       { phone: regex },
-      { email: regex },
       { address: regex },
     ];
   }
@@ -519,15 +505,9 @@ export async function importCustomersBulk(rows: Record<string, unknown>[]) {
       continue;
     }
 
-    const contactPerson = String(
-      r["Contact Person"] || r["Contact"] || r["contactPerson"] || "",
-    ).trim();
     const phone = String(
       r["Phone"] || r["Mobile"] || r["phone"] || r["Contact No"] || "",
     ).trim();
-    const email = String(r["Email"] || r["email"] || "")
-      .trim()
-      .toLowerCase();
     const address = String(
       r["Address"] || r["address"] || r["Location"] || "",
     ).trim();
@@ -572,9 +552,7 @@ export async function importCustomersBulk(rows: Record<string, unknown>[]) {
       await Customer.create({
         customerId,
         name,
-        contactPerson,
         phone,
-        email,
         address,
         gpsLink,
         serviceType,

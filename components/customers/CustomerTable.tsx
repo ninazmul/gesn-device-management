@@ -21,7 +21,6 @@ import {
   ChevronRight,
   Users,
   Phone,
-  Mail,
   Receipt,
   Server,
   MapPin,
@@ -208,13 +207,8 @@ export function CustomerTable({
                           >
                             {cust.name}
                           </Link>
-                          <div className="flex items-center gap-2 text-xs text-slate-400 mt-0.5">
-                            {cust.contactPerson && (
-                              <span className="font-medium text-slate-500 dark:text-slate-400 truncate">
-                                {cust.contactPerson}
-                              </span>
-                            )}
-                            {cust.gpsLink && (
+                          {cust.gpsLink && (
+                            <div className="flex items-center gap-2 text-xs text-slate-400 mt-0.5">
                               <a
                                 href={
                                   cust.gpsLink.startsWith("http")
@@ -229,8 +223,8 @@ export function CustomerTable({
                                 <MapPin className="w-3 h-3" />
                                 <span>GPS</span>
                               </a>
-                            )}
-                          </div>
+                            </div>
+                          )}
                         </div>
                       </TableCell>
 
@@ -257,7 +251,7 @@ export function CustomerTable({
                         </div>
                       </TableCell>
 
-                      {/* Contact Info (Phone / Email) */}
+                      {/* Contact Info (Phone) */}
                       <TableCell className="whitespace-nowrap">
                         <div className="space-y-0.5 text-xs">
                           {cust.phone ? (
@@ -270,14 +264,6 @@ export function CustomerTable({
                             </a>
                           ) : (
                             <span className="text-slate-400">—</span>
-                          )}
-                          {cust.email && (
-                            <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
-                              <Mail className="w-3 h-3 text-slate-400" />
-                              <span className="truncate max-w-[140px]">
-                                {cust.email}
-                              </span>
-                            </div>
                           )}
                         </div>
                       </TableCell>

@@ -149,9 +149,7 @@ export interface ICustomer {
   _id: string;
   customerId: string; // e.g. "CUS-000001"
   name: string;
-  contactPerson?: string;
   phone?: string;
-  email?: string;
   address?: string;
   gpsLink?: string;
   serviceType?: CustomerServiceType;
