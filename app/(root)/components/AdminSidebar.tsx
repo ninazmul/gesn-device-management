@@ -34,7 +34,7 @@ import {
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { usePermissions } from "@/components/providers/PermissionContext";
-import { AppModule, GranularPermissionKey } from "@/types";
+import { AppModule } from "@/types";
 import { getPendingDevicesCount } from "@/lib/actions/device.actions";
 
 interface SidebarItem {
@@ -42,8 +42,6 @@ interface SidebarItem {
   url: string;
   icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
   module: AppModule;
-  /** Optional granular permission gate — item hidden if user lacks this */
-  granular?: GranularPermissionKey;
   /** If true, only super_admin can see this item (strongest gate) */
   superAdminOnly?: boolean;
 }
@@ -102,7 +100,6 @@ const sidebarSections: SidebarSection[] = [
         url: "/devices/server",
         icon: Server,
         module: "devices",
-        granular: "server_view" as GranularPermissionKey,
       },
       {
         title: "Switches",
@@ -172,7 +169,7 @@ const sidebarSections: SidebarSection[] = [
 const AppSidebar = () => {
   const currentPath = usePathname();
   const { state, isMobile, setOpenMobile } = useSidebar();
-  const { canRead, can, isSuperAdmin } = usePermissions();
+  const { canRead, isSuperAdmin, isEngineer } = usePermissions();
   const isCollapsed = state === "collapsed";
   const [pendingCount, setPendingCount] = useState<number>(0);
 
@@ -212,9 +209,10 @@ const AppSidebar = () => {
       items: section.items.filter((item) => {
         // Strongest gate first: strictly super-admin-only items
         if (item.superAdminOnly && !isSuperAdmin) return false;
+        if (item.url === "/devices/server" && !isSuperAdmin && !isEngineer) {
+          return false;
+        }
         if (item.module !== "dashboard" && !canRead(item.module)) return false;
-        // Extra granular gate (e.g. server_view for Servers link)
-        if (item.granular && !isSuperAdmin && !can(item.granular)) return false;
         return true;
       }),
     }))

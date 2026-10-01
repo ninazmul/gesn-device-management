@@ -27,7 +27,7 @@ interface DeviceTypePageProps {
 
 function getDeviceTypeInfo(slug: string) {
   const found = PRIMARY_DEVICE_TYPES.find(
-    (t) => t.slug.toLowerCase() === slug.toLowerCase()
+    (t) => t.slug.toLowerCase() === slug.toLowerCase(),
   );
   if (found) return found;
 
@@ -48,16 +48,13 @@ export default async function DeviceTypePage({
 
   const typeSlug = resolvedParams.type.toLowerCase().trim();
 
-  // ── Server section is restricted: super_admin, engineer, or server_view grant only ──
+  // Server inventory is reserved for super admins and engineers.
   if (typeSlug === "server") {
     const admin = await getCurrentAdminProfile();
     if (!admin) redirect("/sign-in");
-    const role = admin.role;
-    const hasServerView =
-      role === "super_admin" ||
-      role === "engineer" ||
-      Boolean(admin.granularPermissions?.server_view);
-    if (!hasServerView) redirect("/access-denied");
+    if (admin.role !== "super_admin" && admin.role !== "engineer") {
+      redirect("/access-denied");
+    }
   }
 
   const typeInfo = getDeviceTypeInfo(typeSlug);

@@ -21,12 +21,9 @@ export default async function DeviceDetailsPage({
   if (typeSlug === "server") {
     const admin = await getCurrentAdminProfile();
     if (!admin) redirect("/sign-in");
-    const role = admin.role;
-    const hasServerView =
-      role === "super_admin" ||
-      role === "engineer" ||
-      Boolean(admin.granularPermissions?.server_view);
-    if (!hasServerView) redirect("/access-denied");
+    if (admin.role !== "super_admin" && admin.role !== "engineer") {
+      redirect("/access-denied");
+    }
   }
 
   const device = await getDeviceById(resolvedParams.id);
@@ -38,12 +35,9 @@ export default async function DeviceDetailsPage({
   if (device.deviceType === "server") {
     const admin = await getCurrentAdminProfile();
     if (!admin) redirect("/sign-in");
-    const role = admin.role;
-    const hasServerView =
-      role === "super_admin" ||
-      role === "engineer" ||
-      Boolean(admin.granularPermissions?.server_view);
-    if (!hasServerView) redirect("/access-denied");
+    if (admin.role !== "super_admin" && admin.role !== "engineer") {
+      redirect("/access-denied");
+    }
   }
 
   return <DeviceDetailsView device={device} />;

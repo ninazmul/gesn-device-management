@@ -33,11 +33,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
 
   const isSuperAdmin = profile.role === "super_admin";
   const isEngineer = profile.role === "engineer";
-  const canViewServer =
-    canReadDevices &&
-    (isSuperAdmin ||
-      isEngineer ||
-      Boolean(profile.granularPermissions?.server_view));
+  const canViewServer = canReadDevices && (isSuperAdmin || isEngineer);
 
   const now = new Date();
   const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;

@@ -157,9 +157,7 @@ export function DashboardClient({ stats }: DashboardClientProps) {
   const router = useRouter();
   const { canRead, canWrite, isSuperAdmin, isEngineer, can } = usePermissions();
   const canReadDevices = canRead("devices");
-  const canViewServerInfra =
-    canReadDevices &&
-    (isSuperAdmin || isEngineer || Boolean(can("server_view")));
+  const canViewServerInfra = canReadDevices && (isSuperAdmin || isEngineer);
   const canManageServerInUi =
     canWrite("devices") &&
     (isSuperAdmin || isEngineer || Boolean(can("server_manage")));
