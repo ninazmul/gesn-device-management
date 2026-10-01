@@ -239,10 +239,20 @@ export async function getDevices(params?: GetDevicesParams) {
       sortObj = { createdAt: 1 };
       break;
     case "sl_asc":
-      sortObj = { sl: 1 };
+      if (isAccessPointQuery) {
+        sortObj = { apNumber: 1, sl: 1 };
+        numericApNumberSort = true;
+      } else {
+        sortObj = { sl: 1 };
+      }
       break;
     case "sl_desc":
-      sortObj = { sl: -1 };
+      if (isAccessPointQuery) {
+        sortObj = { apNumber: -1, sl: -1 };
+        numericApNumberSort = true;
+      } else {
+        sortObj = { sl: -1 };
+      }
       break;
     case "name_asc":
       sortObj = { deviceName: 1 };

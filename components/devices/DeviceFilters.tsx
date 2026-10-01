@@ -49,14 +49,16 @@ export function DeviceFilters({
   const currentServer = searchParams.get("server") || "all";
   const currentSort = searchParams.get("sortBy") || "sl_asc";
   const currentSubmittedBy = searchParams.get("submittedBy") || "";
-  const sortOptions =
-    currentType?.toLowerCase() === "access-point"
-      ? [
-          ...SORT_OPTIONS,
-          { value: "ap_asc", label: "AP Number (Ascending)" },
-          { value: "ap_desc", label: "AP Number (Descending)" },
-        ]
-      : SORT_OPTIONS;
+  const isAccessPointTable = currentType?.toLowerCase() === "access-point";
+  const sortOptions = isAccessPointTable
+    ? SORT_OPTIONS.map((option) =>
+        option.value === "sl_asc"
+          ? { ...option, label: "AP Number (Ascending)" }
+          : option.value === "sl_desc"
+            ? { ...option, label: "AP Number (Descending)" }
+            : option,
+      )
+    : SORT_OPTIONS;
 
   const { admin, isSuperAdmin, isEngineer, can } = usePermissions();
   const canViewServer = isSuperAdmin || isEngineer || can("server_view");
