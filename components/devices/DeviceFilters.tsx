@@ -35,6 +35,7 @@ interface DeviceFiltersProps {
 }
 
 export function DeviceFilters({
+  currentType,
   totalDevices,
   statusOptions,
 }: DeviceFiltersProps) {
@@ -139,7 +140,11 @@ export function DeviceFilters({
           <Input
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search by SL, Device Name, IP, MAC, Server Name..."
+            placeholder={
+              currentType?.toLowerCase() === "access-point"
+                ? "Search by AP Number, SL, Device Name, IP, MAC..."
+                : "Search by AP Number, SL, Device Name, IP, MAC, Server Name..."
+            }
             className="pl-10 pr-20 rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm focus-visible:ring-sky-500"
           />
           <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1">

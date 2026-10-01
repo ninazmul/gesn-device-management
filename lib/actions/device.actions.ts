@@ -201,7 +201,11 @@ export async function getDevices(params?: GetDevicesParams) {
 
   if (search && search.trim()) {
     const term = search.trim();
-    const regex = new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+    const escapedTerm = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const regex = new RegExp(escapedTerm, "i");
+    const apNumberRegex = /^\d+$/.test(term)
+      ? new RegExp(`(?:^|\\D)${escapedTerm}$`, "i")
+      : regex;
 
     // Find servers whose name matches the search term so we can match devices by server
     const matchingServerIds = await Device.find({
@@ -213,6 +217,7 @@ export async function getDevices(params?: GetDevicesParams) {
       .then((docs) => docs.map((d) => d._id));
 
     query.$or = [
+      { apNumber: apNumberRegex },
       { sl: regex },
       { deviceName: regex },
       { ipAddress: regex },
