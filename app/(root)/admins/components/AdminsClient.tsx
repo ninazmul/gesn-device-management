@@ -12,6 +12,13 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -309,8 +316,171 @@ function GranularPermissionsEditor({
   );
 }
 
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Shared form body — used by both mobile Sheet and desktop Dialog
+// ─────────────────────────────────────────────────────────────────────────────
+function AddAdminFormFields({
+  newEmail, setNewEmail,
+  newName, setNewName,
+  newRole, handleRoleChangeForNew,
+  customPerms, setCustomPerms,
+  newGranularPerms, setNewGranularPerms,
+  isSuperAdmin,
+}: {
+  newEmail: string; setNewEmail: (v: string) => void;
+  newName: string; setNewName: (v: string) => void;
+  newRole: AdminRole; handleRoleChangeForNew: (role: AdminRole) => void;
+  customPerms: ModulePermissions; setCustomPerms: React.Dispatch<React.SetStateAction<ModulePermissions>>;
+  newGranularPerms: Record<GranularPermissionKey, boolean>;
+  setNewGranularPerms: React.Dispatch<React.SetStateAction<Record<GranularPermissionKey, boolean>>>;
+  isSuperAdmin: boolean;
+}) {
+  return (
+    <>
+      {/* Email + Name — stacked on mobile, side-by-side on sm+ */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1.5">
+            Email Address <span className="text-rose-500">*</span>
+          </label>
+          <Input
+            type="email"
+            required
+            placeholder="admin@example.com"
+            value={newEmail}
+            onChange={(e) => setNewEmail(e.target.value)}
+            className="rounded-xl border-slate-200 dark:border-slate-700 text-sm h-11 sm:text-xs sm:h-9"
+          />
+        </div>
+        <div>
+          <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1.5">
+            Full Name
+          </label>
+          <Input
+            placeholder="e.g. John Doe"
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            className="rounded-xl border-slate-200 dark:border-slate-700 text-sm h-11 sm:text-xs sm:h-9"
+          />
+        </div>
+      </div>
+
+      {/* Role Preset */}
+      <div>
+        <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1.5">
+          Role Preset
+        </label>
+        <Select value={newRole} onValueChange={(val) => handleRoleChangeForNew(val as AdminRole)}>
+          <SelectTrigger className="rounded-xl border-slate-200 dark:border-slate-700 text-sm h-11 sm:text-xs sm:h-9">
+            <SelectValue placeholder="Select role" />
+          </SelectTrigger>
+          <SelectContent className="rounded-xl border-slate-200 dark:border-slate-800">
+            {ROLE_OPTIONS.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                <div className="flex flex-col py-0.5">
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">{opt.label}</span>
+                  <span className="text-[10px] text-slate-400 leading-relaxed">{opt.desc}</span>
+                </div>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Role Capability Summary */}
+      {(() => {
+        const roleDetail = ROLE_OPTIONS.find((r) => r.value === newRole);
+        if (!roleDetail) return null;
+        return (
+          <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 space-y-2 text-xs">
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <span className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                <Info className="w-3.5 h-3.5 text-sky-500 shrink-0" />
+                {roleDetail.label} Capabilities:
+              </span>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${roleDetail.bgLight} ${roleDetail.color} ${roleDetail.border}`}>
+                {roleDetail.summary}
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+              {roleDetail.desc}
+            </p>
+            <ul className="space-y-1.5 pt-1">
+              {roleDetail.canDo.map((item, idx) => (
+                <li key={idx} className="flex items-start gap-1.5 text-[11px] text-slate-600 dark:text-slate-300">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                  <span>{item}</span>
+                </li>
+              ))}
+              {roleDetail.cannotDo.map((item, idx) => (
+                <li key={idx} className="flex items-start gap-1.5 text-[11px] text-rose-500/80 dark:text-rose-400/80">
+                  <XCircle className="w-3.5 h-3.5 text-rose-400 shrink-0 mt-0.5" />
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        );
+      })()}
+
+      {/* Module Permissions (admin / viewer / custom only) */}
+      {["admin", "viewer", "custom"].includes(newRole) && (
+        <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 space-y-2">
+          <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
+            {newRole === "viewer" ? "Viewer Section Access" : "Module Permissions"}
+          </span>
+          <div className="grid grid-cols-1 gap-2">
+            {ALL_APP_MODULES.map((mod) => (
+              <div
+                key={mod}
+                className="flex items-center justify-between p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800"
+              >
+                <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                  {MODULE_LABELS[mod]}
+                </span>
+                <Select
+                  value={customPerms[mod] || "none"}
+                  onValueChange={(val) =>
+                    setCustomPerms((prev) => ({ ...prev, [mod]: val as PermissionLevel }))
+                  }
+                >
+                  <SelectTrigger className="h-8 w-28 rounded-lg text-[11px] font-semibold border-slate-200 dark:border-slate-700">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl text-xs">
+                    <SelectItem value="none">None</SelectItem>
+                    <SelectItem value="read">Read Only</SelectItem>
+                    {newRole !== "viewer" && <SelectItem value="write">Read & Write</SelectItem>}
+                  </SelectContent>
+                </Select>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Granular Action Permissions */}
+      {isSuperAdmin && (
+        newRole === "super_admin" ? (
+          <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-700 dark:text-amber-400 flex items-start gap-2">
+            <Crown className="w-4 h-4 shrink-0 text-amber-500 mt-0.5" />
+            <span>Super Administrators retain unrestricted, immutable access across all modules and actions.</span>
+          </div>
+        ) : (
+          <GranularPermissionsEditor
+            perms={newGranularPerms}
+            onChange={(key, val) => setNewGranularPerms((prev) => ({ ...prev, [key]: val }))}
+          />
+        )
+      )}
+    </>
+  );
+}
+
 export default function AdminsClient({
   initialAdmins,
+
 }: {
   initialAdmins: IAdminUser[];
 }) {
@@ -523,178 +693,104 @@ export default function AdminsClient({
         </div>
 
         {canWrite("admins") && (
-          <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-sky-600 hover:bg-sky-700 text-white shadow-md shadow-sky-600/10 rounded-xl w-full sm:w-auto text-xs font-semibold">
-                <Plus className="mr-2 h-4 w-4" /> Add Administrator
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6">
-              <DialogHeader>
-                <DialogTitle className="text-lg font-bold text-slate-900 dark:text-slate-100">
-                  Add New Staff Administrator
-                </DialogTitle>
-              </DialogHeader>
-
-              <form onSubmit={handleAddSubmit} className="space-y-4 pt-2">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
-                      Email Address *
-                    </label>
-                    <Input
-                      type="email"
-                      required
-                      placeholder="admin@example.com"
-                      value={newEmail}
-                      onChange={(e) => setNewEmail(e.target.value)}
-                      className="rounded-xl border-slate-200 dark:border-slate-800 text-xs"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
-                      Full Name
-                    </label>
-                    <Input
-                      placeholder="e.g. John Doe"
-                      value={newName}
-                      onChange={(e) => setNewName(e.target.value)}
-                      className="rounded-xl border-slate-200 dark:border-slate-800 text-xs"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
-                    Role Preset
-                  </label>
-                  <Select value={newRole} onValueChange={(val) => handleRoleChangeForNew(val as AdminRole)}>
-                    <SelectTrigger className="rounded-xl border-slate-200 dark:border-slate-800 text-xs">
-                      <SelectValue placeholder="Select role" />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-xl border-slate-200 dark:border-slate-800">
-                      {ROLE_OPTIONS.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value} className="text-xs">
-                          <div className="flex flex-col py-0.5">
-                            <span className="font-semibold text-slate-800 dark:text-slate-200">{opt.label}</span>
-                            <span className="text-[10px] text-slate-400">{opt.desc}</span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Real-time Role Capability Summary in Add Modal */}
-                {(() => {
-                  const roleDetail = ROLE_OPTIONS.find((r) => r.value === newRole);
-                  if (!roleDetail) return null;
-                  return (
-                    <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 space-y-2 text-xs">
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                          <Info className="w-3.5 h-3.5 text-sky-500" />
-                          {roleDetail.label} Capabilities:
-                        </span>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${roleDetail.bgLight} ${roleDetail.color} ${roleDetail.border}`}>
-                          {roleDetail.summary}
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                        {roleDetail.desc}
-                      </p>
-                      <ul className="space-y-1 pt-1">
-                        {roleDetail.canDo.map((item, idx) => (
-                          <li key={idx} className="flex items-start gap-1.5 text-[11px] text-slate-600 dark:text-slate-300">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
-                            <span>{item}</span>
-                          </li>
-                        ))}
-                        {roleDetail.cannotDo.map((item, idx) => (
-                          <li key={idx} className="flex items-start gap-1.5 text-[11px] text-rose-500/80 dark:text-rose-400/80">
-                            <XCircle className="w-3.5 h-3.5 text-rose-400 shrink-0 mt-0.5" />
-                            <span>{item}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  );
-                })()}
-
-                {/* Super Admin configured module access */}
-                {["admin", "viewer", "custom"].includes(newRole) && (
-                  <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 space-y-2">
-                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
-                      {newRole === "viewer" ? "Viewer Section Access" : "Module Permissions"}
-                    </span>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56 overflow-y-auto pr-1">
-                      {ALL_APP_MODULES.map((mod) => (
-                        <div
-                          key={mod}
-                          className="flex items-center justify-between p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800"
-                        >
-                          <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
-                            {MODULE_LABELS[mod]}
-                          </span>
-                          <Select
-                            value={customPerms[mod] || "none"}
-                            onValueChange={(val) =>
-                              setCustomPerms((prev) => ({
-                                ...prev,
-                                [mod]: val as PermissionLevel,
-                              }))
-                            }
-                          >
-                            <SelectTrigger className="h-7 w-24 rounded-lg text-[11px] font-semibold border-slate-200 dark:border-slate-700">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent className="rounded-xl text-xs">
-                              <SelectItem value="none">None</SelectItem>
-                              <SelectItem value="read">Read Only</SelectItem>
-                              {newRole !== "viewer" && <SelectItem value="write">Read & Write</SelectItem>}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Granular Action Permissions (Configurable by Super Admin for Engineer and Staff) */}
-                {isSuperAdmin && (
-                  newRole === "super_admin" ? (
-                    <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-700 dark:text-amber-400 flex items-center gap-2">
-                      <Crown className="w-4 h-4 shrink-0 text-amber-500" />
-                      <span>Super Administrators retain unrestricted, immutable access across all modules and actions.</span>
-                    </div>
-                  ) : (
-                    <GranularPermissionsEditor
-                      perms={newGranularPerms}
-                      onChange={(key, val) =>
-                        setNewGranularPerms((prev) => ({ ...prev, [key]: val }))
-                      }
-                    />
-                  )
-                )}
-
-                <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
-                  <Button
-                    type="submit"
-                    className="w-full bg-sky-600 hover:bg-sky-700 rounded-xl text-white font-semibold text-xs"
-                    disabled={isLoading}
-                  >
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Adding...
-                      </>
-                    ) : (
-                      "Add Administrator"
-                    )}
+          <>
+            {/* ── Mobile: bottom sheet ── */}
+            <div className="sm:hidden">
+              <Sheet open={isAddOpen} onOpenChange={setIsAddOpen}>
+                <SheetTrigger asChild>
+                  <Button className="bg-sky-600 hover:bg-sky-700 text-white shadow-md shadow-sky-600/10 rounded-xl w-full text-sm font-semibold h-11">
+                    <Plus className="mr-2 h-4 w-4" /> Add Administrator
                   </Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
+                </SheetTrigger>
+                <SheetContent
+                  side="bottom"
+                  className="rounded-t-3xl bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 p-0 h-[92dvh] flex flex-col"
+                >
+                  <SheetHeader className="px-5 pt-5 pb-3 border-b border-slate-100 dark:border-slate-800 shrink-0">
+                    <div className="mx-auto w-10 h-1 rounded-full bg-slate-200 dark:bg-slate-700 mb-3" />
+                    <SheetTitle className="text-base font-bold text-slate-900 dark:text-slate-100 text-left">
+                      Add New Staff Administrator
+                    </SheetTitle>
+                  </SheetHeader>
+
+                  {/* Scrollable body */}
+                  <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+                    <AddAdminFormFields
+                      newEmail={newEmail} setNewEmail={setNewEmail}
+                      newName={newName} setNewName={setNewName}
+                      newRole={newRole} handleRoleChangeForNew={handleRoleChangeForNew}
+                      customPerms={customPerms} setCustomPerms={setCustomPerms}
+                      newGranularPerms={newGranularPerms} setNewGranularPerms={setNewGranularPerms}
+                      isSuperAdmin={isSuperAdmin}
+                    />
+                  </div>
+
+                  {/* Sticky submit */}
+                  <div className="px-5 py-4 border-t border-slate-100 dark:border-slate-800 shrink-0 bg-white dark:bg-slate-900">
+                    <Button
+                      type="button"
+                      onClick={handleAddSubmit as unknown as React.MouseEventHandler}
+                      className="w-full bg-sky-600 hover:bg-sky-700 active:bg-sky-800 rounded-xl text-white font-semibold text-sm h-12"
+                      disabled={isLoading}
+                    >
+                      {isLoading ? (
+                        <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Adding...</>
+                      ) : (
+                        "Add Administrator"
+                      )}
+                    </Button>
+                  </div>
+                </SheetContent>
+              </Sheet>
+            </div>
+
+            {/* ── Desktop: centered dialog ── */}
+            <div className="hidden sm:block">
+              <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+                <DialogTrigger asChild>
+                  <Button className="bg-sky-600 hover:bg-sky-700 text-white shadow-md shadow-sky-600/10 rounded-xl w-auto text-xs font-semibold">
+                    <Plus className="mr-2 h-4 w-4" /> Add Administrator
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-0 overflow-hidden flex flex-col max-h-[90dvh]">
+                  <DialogHeader className="px-6 pt-6 pb-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
+                    <DialogTitle className="text-lg font-bold text-slate-900 dark:text-slate-100">
+                      Add New Staff Administrator
+                    </DialogTitle>
+                  </DialogHeader>
+
+                  {/* Scrollable body */}
+                  <form onSubmit={handleAddSubmit} className="flex flex-col flex-1 min-h-0">
+                    <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+                      <AddAdminFormFields
+                        newEmail={newEmail} setNewEmail={setNewEmail}
+                        newName={newName} setNewName={setNewName}
+                        newRole={newRole} handleRoleChangeForNew={handleRoleChangeForNew}
+                        customPerms={customPerms} setCustomPerms={setCustomPerms}
+                        newGranularPerms={newGranularPerms} setNewGranularPerms={setNewGranularPerms}
+                        isSuperAdmin={isSuperAdmin}
+                      />
+                    </div>
+
+                    {/* Sticky submit */}
+                    <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800 shrink-0">
+                      <Button
+                        type="submit"
+                        className="w-full bg-sky-600 hover:bg-sky-700 rounded-xl text-white font-semibold text-xs"
+                        disabled={isLoading}
+                      >
+                        {isLoading ? (
+                          <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Adding...</>
+                        ) : (
+                          "Add Administrator"
+                        )}
+                      </Button>
+                    </div>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            </div>
+          </>
         )}
       </div>
 
