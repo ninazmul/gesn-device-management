@@ -639,6 +639,23 @@ export async function createDevice(data: {
   return JSON.parse(JSON.stringify(device)) as IDevice;
 }
 
+export async function createDeviceWithResult(
+  data: Parameters<typeof createDevice>[0],
+): Promise<
+  { success: true; device: IDevice } | { success: false; error: string }
+> {
+  try {
+    return { success: true, device: await createDevice(data) };
+  } catch (error) {
+    console.error("Manual device creation failed:", error);
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : "Failed to create device.",
+    };
+  }
+}
+
 // ==========================================
 // UPDATE DEVICE
 // ==========================================

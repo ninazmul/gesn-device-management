@@ -35,7 +35,7 @@ import {
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import {
-  createDevice,
+  createDeviceWithResult,
   updateDevice,
   getAvailableSwitches,
   getAvailableServers,
@@ -88,7 +88,9 @@ export function DeviceFormDialog({
   // Active Device Type (fallback to antenna if server is requested without permission)
   const initialType =
     deviceToEdit?.deviceType ||
-    (defaultDeviceType === "server" && !canManageServer ? "antenna" : defaultDeviceType);
+    (defaultDeviceType === "server" && !canManageServer
+      ? "antenna"
+      : defaultDeviceType);
   const [deviceType, setDeviceType] = useState(initialType);
 
   // Main Form Fields (Required based on deviceType)
@@ -522,7 +524,12 @@ export function DeviceFormDialog({
           `Device #${formatDisplaySL(deviceToEdit.sl)} updated successfully`,
         );
       } else {
-        const created = await createDevice(payload);
+        const result = await createDeviceWithResult(payload);
+        if (!result.success) {
+          toast.error(result.error);
+          return;
+        }
+        const created = result.device;
         toast.success(
           created.status === "Pending"
             ? `Device #${formatDisplaySL(created.sl)} created — Pending approval`
@@ -611,14 +618,14 @@ export function DeviceFormDialog({
                   {availableTypes
                     .filter((t) => t.slug !== "server" || canManageServer)
                     .map((t) => (
-                    <SelectItem
-                      key={t.slug}
-                      value={t.slug}
-                      className="py-2 font-medium"
-                    >
-                      {t.name}
-                    </SelectItem>
-                  ))}
+                      <SelectItem
+                        key={t.slug}
+                        value={t.slug}
+                        className="py-2 font-medium"
+                      >
+                        {t.name}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>
@@ -1304,9 +1311,13 @@ export function DeviceFormDialog({
             )}
 
             {/* 6. OTHER CUSTOM DEVICE FALLBACK */}
-            {!["access-point", "router", "switch", "antenna", "server"].includes(
-              deviceType,
-            ) && (
+            {![
+              "access-point",
+              "router",
+              "switch",
+              "antenna",
+              "server",
+            ].includes(deviceType) && (
               <div className="space-y-3">
                 <div className="space-y-1">
                   <Label className="text-xs font-bold text-slate-800 dark:text-slate-200">
