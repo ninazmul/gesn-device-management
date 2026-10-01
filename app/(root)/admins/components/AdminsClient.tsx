@@ -9,14 +9,12 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
-  SheetTrigger,
 } from "@/components/ui/sheet";
 import {
   Select,
@@ -68,6 +66,7 @@ import {
   PermissionLevel,
 } from "@/types";
 import { usePermissions } from "@/components/providers/PermissionContext";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   DEFAULT_ROLE_PERMISSIONS,
   DEFAULT_GRANULAR_PERMISSIONS,
@@ -486,6 +485,7 @@ export default function AdminsClient({
 }) {
   const { admin: currentLoggedInAdmin, canWrite } = usePermissions();
   const isSuperAdmin = currentLoggedInAdmin?.role === "super_admin";
+  const isMobile = useIsMobile();
   const [admins, setAdmins] = useState<IAdminUser[]>(initialAdmins);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingAdmin, setEditingAdmin] = useState<IAdminUser | null>(null);
@@ -694,14 +694,17 @@ export default function AdminsClient({
 
         {canWrite("admins") && (
           <>
-            {/* ── Mobile: bottom sheet ── */}
-            <div className="sm:hidden">
+            {/* Single trigger button — drives shared isAddOpen state */}
+            <Button
+              onClick={() => setIsAddOpen(true)}
+              className="bg-sky-600 hover:bg-sky-700 text-white shadow-md shadow-sky-600/10 rounded-xl w-full sm:w-auto text-sm sm:text-xs font-semibold h-11 sm:h-9"
+            >
+              <Plus className="mr-2 h-4 w-4" /> Add Administrator
+            </Button>
+
+            {/* ── Mobile only: bottom Sheet (JS-gated — no CSS hide trick) ── */}
+            {isMobile && (
               <Sheet open={isAddOpen} onOpenChange={setIsAddOpen}>
-                <SheetTrigger asChild>
-                  <Button className="bg-sky-600 hover:bg-sky-700 text-white shadow-md shadow-sky-600/10 rounded-xl w-full text-sm font-semibold h-11">
-                    <Plus className="mr-2 h-4 w-4" /> Add Administrator
-                  </Button>
-                </SheetTrigger>
                 <SheetContent
                   side="bottom"
                   className="rounded-t-3xl bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 p-0 h-[92dvh] flex flex-col"
@@ -712,8 +715,6 @@ export default function AdminsClient({
                       Add New Staff Administrator
                     </SheetTitle>
                   </SheetHeader>
-
-                  {/* Scrollable body */}
                   <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
                     <AddAdminFormFields
                       newEmail={newEmail} setNewEmail={setNewEmail}
@@ -724,8 +725,6 @@ export default function AdminsClient({
                       isSuperAdmin={isSuperAdmin}
                     />
                   </div>
-
-                  {/* Sticky submit */}
                   <div className="px-5 py-4 border-t border-slate-100 dark:border-slate-800 shrink-0 bg-white dark:bg-slate-900">
                     <Button
                       type="button"
@@ -733,33 +732,22 @@ export default function AdminsClient({
                       className="w-full bg-sky-600 hover:bg-sky-700 active:bg-sky-800 rounded-xl text-white font-semibold text-sm h-12"
                       disabled={isLoading}
                     >
-                      {isLoading ? (
-                        <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Adding...</>
-                      ) : (
-                        "Add Administrator"
-                      )}
+                      {isLoading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Adding...</> : "Add Administrator"}
                     </Button>
                   </div>
                 </SheetContent>
               </Sheet>
-            </div>
+            )}
 
-            {/* ── Desktop: centered dialog ── */}
-            <div className="hidden sm:block">
+            {/* ── Desktop only: centered Dialog (JS-gated) ── */}
+            {!isMobile && (
               <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-                <DialogTrigger asChild>
-                  <Button className="bg-sky-600 hover:bg-sky-700 text-white shadow-md shadow-sky-600/10 rounded-xl w-auto text-xs font-semibold">
-                    <Plus className="mr-2 h-4 w-4" /> Add Administrator
-                  </Button>
-                </DialogTrigger>
                 <DialogContent className="max-w-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-0 overflow-hidden flex flex-col max-h-[90dvh]">
                   <DialogHeader className="px-6 pt-6 pb-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
                     <DialogTitle className="text-lg font-bold text-slate-900 dark:text-slate-100">
                       Add New Staff Administrator
                     </DialogTitle>
                   </DialogHeader>
-
-                  {/* Scrollable body */}
                   <form onSubmit={handleAddSubmit} className="flex flex-col flex-1 min-h-0">
                     <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
                       <AddAdminFormFields
@@ -771,25 +759,19 @@ export default function AdminsClient({
                         isSuperAdmin={isSuperAdmin}
                       />
                     </div>
-
-                    {/* Sticky submit */}
                     <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800 shrink-0">
                       <Button
                         type="submit"
                         className="w-full bg-sky-600 hover:bg-sky-700 rounded-xl text-white font-semibold text-xs"
                         disabled={isLoading}
                       >
-                        {isLoading ? (
-                          <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Adding...</>
-                        ) : (
-                          "Add Administrator"
-                        )}
+                        {isLoading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Adding...</> : "Add Administrator"}
                       </Button>
                     </div>
                   </form>
                 </DialogContent>
               </Dialog>
-            </div>
+            )}
           </>
         )}
       </div>
