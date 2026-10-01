@@ -17,7 +17,9 @@ import {
   Receipt,
   ArrowRight,
   Boxes,
+  Archive,
   ClockAlert,
+  Snowflake,
   ChevronDown,
   ChevronUp,
   Wallet,
@@ -220,6 +222,8 @@ export function DashboardClient({ stats }: DashboardClientProps) {
   const totalServers = stats.serverStats?.totalServers ?? 0;
   const activeServers = stats.serverStats?.activeServers ?? (totalServers || 0);
   const routersCount = stats.serverStats?.routersCount ?? routerCount;
+  const frozenDevices = stats.inactiveDevices;
+  const archivedDevices = stats.retiredDevices;
 
   // Customer & Billing actual DB stats
   return (
@@ -553,6 +557,56 @@ export function DashboardClient({ stats }: DashboardClientProps) {
                 </div>
               </div>
             </div>
+          </div>
+        </section>
+      )}
+
+      {canReadDevices && (
+        <section className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="flex items-center justify-between gap-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 shadow-sm">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="p-2.5 rounded-xl bg-sky-50 dark:bg-sky-950/50 text-sky-600 dark:text-sky-400 border border-sky-200/70 dark:border-sky-800/50 shrink-0">
+                <Snowflake className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <h2 className="text-sm font-bold text-slate-800 dark:text-slate-200 truncate">
+                  Frozen Devices
+                </h2>
+                <p className="text-2xl font-black text-slate-900 dark:text-slate-100">
+                  {frozenDevices.toLocaleString()}
+                </p>
+              </div>
+            </div>
+            <Link
+              href="/devices/inactive?status=Inactive"
+              className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-sky-200 dark:border-sky-800 bg-sky-50/70 dark:bg-sky-950/30 text-sky-700 dark:text-sky-300 hover:bg-sky-100 dark:hover:bg-sky-900/50 text-xs font-bold transition-colors shrink-0"
+            >
+              <span>View Devices</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+
+          <div className="flex items-center justify-between gap-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 shadow-sm">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-200/70 dark:border-amber-800/50 shrink-0">
+                <Archive className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <h2 className="text-sm font-bold text-slate-800 dark:text-slate-200 truncate">
+                  Archived Devices
+                </h2>
+                <p className="text-2xl font-black text-slate-900 dark:text-slate-100">
+                  {archivedDevices.toLocaleString()}
+                </p>
+              </div>
+            </div>
+            <Link
+              href="/devices/inactive?status=Retired"
+              className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50/70 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/50 text-xs font-bold transition-colors shrink-0"
+            >
+              <span>View Devices</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
           </div>
         </section>
       )}
