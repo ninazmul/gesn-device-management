@@ -157,6 +157,8 @@ export async function getDevices(params?: GetDevicesParams) {
     page = 1,
     limit = 25,
   } = params || {};
+  const isAccessPointQuery =
+    deviceType?.toLowerCase().trim() === "access-point";
 
   const skip = (Math.max(1, page) - 1) * limit;
   const query: FilterQuery<typeof Device> = {};
@@ -217,7 +219,7 @@ export async function getDevices(params?: GetDevicesParams) {
       .then((docs) => docs.map((d) => d._id));
 
     query.$or = [
-      { apNumber: apNumberRegex },
+      ...(isAccessPointQuery ? [{ apNumber: apNumberRegex }] : []),
       { sl: regex },
       { deviceName: regex },
       { ipAddress: regex },
@@ -231,6 +233,7 @@ export async function getDevices(params?: GetDevicesParams) {
 
   // Sorting
   let sortObj: Record<string, 1 | -1> = { sl: 1 };
+  let numericApNumberSort = false;
   switch (sortBy) {
     case "oldest":
       sortObj = { createdAt: 1 };
@@ -250,6 +253,18 @@ export async function getDevices(params?: GetDevicesParams) {
     case "status":
       sortObj = { status: 1, createdAt: -1 };
       break;
+    case "ap_asc":
+      if (isAccessPointQuery) {
+        sortObj = { apNumber: 1, sl: 1 };
+        numericApNumberSort = true;
+      }
+      break;
+    case "ap_desc":
+      if (isAccessPointQuery) {
+        sortObj = { apNumber: -1, sl: -1 };
+        numericApNumberSort = true;
+      }
+      break;
     case "newest":
       sortObj = { createdAt: -1 };
       break;
@@ -258,14 +273,18 @@ export async function getDevices(params?: GetDevicesParams) {
       break;
   }
 
+  const deviceQuery = Device.find(query)
+    .populate("uplinkSwitch", "sl deviceName totalPorts ipAddress status")
+    .populate("server", "sl deviceName ipAddress status")
+    .sort(sortObj)
+    .skip(skip)
+    .limit(limit);
+  if (numericApNumberSort) {
+    deviceQuery.collation({ locale: "en", numericOrdering: true });
+  }
+
   const [rawDevices, total] = await Promise.all([
-    Device.find(query)
-      .populate("uplinkSwitch", "sl deviceName totalPorts ipAddress status")
-      .populate("server", "sl deviceName ipAddress status")
-      .sort(sortObj)
-      .skip(skip)
-      .limit(limit)
-      .lean(),
+    deviceQuery.lean(),
     Device.countDocuments(query),
   ]);
 

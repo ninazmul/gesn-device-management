@@ -49,6 +49,14 @@ export function DeviceFilters({
   const currentServer = searchParams.get("server") || "all";
   const currentSort = searchParams.get("sortBy") || "sl_asc";
   const currentSubmittedBy = searchParams.get("submittedBy") || "";
+  const sortOptions =
+    currentType?.toLowerCase() === "access-point"
+      ? [
+          ...SORT_OPTIONS,
+          { value: "ap_asc", label: "AP Number (Ascending)" },
+          { value: "ap_desc", label: "AP Number (Descending)" },
+        ]
+      : SORT_OPTIONS;
 
   const { admin, isSuperAdmin, isEngineer, can } = usePermissions();
   const canViewServer = isSuperAdmin || isEngineer || can("server_view");
@@ -143,7 +151,7 @@ export function DeviceFilters({
             placeholder={
               currentType?.toLowerCase() === "access-point"
                 ? "Search by AP Number, SL, Device Name, IP, MAC..."
-                : "Search by AP Number, SL, Device Name, IP, MAC, Server Name..."
+                : "Search by SL, Device Name, IP, MAC, Server Name..."
             }
             className="pl-10 pr-20 rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm focus-visible:ring-sky-500"
           />
@@ -221,7 +229,7 @@ export function DeviceFilters({
               <SelectValue placeholder="Sort By" />
             </SelectTrigger>
             <SelectContent className="dark:bg-slate-900 dark:border-slate-800">
-              {SORT_OPTIONS.map((opt) => (
+              {sortOptions.map((opt) => (
                 <SelectItem key={opt.value} value={opt.value}>
                   {opt.label}
                 </SelectItem>

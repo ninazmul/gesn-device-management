@@ -137,6 +137,7 @@ export function DeviceTable({
     canArchiveDevice,
   } = usePermissions();
   const canManageServer = isSuperAdmin || isEngineer || can("server_manage");
+  const isAccessPointTable = currentType?.toLowerCase() === "access-point";
 
   // Modals state
   const [editingDevice, setEditingDevice] = useState<IDevice | null>(null);
@@ -219,6 +220,11 @@ export function DeviceTable({
                 <TableHead className="w-24 font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
                   SL
                 </TableHead>
+                {isAccessPointTable && (
+                  <TableHead className="min-w-[130px] font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    AP Number
+                  </TableHead>
+                )}
                 {currentType && (
                   <TableHead className="font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 min-w-[160px]">
                     Server
@@ -254,7 +260,7 @@ export function DeviceTable({
               {devices.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={8}
+                    colSpan={isAccessPointTable ? 9 : 8}
                     className="py-16 text-center text-slate-400"
                   >
                     <div className="max-w-sm mx-auto space-y-3">
@@ -298,6 +304,12 @@ export function DeviceTable({
                           #{displaySerial}
                         </Link>
                       </TableCell>
+
+                      {isAccessPointTable && (
+                        <TableCell className="font-mono text-xs font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                          {device.apNumber || "—"}
+                        </TableCell>
+                      )}
 
                       {currentType && (
                         <TableCell className="text-sm text-slate-700 dark:text-slate-300">
