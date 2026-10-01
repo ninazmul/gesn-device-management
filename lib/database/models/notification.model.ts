@@ -9,6 +9,7 @@ export interface INotificationDoc extends Document {
   title: string;
   message: string;
   link?: string;
+  recipientEmails: string[];
   readBy: string[]; // List of super admin emails who have read this notification
   createdAt: Date;
   updatedAt: Date;
@@ -50,6 +51,12 @@ const NotificationSchema: Schema = new Schema(
       trim: true,
       default: "",
     },
+    recipientEmails: {
+      type: [String],
+      default: [],
+      lowercase: true,
+      trim: true,
+    },
     readBy: {
       type: [String],
       default: [],
@@ -57,7 +64,7 @@ const NotificationSchema: Schema = new Schema(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 NotificationSchema.index({ createdAt: -1 });

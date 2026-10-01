@@ -2,7 +2,12 @@ export const PRIMARY_DEVICE_TYPES = [
   { slug: "server", name: "Server", isProtected: true, icon: "Server" },
   { slug: "switch", name: "Switch", isProtected: true, icon: "Network" },
   { slug: "antenna", name: "Antenna", isProtected: true, icon: "Radio" },
-  { slug: "access-point", name: "Access Point", isProtected: true, icon: "Wifi" },
+  {
+    slug: "access-point",
+    name: "Access Point",
+    isProtected: true,
+    icon: "Wifi",
+  },
   { slug: "router", name: "Router", isProtected: true, icon: "Router" },
 ] as const;
 
@@ -17,17 +22,21 @@ export const DEVICE_STATUSES = [
   "Rejected",
 ] as const;
 
-export const CUSTOMER_STATUSES = [
-  "Active",
-  "Inactive",
-  "Suspended",
+export const DEVICE_REJECTION_REASONS = [
+  "Incorrect MAC Address — ভুল MAC",
+  "Duplicate Device — একই ডিভাইস আগে থেকেই আছে",
+  "Incorrect AP Number — ভুল AP নম্বর",
+  "Wrong Server — ভুল সার্ভার",
+  "Incorrect Customer Details — ভুল কাস্টমার তথ্য",
+  "Incorrect Location — ভুল লোকেশন",
+  "Incorrect Brand / Model — ভুল ব্র্যান্ড বা মডেল",
+  "Missing Required Information — প্রয়োজনীয় তথ্য অসম্পূর্ণ",
+  "Device Not Verified — ডিভাইস যাচাই হয়নি",
 ] as const;
 
-export const CUSTOMER_SERVICE_TYPES = [
-  "CCTV",
-  "TV",
-  "Service C",
-] as const;
+export const CUSTOMER_STATUSES = ["Active", "Inactive", "Suspended"] as const;
+
+export const CUSTOMER_SERVICE_TYPES = ["CCTV", "TV", "Service C"] as const;
 
 export const PAYMENT_METHODS = [
   "Cash",
@@ -77,7 +86,14 @@ export const BILLING_SORT_OPTIONS = [
 
 export const STATUS_CONFIG: Record<
   string,
-  { label: string; bg: string; text: string; dot: string; border: string; darkBg: string }
+  {
+    label: string;
+    bg: string;
+    text: string;
+    dot: string;
+    border: string;
+    darkBg: string;
+  }
 > = {
   Pending: {
     label: "Pending",
@@ -147,7 +163,14 @@ export const STATUS_CONFIG: Record<
 
 export const CUSTOMER_STATUS_CONFIG: Record<
   string,
-  { label: string; bg: string; text: string; dot: string; border: string; darkBg: string }
+  {
+    label: string;
+    bg: string;
+    text: string;
+    dot: string;
+    border: string;
+    darkBg: string;
+  }
 > = {
   Active: {
     label: "Active",
@@ -204,7 +227,14 @@ export const CUSTOMER_SERVICE_TYPE_CONFIG: Record<
 
 export const BILLING_STATUS_CONFIG: Record<
   string,
-  { label: string; bg: string; text: string; dot: string; border: string; darkBg: string }
+  {
+    label: string;
+    bg: string;
+    text: string;
+    dot: string;
+    border: string;
+    darkBg: string;
+  }
 > = {
   Paid: {
     label: "Paid",

@@ -1,7 +1,16 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
-import { Bell, CheckCheck, ExternalLink, ShieldAlert, Sparkles, Clock, Eye, EyeOff } from "lucide-react";
+import {
+  Bell,
+  CheckCheck,
+  ExternalLink,
+  ShieldAlert,
+  Sparkles,
+  Clock,
+  Eye,
+  EyeOff,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   getSuperAdminUnreadCount,
@@ -16,8 +25,9 @@ import Link from "next/link";
 import { toast } from "react-hot-toast";
 
 export function NotificationDropdown() {
-  const { isSuperAdmin, isEngineer } = usePermissions();
-  const canAccessNotifications = isSuperAdmin || isEngineer;
+  const { admin } = usePermissions();
+  const canAccessNotifications = Boolean(admin);
+  const currentEmail = admin?.email.toLowerCase() || "";
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<INotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -69,9 +79,9 @@ export function NotificationDropdown() {
   useEffect(() => {
     const handleImportComplete = () => fetchNotifications();
     window.addEventListener("bulk-import-complete", handleImportComplete);
-    return () => window.removeEventListener("bulk-import-complete", handleImportComplete);
+    return () =>
+      window.removeEventListener("bulk-import-complete", handleImportComplete);
   }, [fetchNotifications]);
-
 
   // Click outside to close
   useEffect(() => {
@@ -101,7 +111,10 @@ export function NotificationDropdown() {
       await markAllNotificationsAsRead();
       setUnreadCount(0);
       setNotifications((prev) =>
-        prev.map((n) => ({ ...n, readBy: [...(n.readBy || []), "self"] }))
+        prev.map((n) => ({
+          ...n,
+          readBy: [...new Set([...(n.readBy || []), currentEmail])],
+        })),
       );
       toast.success("All notifications marked as read");
     } catch {
@@ -117,8 +130,13 @@ export function NotificationDropdown() {
       setUnreadCount((prev) => Math.max(0, prev - 1));
       setNotifications((prev) =>
         prev.map((n) =>
-          n._id === id ? { ...n, readBy: [...(n.readBy || []), "self"] } : n
-        )
+          n._id === id
+            ? {
+                ...n,
+                readBy: [...new Set([...(n.readBy || []), currentEmail])],
+              }
+            : n,
+        ),
       );
     } catch (err) {
       console.error("Error marking notification read:", err);
@@ -127,7 +145,7 @@ export function NotificationDropdown() {
 
   // Filter: by default show only unread, toggle to show all
   const unreadNotifications = notifications.filter(
-    (n) => !n.readBy || n.readBy.length === 0
+    (n) => !n.readBy?.includes(currentEmail),
   );
   const displayedNotifications = showAll ? notifications : unreadNotifications;
   const hasUnread = unreadCount > 0;
@@ -150,8 +168,8 @@ export function NotificationDropdown() {
         <Bell className="w-4 h-4" />
 
         {/* Unread dot badge – compact dot when count ≤ 9, number when >9 */}
-        {hasUnread && (
-          unreadCount <= 9 ? (
+        {hasUnread &&
+          (unreadCount <= 9 ? (
             <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
               <span className="absolute inline-flex h-full w-full rounded-full bg-rose-500 opacity-75 animate-ping" />
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-600 ring-2 ring-white dark:ring-[#0a0e1a]" />
@@ -160,8 +178,7 @@ export function NotificationDropdown() {
             <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-600 px-1 text-[10px] font-bold text-white shadow-sm ring-2 ring-white dark:ring-[#0a0e1a] animate-pulse">
               {unreadCount > 99 ? "99+" : unreadCount}
             </span>
-          )
-        )}
+          ))}
       </Button>
 
       {open && (
@@ -175,7 +192,6 @@ export function NotificationDropdown() {
 
           {/* Popover Card */}
           <div className="fixed left-3 right-3 top-16 sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-96 sm:max-w-[380px] rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 gap-2">
               <div className="flex items-center gap-2 min-w-0">
@@ -196,12 +212,18 @@ export function NotificationDropdown() {
                   size="sm"
                   onClick={() => setShowAll((v) => !v)}
                   className="h-7 text-xs font-semibold text-slate-500 hover:text-sky-600 dark:hover:text-sky-400 px-2"
-                  title={showAll ? "Show only unread" : "Show all notifications"}
+                  title={
+                    showAll ? "Show only unread" : "Show all notifications"
+                  }
                 >
                   {showAll ? (
-                    <><EyeOff className="w-3 h-3 mr-1" /> Unread</>
+                    <>
+                      <EyeOff className="w-3 h-3 mr-1" /> Unread
+                    </>
                   ) : (
-                    <><Eye className="w-3 h-3 mr-1" /> All</>
+                    <>
+                      <Eye className="w-3 h-3 mr-1" /> All
+                    </>
                   )}
                 </Button>
 
@@ -267,7 +289,7 @@ export function NotificationDropdown() {
                   <p className="text-[11px] text-slate-400 mt-0.5">
                     {showAll
                       ? "Activity logs will appear here."
-                      : "No unread alerts — switch to \"All\" to view history."}
+                      : 'No unread alerts — switch to "All" to view history.'}
                   </p>
                   {!showAll && notifications.length > 0 && (
                     <button
@@ -275,13 +297,14 @@ export function NotificationDropdown() {
                       onClick={() => setShowAll(true)}
                       className="mt-2 text-[11px] font-semibold text-sky-600 dark:text-sky-400 hover:underline"
                     >
-                      View {notifications.length} read notification{notifications.length !== 1 ? "s" : ""}
+                      View {notifications.length} read notification
+                      {notifications.length !== 1 ? "s" : ""}
                     </button>
                   )}
                 </div>
               ) : (
                 displayedNotifications.map((item) => {
-                  const isRead = item.readBy && item.readBy.length > 0;
+                  const isRead = item.readBy?.includes(currentEmail) ?? false;
                   return (
                     <div
                       key={item._id}
@@ -295,19 +318,25 @@ export function NotificationDropdown() {
                       }`}
                     >
                       <div className="flex items-start gap-2.5">
-                        <div className={`p-2 rounded-xl shrink-0 mt-0.5 ${
-                          isRead
-                            ? "bg-slate-100 dark:bg-slate-800 text-slate-400"
-                            : "bg-amber-500/10 text-amber-600 dark:text-amber-400"
-                        }`}>
+                        <div
+                          className={`p-2 rounded-xl shrink-0 mt-0.5 ${
+                            isRead
+                              ? "bg-slate-100 dark:bg-slate-800 text-slate-400"
+                              : "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                          }`}
+                        >
                           <ShieldAlert className="w-3.5 h-3.5" />
                         </div>
 
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between gap-1 mb-0.5">
-                            <span className={`text-[11px] font-bold truncate ${
-                              isRead ? "text-slate-500 dark:text-slate-400" : "text-slate-800 dark:text-slate-200"
-                            }`}>
+                            <span
+                              className={`text-[11px] font-bold truncate ${
+                                isRead
+                                  ? "text-slate-500 dark:text-slate-400"
+                                  : "text-slate-800 dark:text-slate-200"
+                              }`}
+                            >
                               {item.title}
                             </span>
                             <span className="text-[10px] text-slate-400 flex items-center gap-1 shrink-0 whitespace-nowrap">

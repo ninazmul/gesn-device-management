@@ -614,7 +614,11 @@ export function DeviceTable({
                                 type="button"
                                 onClick={() => setEditingDevice(device)}
                                 className="p-1.5 rounded-lg text-slate-400 hover:text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-950/40 transition-colors"
-                                title="Edit Device"
+                                title={
+                                  device.status === "Rejected"
+                                    ? "Update & Resubmit"
+                                    : "Edit Device"
+                                }
                               >
                                 <Pencil className="w-4 h-4" />
                               </button>

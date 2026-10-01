@@ -1623,7 +1623,11 @@ export function DeviceFormDialog({
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...
                 </>
               ) : isEditing ? (
-                "Save Changes"
+                deviceToEdit?.status === "Rejected" ? (
+                  "Update & Resubmit"
+                ) : (
+                  "Save Changes"
+                )
               ) : (
                 "Create Device"
               )}

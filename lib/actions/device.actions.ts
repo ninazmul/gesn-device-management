@@ -7,7 +7,11 @@ import Counter from "@/lib/database/models/counter.model";
 import Notification from "@/lib/database/models/notification.model";
 import ActivityLog from "@/lib/database/models/activityLog.model";
 import { formatSL, isValidIPv4, normalizeMAC } from "@/lib/utils";
-import { DEVICE_STATUSES, PRIMARY_DEVICE_TYPES } from "@/lib/constants";
+import {
+  DEVICE_REJECTION_REASONS,
+  DEVICE_STATUSES,
+  PRIMARY_DEVICE_TYPES,
+} from "@/lib/constants";
 import {
   getFlexibleField,
   safeParseDate,
@@ -769,7 +773,18 @@ export async function updateDevice(
     updatePayload.customerMobile = data.customerMobile.trim();
   if (data.gpsLink !== undefined) updatePayload.gpsLink = data.gpsLink.trim();
 
-  if (data.status) {
+  const isResubmission = device.status === "Rejected";
+  if (isResubmission) {
+    updatePayload.status = "Pending";
+    updatePayload.rejectionReason = "";
+    updatePayload.submittedBy = {
+      email: actor.email,
+      name: actor.name || actor.email.split("@")[0],
+      role: actor.role,
+      userId: actor._id,
+      date: new Date(),
+    };
+  } else if (data.status) {
     const canApprove =
       isSuperAdmin ||
       isEngineer ||
@@ -805,27 +820,58 @@ export async function updateDevice(
     }
   }
 
-  const updatedDevice = await Device.findByIdAndUpdate(id, updatePayload, {
-    new: true,
-    runValidators: true,
-  });
+  const updatedDevice = await Device.findOneAndUpdate(
+    isResubmission ? { _id: id, status: "Rejected" } : { _id: id },
+    updatePayload,
+    { new: true, runValidators: true },
+  );
 
   if (!updatedDevice) {
-    throw new Error("Device could not be updated");
+    throw new Error(
+      isResubmission
+        ? "Device could not be resubmitted. Its status may have changed; refresh and try again."
+        : "Device could not be updated",
+    );
   }
 
-  await logActivityAndNotify({
-    actor,
-    action: "UPDATE_DEVICE",
-    module: "devices",
-    resourceId: updatedDevice.sl,
-    resourceName: `${updatedDevice.deviceName} (${updatedDevice.sl})`,
-    details: `Updated device details for SL: ${updatedDevice.sl}`,
-    link: `/devices/${updatedDevice.deviceType.toLowerCase().trim()}`,
-  });
+  const deviceLink = `/devices/${updatedDevice.deviceType.toLowerCase().trim()}/${updatedDevice._id}`;
+  const resourceName = `${updatedDevice.deviceName} (${updatedDevice.sl})`;
+  if (isResubmission) {
+    await ActivityLog.create({
+      actorEmail: actor.email,
+      actorRole: actor.role,
+      action: "RESUBMIT_DEVICE",
+      module: "devices",
+      resourceId: updatedDevice.sl,
+      resourceName,
+      details: `Corrected and resubmitted device #${updatedDevice.sl} (${updatedDevice.deviceName}) for approval.`,
+      metadata: { deviceId: String(updatedDevice._id), status: "Pending" },
+    });
+    await Notification.create({
+      actorEmail: actor.email,
+      actorRole: actor.role,
+      action: "DEVICE_SUBMISSION",
+      module: "devices",
+      title: `Device Resubmitted: ${updatedDevice.deviceName}`,
+      message: `Device #${updatedDevice.sl} (${updatedDevice.deviceName}, ${updatedDevice.deviceType.toUpperCase()}) was corrected and resubmitted by ${actor.name || actor.email} (${actor.role}) for approval.`,
+      link: "/devices/pending",
+      readBy: [actor.email.toLowerCase()],
+    });
+  } else {
+    await logActivityAndNotify({
+      actor,
+      action: "UPDATE_DEVICE",
+      module: "devices",
+      resourceId: updatedDevice.sl,
+      resourceName,
+      details: `Updated device details for SL: ${updatedDevice.sl}`,
+      link: deviceLink,
+    });
+  }
 
   safeRevalidatePath("/");
   safeRevalidatePath("/devices");
+  safeRevalidatePath("/devices/pending");
   safeRevalidatePath(
     `/devices/${updatedDevice.deviceType.toLowerCase().trim()}`,
   );
@@ -978,7 +1024,7 @@ export async function approveDevice(id: string) {
 // ==========================================
 // REJECT DEVICE (SUPER ADMIN OR ENGINEER)
 // ==========================================
-export async function rejectDevice(id: string, reason?: string) {
+export async function rejectDevice(id: string, reason: string) {
   await connectToDatabase();
   const actor = await getCurrentAdminProfile();
   if (!actor) {
@@ -1015,7 +1061,15 @@ export async function rejectDevice(id: string, reason?: string) {
     }
   }
 
-  const cleanReason = reason?.trim() || "No specific reason provided.";
+  const cleanReason = reason.trim();
+  if (
+    !cleanReason ||
+    !DEVICE_REJECTION_REASONS.includes(
+      cleanReason as (typeof DEVICE_REJECTION_REASONS)[number],
+    )
+  ) {
+    throw new Error("Please select a valid rejection reason.");
+  }
 
   if (device.status === "Active") {
     throw new Error("Device has already been approved and cannot be rejected.");
@@ -1097,6 +1151,9 @@ export async function rejectDevice(id: string, reason?: string) {
     title: `Device Rejected: ${updatedDevice.deviceName}`,
     message: `Device #${updatedDevice.sl} (${updatedDevice.deviceName}, ${updatedDevice.deviceType.toUpperCase()}) was rejected by ${actor.name || actor.email} (${actor.role}). Reason: ${cleanReason}`,
     link: `/devices/${updatedDevice.deviceType.toLowerCase().trim()}/${updatedDevice._id}`,
+    recipientEmails: updatedDevice.submittedBy?.email
+      ? [updatedDevice.submittedBy.email.toLowerCase()]
+      : [],
     readBy: [actor.email.toLowerCase()],
   });
 

@@ -28,7 +28,11 @@ import { DeviceStatusDialog } from "./DeviceStatusDialog";
 import { DeviceFormDialog } from "./DeviceFormDialog";
 import { RejectDeviceDialog } from "./RejectDeviceDialog";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
-import { deleteDevice, toggleDeviceActive, approveDevice } from "@/lib/actions/device.actions";
+import {
+  deleteDevice,
+  toggleDeviceActive,
+  approveDevice,
+} from "@/lib/actions/device.actions";
 import { formatDate, formatDateTime, formatDisplaySL } from "@/lib/utils";
 import { toast } from "react-hot-toast";
 import type { IDevice } from "@/types";
@@ -59,7 +63,13 @@ interface DeviceDetailsViewProps {
 export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
   const router = useRouter();
   const Icon = getDeviceIcon(device.deviceType);
-  const { isSuperAdmin, canApproveDevice, canDeleteDevice, canEditDevice, canArchiveDevice } = usePermissions();
+  const {
+    isSuperAdmin,
+    canApproveDevice,
+    canDeleteDevice,
+    canEditDevice,
+    canArchiveDevice,
+  } = usePermissions();
 
   const [isStatusOpen, setIsStatusOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -77,10 +87,14 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
     try {
       setIsToggling(true);
       const res = await toggleDeviceActive(device._id);
-      toast.success(`Device ${res.newStatus === "Active" ? "activated" : "set to Pending"}`);
+      toast.success(
+        `Device ${res.newStatus === "Active" ? "activated" : "set to Pending"}`,
+      );
       router.refresh();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to toggle status");
+      toast.error(
+        err instanceof Error ? err.message : "Failed to toggle status",
+      );
     } finally {
       setIsToggling(false);
     }
@@ -93,7 +107,9 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
       toast.success(`Device #${device.sl} deleted successfully`);
       router.push(`/devices/${device.deviceType}`);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to delete device");
+      toast.error(
+        err instanceof Error ? err.message : "Failed to delete device",
+      );
     } finally {
       setIsDeleting(false);
     }
@@ -106,7 +122,9 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
       toast.success("Device approved and set to Active!");
       router.refresh();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to approve device");
+      toast.error(
+        err instanceof Error ? err.message : "Failed to approve device",
+      );
     } finally {
       setIsApproving(false);
     }
@@ -121,7 +139,12 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
           className="inline-flex items-center gap-2 text-xs font-semibold text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>Back to {device.deviceType.charAt(0).toUpperCase() + device.deviceType.slice(1)}s</span>
+          <span>
+            Back to{" "}
+            {device.deviceType.charAt(0).toUpperCase() +
+              device.deviceType.slice(1)}
+            s
+          </span>
         </Link>
         <span className="font-mono text-xs font-bold text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-950/50 px-2.5 py-1 rounded-lg border border-sky-200/50 dark:border-sky-900/50">
           SL: #{formatDisplaySL(device.sl)}
@@ -140,14 +163,18 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
                 className="absolute -bottom-1 -right-1 flex h-3.5 w-3.5"
                 title={`Status: ${device.status}`}
               >
-                {(device.status === "Active" || device.status === "Available") && (
+                {(device.status === "Active" ||
+                  device.status === "Available") && (
                   <span
                     className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
-                      device.status === "Active" ? "bg-emerald-400" : "bg-blue-400"
+                      device.status === "Active"
+                        ? "bg-emerald-400"
+                        : "bg-blue-400"
                     }`}
                   />
                 )}
-                {(device.status === "Pending" || device.status === "Maintenance") && (
+                {(device.status === "Pending" ||
+                  device.status === "Maintenance") && (
                   <span className="animate-pulse absolute inline-flex h-full w-full rounded-full opacity-60 bg-amber-400" />
                 )}
                 <span
@@ -155,14 +182,15 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
                     device.status === "Active"
                       ? "bg-emerald-500"
                       : device.status === "Available"
-                      ? "bg-blue-500"
-                      : device.status === "Offline"
-                      ? "bg-rose-500"
-                      : device.status === "Pending" || device.status === "Maintenance"
-                      ? "bg-amber-500"
-                      : device.status === "Retired"
-                      ? "bg-purple-500"
-                      : "bg-slate-400"
+                        ? "bg-blue-500"
+                        : device.status === "Offline"
+                          ? "bg-rose-500"
+                          : device.status === "Pending" ||
+                              device.status === "Maintenance"
+                            ? "bg-amber-500"
+                            : device.status === "Retired"
+                              ? "bg-purple-500"
+                              : "bg-slate-400"
                   } ring-2 ring-white dark:ring-slate-900`}
                 />
               </span>
@@ -250,7 +278,9 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
                 className="rounded-xl border-slate-200 dark:border-slate-800 text-xs font-semibold"
               >
                 <Pencil className="w-3.5 h-3.5 mr-1.5 text-slate-500" />
-                Edit Device
+                {device.status === "Rejected"
+                  ? "Update & Resubmit"
+                  : "Edit Device"}
               </Button>
             )}
 
@@ -288,27 +318,31 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
       </div>
 
       {/* Rejection Alert Banner */}
-      {device.status === "Rejected" && (device.rejectionReason || device.rejectedBy?.reason) && (
-        <div className="rounded-3xl p-5 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/40 shadow-xs flex items-start gap-4">
-          <div className="p-2.5 rounded-2xl bg-rose-500/10 text-rose-600 dark:text-rose-400 shrink-0">
-            <XCircle className="w-5 h-5" />
-          </div>
-          <div className="space-y-1">
-            <h3 className="font-bold text-sm text-rose-800 dark:text-rose-300">
-              Device Registration Rejected
-            </h3>
-            <p className="text-xs text-rose-700 dark:text-rose-400 leading-relaxed">
-              <span className="font-semibold">Reason:</span> {device.rejectionReason || device.rejectedBy?.reason}
-            </p>
-            {device.rejectedBy && (
-              <p className="text-[11px] text-rose-500/80 dark:text-rose-400/80 pt-0.5">
-                Rejected by {device.rejectedBy.name || device.rejectedBy.email}
-                {device.rejectedBy.date && ` on ${formatDateTime(device.rejectedBy.date)}`}
+      {device.status === "Rejected" &&
+        (device.rejectionReason || device.rejectedBy?.reason) && (
+          <div className="rounded-3xl p-5 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/40 shadow-xs flex items-start gap-4">
+            <div className="p-2.5 rounded-2xl bg-rose-500/10 text-rose-600 dark:text-rose-400 shrink-0">
+              <XCircle className="w-5 h-5" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="font-bold text-sm text-rose-800 dark:text-rose-300">
+                Device Registration Rejected
+              </h3>
+              <p className="text-xs text-rose-700 dark:text-rose-400 leading-relaxed">
+                <span className="font-semibold">Reason:</span>{" "}
+                {device.rejectionReason || device.rejectedBy?.reason}
               </p>
-            )}
+              {device.rejectedBy && (
+                <p className="text-[11px] text-rose-500/80 dark:text-rose-400/80 pt-0.5">
+                  Rejected by{" "}
+                  {device.rejectedBy.name || device.rejectedBy.email}
+                  {device.rejectedBy.date &&
+                    ` on ${formatDateTime(device.rejectedBy.date)}`}
+                </p>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
       {/* Grouped Information Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -320,30 +354,38 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
           </div>
 
           <div className="space-y-4">
-
-
             <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50">
               <div>
-                <span className="text-xs text-slate-400 block">IPv4 Address</span>
+                <span className="text-xs text-slate-400 block">
+                  IPv4 Address
+                </span>
                 <span className="font-mono text-sm font-bold text-slate-900 dark:text-slate-100">
                   {device.ipAddress || "Not configured"}
                 </span>
               </div>
-              {device.ipAddress && <CopyButton text={device.ipAddress} label="IP Address" />}
+              {device.ipAddress && (
+                <CopyButton text={device.ipAddress} label="IP Address" />
+              )}
             </div>
 
             <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50">
               <div>
-                <span className="text-xs text-slate-400 block">MAC Address</span>
+                <span className="text-xs text-slate-400 block">
+                  MAC Address
+                </span>
                 <span className="font-mono text-sm font-bold text-slate-900 dark:text-slate-100">
                   {device.macAddress || "Not configured"}
                 </span>
               </div>
-              {device.macAddress && <CopyButton text={device.macAddress} label="MAC Address" />}
+              {device.macAddress && (
+                <CopyButton text={device.macAddress} label="MAC Address" />
+              )}
             </div>
 
             <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50">
-              <span className="text-xs text-slate-400 block">Online Management URL</span>
+              <span className="text-xs text-slate-400 block">
+                Online Management URL
+              </span>
               {device.onlineLink ? (
                 <a
                   href={
@@ -359,7 +401,9 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
                   <ExternalLink className="w-3.5 h-3.5 shrink-0" />
                 </a>
               ) : (
-                <span className="text-xs text-slate-400 mt-1 block">No URL specified</span>
+                <span className="text-xs text-slate-400 mt-1 block">
+                  No URL specified
+                </span>
               )}
             </div>
           </div>
@@ -374,7 +418,9 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
 
           <div className="space-y-4">
             <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50">
-              <span className="text-xs text-slate-400 block">Date of Activation</span>
+              <span className="text-xs text-slate-400 block">
+                Date of Activation
+              </span>
               <span className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2 mt-1">
                 <Calendar className="w-4 h-4 text-slate-400" />
                 {formatDate(device.activationDate)}
@@ -385,7 +431,9 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
             {device.deviceType === "access-point" && device.apNumber && (
               <div className="flex items-center justify-between p-3.5 rounded-2xl bg-violet-50 dark:bg-violet-950/30">
                 <div>
-                  <span className="text-xs text-violet-500 dark:text-violet-400 block">AP Number</span>
+                  <span className="text-xs text-violet-500 dark:text-violet-400 block">
+                    AP Number
+                  </span>
                   <span className="font-mono text-sm font-bold text-violet-900 dark:text-violet-100">
                     {device.apNumber}
                   </span>
@@ -395,51 +443,70 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
             )}
 
             {/* Access Point / Router: Customer Name */}
-            {["access-point", "router"].includes(device.deviceType) && device.customerName && (
-              <div className="flex items-center justify-between p-3.5 rounded-2xl bg-violet-50 dark:bg-violet-950/30">
-                <div>
-                  <span className="text-xs text-violet-500 dark:text-violet-400 block">Customer Name</span>
-                  <span className="text-sm font-bold text-violet-900 dark:text-violet-100">
-                    {device.customerName}
-                  </span>
+            {["access-point", "router"].includes(device.deviceType) &&
+              device.customerName && (
+                <div className="flex items-center justify-between p-3.5 rounded-2xl bg-violet-50 dark:bg-violet-950/30">
+                  <div>
+                    <span className="text-xs text-violet-500 dark:text-violet-400 block">
+                      Customer Name
+                    </span>
+                    <span className="text-sm font-bold text-violet-900 dark:text-violet-100">
+                      {device.customerName}
+                    </span>
+                  </div>
+                  <CopyButton
+                    text={device.customerName}
+                    label="Customer Name"
+                  />
                 </div>
-                <CopyButton text={device.customerName} label="Customer Name" />
-              </div>
-            )}
+              )}
 
             {/* Access Point / Router: Mobile Number */}
-            {["access-point", "router"].includes(device.deviceType) && device.customerMobile && (
-              <div className="flex items-center justify-between p-3.5 rounded-2xl bg-violet-50 dark:bg-violet-950/30">
-                <div>
-                  <span className="text-xs text-violet-500 dark:text-violet-400 block">Mobile Number</span>
-                  <span className="font-mono text-sm font-bold text-violet-900 dark:text-violet-100">
-                    {device.customerMobile}
-                  </span>
+            {["access-point", "router"].includes(device.deviceType) &&
+              device.customerMobile && (
+                <div className="flex items-center justify-between p-3.5 rounded-2xl bg-violet-50 dark:bg-violet-950/30">
+                  <div>
+                    <span className="text-xs text-violet-500 dark:text-violet-400 block">
+                      Mobile Number
+                    </span>
+                    <span className="font-mono text-sm font-bold text-violet-900 dark:text-violet-100">
+                      {device.customerMobile}
+                    </span>
+                  </div>
+                  <CopyButton
+                    text={device.customerMobile}
+                    label="Mobile Number"
+                  />
                 </div>
-                <CopyButton text={device.customerMobile} label="Mobile Number" />
-              </div>
-            )}
+              )}
 
             {/* Access Point / Router: GPS Link */}
-            {["access-point", "router"].includes(device.deviceType) && device.gpsLink && (
-              <div className="p-3.5 rounded-2xl bg-violet-50 dark:bg-violet-950/30">
-                <span className="text-xs text-violet-500 dark:text-violet-400 block">GPS Link</span>
-                <a
-                  href={device.gpsLink.startsWith("http") ? device.gpsLink : `https://${device.gpsLink}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-mono text-xs font-semibold text-violet-700 dark:text-violet-300 hover:underline break-all inline-flex items-center gap-1.5 mt-1"
-                >
-                  <span>{device.gpsLink}</span>
-                  <ExternalLink className="w-3.5 h-3.5 shrink-0" />
-                </a>
-              </div>
-            )}
-
-
+            {["access-point", "router"].includes(device.deviceType) &&
+              device.gpsLink && (
+                <div className="p-3.5 rounded-2xl bg-violet-50 dark:bg-violet-950/30">
+                  <span className="text-xs text-violet-500 dark:text-violet-400 block">
+                    GPS Link
+                  </span>
+                  <a
+                    href={
+                      device.gpsLink.startsWith("http")
+                        ? device.gpsLink
+                        : `https://${device.gpsLink}`
+                    }
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-mono text-xs font-semibold text-violet-700 dark:text-violet-300 hover:underline break-all inline-flex items-center gap-1.5 mt-1"
+                  >
+                    <span>{device.gpsLink}</span>
+                    <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+                  </a>
+                </div>
+              )}
 
             <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50">
-              <span className="text-xs text-slate-400 block">Serial Number (SL)</span>
+              <span className="text-xs text-slate-400 block">
+                Serial Number (SL)
+              </span>
               <span className="font-mono text-sm font-bold text-sky-600 dark:text-sky-400 mt-1 block">
                 #{device.sl}
               </span>
@@ -456,13 +523,17 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50">
-              <span className="text-xs text-slate-400 block">Classification</span>
+              <span className="text-xs text-slate-400 block">
+                Classification
+              </span>
               <span className="text-sm font-bold capitalize text-slate-900 dark:text-slate-100 mt-1 block">
                 {device.deviceType}
               </span>
             </div>
             <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50">
-              <span className="text-xs text-slate-400 block">Serial Number (SL)</span>
+              <span className="text-xs text-slate-400 block">
+                Serial Number (SL)
+              </span>
               <span className="font-mono text-sm font-bold text-sky-600 dark:text-sky-400 mt-1 block">
                 #{device.sl}
               </span>
@@ -471,7 +542,9 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
 
           {device.description && (
             <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 space-y-1">
-              <span className="text-xs text-slate-400 block">Notes / Description</span>
+              <span className="text-xs text-slate-400 block">
+                Notes / Description
+              </span>
               <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">
                 {device.description}
               </p>
@@ -522,11 +595,14 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
                     </span>
                     <span className="text-xs font-semibold text-rose-700 dark:text-rose-300 block">
                       {device.rejectedBy.name || device.rejectedBy.email}
-                      {device.rejectedBy.date && ` on ${formatDateTime(device.rejectedBy.date)}`}
+                      {device.rejectedBy.date &&
+                        ` on ${formatDateTime(device.rejectedBy.date)}`}
                     </span>
                     {(device.rejectionReason || device.rejectedBy.reason) && (
                       <p className="text-[11px] text-rose-600/90 dark:text-rose-400/90 italic mt-0.5">
-                        &quot;{device.rejectionReason || device.rejectedBy.reason}&quot;
+                        &quot;
+                        {device.rejectionReason || device.rejectedBy.reason}
+                        &quot;
                       </p>
                     )}
                   </div>
@@ -564,23 +640,33 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
             {/* Metric Tiles */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
-                <span className="text-xs font-semibold text-slate-400 block">Total Ports</span>
+                <span className="text-xs font-semibold text-slate-400 block">
+                  Total Ports
+                </span>
                 <span className="text-2xl font-extrabold text-slate-900 dark:text-slate-100 mt-1 block">
                   {device.totalPorts || 0}
                 </span>
-                <span className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 block">Hardware port capacity</span>
+                <span className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 block">
+                  Hardware port capacity
+                </span>
               </div>
 
               <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
-                <span className="text-xs font-semibold text-slate-400 block">Active / Connected</span>
+                <span className="text-xs font-semibold text-slate-400 block">
+                  Active / Connected
+                </span>
                 <span className="text-2xl font-extrabold text-sky-600 dark:text-sky-400 mt-1 block">
                   {device.activePortsCount || 0}
                 </span>
-                <span className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 block">Downlink devices plugged</span>
+                <span className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 block">
+                  Downlink devices plugged
+                </span>
               </div>
 
               <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
-                <span className="text-xs font-semibold text-slate-400 block">Available Ports</span>
+                <span className="text-xs font-semibold text-slate-400 block">
+                  Available Ports
+                </span>
                 <span
                   className={`text-2xl font-extrabold mt-1 block ${
                     (device.availablePorts || 0) > 0
@@ -591,7 +677,9 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
                   {device.availablePorts ?? 0}
                 </span>
                 <span className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 block">
-                  {(device.availablePorts || 0) > 0 ? "Free for uplink assignment" : "Switch capacity fully utilized"}
+                  {(device.availablePorts || 0) > 0
+                    ? "Free for uplink assignment"
+                    : "Switch capacity fully utilized"}
                 </span>
               </div>
             </div>
@@ -599,10 +687,15 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
             {/* Port Utilization Gauge */}
             <div className="space-y-2 p-4 rounded-2xl bg-slate-50/70 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-800">
               <div className="flex items-center justify-between text-xs font-semibold">
-                <span className="text-slate-600 dark:text-slate-300">Port Capacity Utilization</span>
+                <span className="text-slate-600 dark:text-slate-300">
+                  Port Capacity Utilization
+                </span>
                 <span className="text-slate-900 dark:text-slate-100 font-bold">
                   {device.totalPorts
-                    ? Math.round(((device.activePortsCount || 0) / device.totalPorts) * 100)
+                    ? Math.round(
+                        ((device.activePortsCount || 0) / device.totalPorts) *
+                          100,
+                      )
                     : 0}
                   % Used
                 </span>
@@ -612,16 +705,20 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
                   className={`h-full transition-all rounded-full ${
                     (device.activePortsCount || 0) >= (device.totalPorts || 0)
                       ? "bg-rose-500"
-                      : (device.activePortsCount || 0) / (device.totalPorts || 1) > 0.75
-                      ? "bg-amber-500"
-                      : "bg-emerald-500"
+                      : (device.activePortsCount || 0) /
+                            (device.totalPorts || 1) >
+                          0.75
+                        ? "bg-amber-500"
+                        : "bg-emerald-500"
                   }`}
                   style={{
                     width: `${Math.min(
                       100,
                       (device.totalPorts || 0) > 0
-                        ? ((device.activePortsCount || 0) / (device.totalPorts || 1)) * 100
-                        : 0
+                        ? ((device.activePortsCount || 0) /
+                            (device.totalPorts || 1)) *
+                            100
+                        : 0,
                     )}%`,
                   }}
                 />
@@ -631,7 +728,8 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
             {/* Connected Downlink Devices List */}
             <div className="space-y-3">
               <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                Connected Downlink Devices ({device.connectedDevices?.length || 0})
+                Connected Downlink Devices (
+                {device.connectedDevices?.length || 0})
               </h3>
 
               {device.connectedDevices && device.connectedDevices.length > 0 ? (
@@ -668,7 +766,10 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
                             {downlink.ipAddress || "—"}
                           </td>
                           <td className="py-3 px-4">
-                            <DeviceStatusBadge status={downlink.status} size="sm" />
+                            <DeviceStatusBadge
+                              status={downlink.status}
+                              size="sm"
+                            />
                           </td>
                           <td className="py-3 px-4 text-right">
                             <Link
@@ -691,7 +792,8 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
                     No downlink devices currently connected
                   </p>
                   <p className="text-[11px] text-slate-400 dark:text-slate-500 max-w-sm mx-auto">
-                    When Antennas, Access Points, or Routers select this switch as their UpLink, they will appear here automatically.
+                    When Antennas, Access Points, or Routers select this switch
+                    as their UpLink, they will appear here automatically.
                   </p>
                 </div>
               )}
@@ -705,7 +807,10 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2 text-slate-900 dark:text-slate-100 font-bold text-base">
                 <Server className="w-5 h-5 text-sky-500" />
-                <h2>Hosted Devices & Infrastructure ({device.connectedDevices?.length || 0})</h2>
+                <h2>
+                  Hosted Devices & Infrastructure (
+                  {device.connectedDevices?.length || 0})
+                </h2>
               </div>
               <span className="text-xs font-bold px-3 py-1 rounded-full bg-sky-50 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800">
                 {device.connectedDevices?.length || 0} Connected
@@ -746,7 +851,10 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
                           {downlink.ipAddress || "—"}
                         </td>
                         <td className="py-3 px-4">
-                          <DeviceStatusBadge status={downlink.status} size="sm" />
+                          <DeviceStatusBadge
+                            status={downlink.status}
+                            size="sm"
+                          />
                         </td>
                         <td className="py-3 px-4 text-right">
                           <Link
@@ -769,7 +877,8 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
                   No devices currently linked to this server
                 </p>
                 <p className="text-[11px] text-slate-400 dark:text-slate-500 max-w-sm mx-auto">
-                  When devices select this server as their Hosting / Connected Server, they will appear here automatically.
+                  When devices select this server as their Hosting / Connected
+                  Server, they will appear here automatically.
                 </p>
               </div>
             )}
@@ -784,7 +893,9 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
                 <Server className="w-5 h-5 text-sky-500" />
                 <h2>Hosting Server Infrastructure</h2>
               </div>
-              <span className="text-xs font-semibold text-slate-400">Assigned Server</span>
+              <span className="text-xs font-semibold text-slate-400">
+                Assigned Server
+              </span>
             </div>
 
             {typeof device.server === "object" && device.server ? (
@@ -831,59 +942,63 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
         )}
 
         {/* SECTION FOR DOWNLINK DEVICES: UpLink Switch Infrastructure */}
-        {["antenna", "access-point", "router"].includes(device.deviceType) && device.uplinkSwitch && (
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4 md:col-span-2">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex items-center gap-2 text-slate-900 dark:text-slate-100 font-bold text-base">
-                <Network className="w-5 h-5 text-indigo-500" />
-                <h2>UpLink Infrastructure Connection</h2>
-              </div>
-              <span className="text-xs font-semibold text-slate-400">Upstream Parent Switch</span>
-            </div>
-
-            {typeof device.uplinkSwitch === "object" && device.uplinkSwitch ? (
-              <div className="p-4 rounded-2xl bg-indigo-50/30 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex items-start gap-3.5">
-                  <div className="p-3 rounded-xl bg-indigo-100 dark:bg-indigo-900/60 text-indigo-600 dark:text-indigo-400 shrink-0">
-                    <Network className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-mono text-xs font-bold text-sky-600 dark:text-sky-400">
-                        #{(device.uplinkSwitch as IDevice).sl}
-                      </span>
-                      <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                        {(device.uplinkSwitch as IDevice).deviceName}
-                      </h3>
-                      <DeviceStatusBadge
-                        status={(device.uplinkSwitch as IDevice).status}
-                        size="sm"
-                      />
-                    </div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                      {(device.uplinkSwitch as IDevice).ipAddress &&
-                        `IP: ${(device.uplinkSwitch as IDevice).ipAddress}`}
-                      {(device.uplinkSwitch as IDevice).totalPorts &&
-                        ` • ${(device.uplinkSwitch as IDevice).totalPorts} Port Switch`}
-                    </p>
-                  </div>
+        {["antenna", "access-point", "router"].includes(device.deviceType) &&
+          device.uplinkSwitch && (
+            <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4 md:col-span-2">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+                <div className="flex items-center gap-2 text-slate-900 dark:text-slate-100 font-bold text-base">
+                  <Network className="w-5 h-5 text-indigo-500" />
+                  <h2>UpLink Infrastructure Connection</h2>
                 </div>
+                <span className="text-xs font-semibold text-slate-400">
+                  Upstream Parent Switch
+                </span>
+              </div>
 
-                <Link
-                  href={`/devices/switch/${(device.uplinkSwitch as IDevice)._id}`}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold transition-colors shrink-0 self-start sm:self-center shadow-sm"
-                >
-                  <span>View Switch Details</span>
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </Link>
-              </div>
-            ) : (
-              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 text-xs text-slate-500">
-                Connected to Switch ID: {String(device.uplinkSwitch)}
-              </div>
-            )}
-          </div>
-        )}
+              {typeof device.uplinkSwitch === "object" &&
+              device.uplinkSwitch ? (
+                <div className="p-4 rounded-2xl bg-indigo-50/30 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex items-start gap-3.5">
+                    <div className="p-3 rounded-xl bg-indigo-100 dark:bg-indigo-900/60 text-indigo-600 dark:text-indigo-400 shrink-0">
+                      <Network className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-mono text-xs font-bold text-sky-600 dark:text-sky-400">
+                          #{(device.uplinkSwitch as IDevice).sl}
+                        </span>
+                        <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                          {(device.uplinkSwitch as IDevice).deviceName}
+                        </h3>
+                        <DeviceStatusBadge
+                          status={(device.uplinkSwitch as IDevice).status}
+                          size="sm"
+                        />
+                      </div>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                        {(device.uplinkSwitch as IDevice).ipAddress &&
+                          `IP: ${(device.uplinkSwitch as IDevice).ipAddress}`}
+                        {(device.uplinkSwitch as IDevice).totalPorts &&
+                          ` • ${(device.uplinkSwitch as IDevice).totalPorts} Port Switch`}
+                      </p>
+                    </div>
+                  </div>
+
+                  <Link
+                    href={`/devices/switch/${(device.uplinkSwitch as IDevice)._id}`}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold transition-colors shrink-0 self-start sm:self-center shadow-sm"
+                  >
+                    <span>View Switch Details</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </Link>
+                </div>
+              ) : (
+                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 text-xs text-slate-500">
+                  Connected to Switch ID: {String(device.uplinkSwitch)}
+                </div>
+              )}
+            </div>
+          )}
       </div>
 
       {/* Status Update Dialog */}

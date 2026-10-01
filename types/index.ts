@@ -273,7 +273,8 @@ export interface INotification {
   title: string;
   message: string;
   link?: string;
-  readBy: string[]; // super admin emails who marked read
+  recipientEmails?: string[];
+  readBy: string[];
   createdAt: Date | string;
 }
 
