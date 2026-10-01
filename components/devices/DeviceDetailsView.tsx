@@ -65,11 +65,19 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
   const Icon = getDeviceIcon(device.deviceType);
   const {
     isSuperAdmin,
+    isEngineer,
+    admin,
+    can,
     canApproveDevice,
     canDeleteDevice,
     canEditDevice,
     canArchiveDevice,
   } = usePermissions();
+  const canManageServer = isSuperAdmin || isEngineer || can("server_manage");
+  const canResubmitRejected =
+    device.status === "Rejected" &&
+    admin?.role === "editor" &&
+    (device.deviceType !== "server" || canManageServer);
 
   const [isStatusOpen, setIsStatusOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -270,7 +278,7 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
               </Button>
             )}
 
-            {canEditDevice && (
+            {(canEditDevice || canResubmitRejected) && (
               <Button
                 type="button"
                 variant="outline"

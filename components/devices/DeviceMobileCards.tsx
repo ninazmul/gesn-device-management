@@ -122,7 +122,9 @@ export function DeviceMobileCards({
     canApproveDevice,
     canDeleteDevice,
     canEditDevice,
+    can,
   } = usePermissions();
+  const canManageServer = isSuperAdmin || isEngineer || can("server_manage");
 
   const [editingDevice, setEditingDevice] = useState<IDevice | null>(null);
   const [statusDevice, setStatusDevice] = useState<IDevice | null>(null);
@@ -465,7 +467,10 @@ export function DeviceMobileCards({
                 >
                   <Eye className="w-4 h-4" /> Details
                 </Link>
-                {canEditDevice && (
+                {(canEditDevice ||
+                  (device.status === "Rejected" &&
+                    admin?.role === "editor" &&
+                    (device.deviceType !== "server" || canManageServer))) && (
                   <button
                     type="button"
                     onClick={() => setEditingDevice(device)}

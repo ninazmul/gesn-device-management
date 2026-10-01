@@ -693,8 +693,12 @@ export async function updateDevice(
 
   const isSuperAdmin = actor.role === "super_admin";
   const isEngineer = actor.role === "engineer";
+  const canResubmitRejected =
+    device.status === "Rejected" && actor.role === "editor";
   const canEdit =
-    isSuperAdmin || Boolean(actor.granularPermissions?.device_edit);
+    isSuperAdmin ||
+    Boolean(actor.granularPermissions?.device_edit) ||
+    canResubmitRejected;
   if (!canEdit) {
     throw new Error("Forbidden: You do not have permission to edit devices.");
   }

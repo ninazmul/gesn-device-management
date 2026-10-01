@@ -607,7 +607,9 @@ export function DeviceTable({
                           >
                             <Eye className="w-4 h-4" />
                           </Link>
-                          {canEditDevice &&
+                          {(canEditDevice ||
+                            (device.status === "Rejected" &&
+                              admin?.role === "editor")) &&
                             (device.deviceType !== "server" ||
                               canManageServer) && (
                               <button
