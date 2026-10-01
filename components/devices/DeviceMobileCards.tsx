@@ -282,8 +282,8 @@ export function DeviceMobileCards({
                           )}
                         {device.deviceType === "access-point" &&
                           device.apNumber && (
-                            <span className="inline-flex items-center px-1.5 py-0.2 rounded bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 font-semibold text-[10px]">
-                              AP: {device.apNumber}
+                            <span className="inline-flex items-center px-2 py-0.5 rounded bg-blue-900 text-white font-bold text-[11px]">
+                              {device.apNumber}
                             </span>
                           )}
                         {device.deviceType !== "server" &&
