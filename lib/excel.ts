@@ -17,12 +17,19 @@ function loadXlsx() {
  * Flexible field reader that finds values regardless of key casing, leading/trailing spaces,
  * or minor header variations (e.g., "Customer Code" vs "CustomerCode" vs "customercode").
  */
-export function getFlexibleField(raw: Record<string, unknown>, ...possibleKeys: string[]): unknown {
+export function getFlexibleField(
+  raw: Record<string, unknown>,
+  ...possibleKeys: string[]
+): unknown {
   if (!raw) return undefined;
-  
+  const hasValue = (value: unknown) =>
+    value !== undefined &&
+    value !== null &&
+    !(typeof value === "string" && value.trim() === "");
+
   // 1. Direct lookup
   for (const k of possibleKeys) {
-    if (raw[k] !== undefined && raw[k] !== null && raw[k] !== "") return raw[k];
+    if (hasValue(raw[k])) return raw[k];
   }
 
   // 2. Normalized lookup (lowercase, stripped punctuation/spaces)
@@ -32,7 +39,7 @@ export function getFlexibleField(raw: Record<string, unknown>, ...possibleKeys: 
     for (const rk of rawKeys) {
       if (rk.toLowerCase().replace(/[^a-z0-9]/g, "") === targetKey) {
         const val = raw[rk];
-        if (val !== undefined && val !== null && val !== "") return val;
+        if (hasValue(val)) return val;
       }
     }
   }
@@ -46,12 +53,15 @@ export function getFlexibleField(raw: Record<string, unknown>, ...possibleKeys: 
  */
 export function safeParseNumber(val: unknown, fallback: number = 0): number {
   if (val === null || val === undefined || val === "") return fallback;
-  if (typeof val === "number") return isNaN(val) ? fallback : val;
+  if (typeof val === "number") return Number.isFinite(val) ? val : fallback;
   if (typeof val === "string") {
     // Strip common currency symbols, commas, whitespace
-    const cleaned = val.replace(/[^0-9.-]/g, "");
-    const parsed = parseFloat(cleaned);
-    return isNaN(parsed) ? fallback : parsed;
+    const cleaned = val.replace(/[\s,৳$€£¥₹]/g, "");
+    if (!/^[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?$/.test(cleaned)) {
+      return fallback;
+    }
+    const parsed = Number(cleaned);
+    return Number.isFinite(parsed) ? parsed : fallback;
   }
   return fallback;
 }
@@ -78,6 +88,26 @@ export function safeParseDate(val: unknown, fallback: Date = new Date()): Date {
     // Check if string is a numeric serial date
     if (!isNaN(Number(str))) {
       return safeParseDate(Number(str), fallback);
+    }
+
+    const parts = str.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/);
+    if (parts) {
+      const first = Number(parts[1]);
+      const second = Number(parts[2]);
+      const year = Number(parts[3]);
+      const makeDate = (day: number, month: number) => {
+        const candidate = new Date(
+          `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}T00:00:00Z`,
+        );
+        return candidate.getUTCFullYear() === year &&
+          candidate.getUTCMonth() === month - 1 &&
+          candidate.getUTCDate() === day
+          ? candidate
+          : undefined;
+      };
+      const dayFirst = makeDate(first, second);
+      const monthFirst = makeDate(second, first);
+      if (dayFirst || monthFirst) return dayFirst || monthFirst || fallback;
     }
 
     const parsed = new Date(str);
@@ -108,7 +138,7 @@ export function safeParseString(val: unknown, fallback: string = ""): string {
 export async function downloadTemplate(
   headers: string[],
   sampleRow: Record<string, string | number>,
-  filename: string
+  filename: string,
 ): Promise<void> {
   const XLSX = await loadXlsx();
   const ws = XLSX.utils.json_to_sheet([sampleRow], { header: headers });
@@ -132,7 +162,7 @@ export async function exportToExcel<T extends Record<string, unknown>>(
   data: T[],
   headers: string[],
   sheetName: string,
-  filename: string
+  filename: string,
 ): Promise<void> {
   if (data.length === 0) return;
 
@@ -159,14 +189,17 @@ export interface ExcelSheet {
 /**
  * Creates a multi-sheet workbook — used for the full financial report.
  */
-export async function exportMultiSheetExcel(sheets: ExcelSheet[], filename: string): Promise<void> {
+export async function exportMultiSheetExcel(
+  sheets: ExcelSheet[],
+  filename: string,
+): Promise<void> {
   const XLSX = await loadXlsx();
   const wb = XLSX.utils.book_new();
 
   for (const sheet of sheets) {
     const ws = XLSX.utils.json_to_sheet(
       sheet.data.length > 0 ? sheet.data : [{}],
-      { header: sheet.headers }
+      { header: sheet.headers },
     );
     ws["!cols"] = sheet.headers.map(() => ({ wch: 22 }));
     XLSX.utils.book_append_sheet(wb, ws, sheet.name);
@@ -184,7 +217,7 @@ export async function exportMultiSheetExcel(sheets: ExcelSheet[], filename: stri
  * raw row objects (keys are the header names from row 1).
  */
 export async function parseExcelFile(
-  file: File
+  file: File,
 ): Promise<Record<string, unknown>[]> {
   const XLSX = await loadXlsx();
   return new Promise((resolve, reject) => {
@@ -197,7 +230,7 @@ export async function parseExcelFile(
         const firstSheet = wb.Sheets[wb.SheetNames[0]];
         const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(
           firstSheet,
-          { defval: "" }
+          { defval: "" },
         );
         resolve(rows);
       } catch (err) {

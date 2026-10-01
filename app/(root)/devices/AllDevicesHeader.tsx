@@ -25,46 +25,18 @@ import {
 import { DeviceFormDialog } from "@/components/devices/DeviceFormDialog";
 import { BulkImportDialog } from "@/components/shared/BulkImportDialog";
 import { usePermissions } from "@/components/providers/PermissionContext";
-import { getAllDevicesForExport, importDevicesBulk } from "@/lib/actions/device.actions";
+import {
+  getAllDevicesForExport,
+  importDevicesBulk,
+} from "@/lib/actions/device.actions";
 import { exportToExcel, downloadTemplate } from "@/lib/excel";
+import {
+  DEVICE_EXPORT_HEADERS,
+  DEVICE_IMPORT_HEADERS,
+  createDeviceImportSample,
+  mapDeviceToExportRow,
+} from "@/lib/device-excel";
 import { toast } from "react-hot-toast";
-
-const DEVICE_EXPORT_HEADERS = [
-  "SL",
-  "Device Name",
-  "Device Type",
-  "MAC Address",
-  "IP Address",
-  "Status",
-  "Server",
-  "Uplink Switch",
-  "Total Ports",
-  "AP Number",
-  "Customer Name",
-  "Customer Mobile",
-  "GPS Link",
-  "Activation Date",
-  "Online Link",
-  "Description",
-];
-
-const DEVICE_TEMPLATE_HEADERS = [
-  "Device Name",
-  "Device Type",
-  "MAC Address",
-  "IP Address",
-  "Status",
-  "Server",
-  "Uplink Switch",
-  "Total Ports",
-  "AP Number",
-  "Customer Name",
-  "Customer Mobile",
-  "GPS Link",
-  "Activation Date",
-  "Online Link",
-  "Description",
-];
 
 interface AllDevicesHeaderProps {
   total: number;
@@ -93,54 +65,20 @@ export function AllDevicesHeader({ total }: AllDevicesHeaderProps) {
         return;
       }
 
-      const rows = devices.map((d) => {
-        const srv =
-          d.server && typeof d.server === "object"
-            ? (d.server as { sl?: string; deviceName?: string }).deviceName ||
-              (d.server as { sl?: string; deviceName?: string }).sl ||
-              ""
-            : d.server
-            ? String(d.server)
-            : "";
-        const sw =
-          d.uplinkSwitch && typeof d.uplinkSwitch === "object"
-            ? (d.uplinkSwitch as { sl?: string; deviceName?: string }).deviceName ||
-              (d.uplinkSwitch as { sl?: string; deviceName?: string }).sl ||
-              ""
-            : d.uplinkSwitch
-            ? String(d.uplinkSwitch)
-            : "";
-
-        return {
-          "SL": d.sl,
-          "Device Name": d.deviceName,
-          "Device Type": d.deviceType,
-          "MAC Address": d.macAddress || "",
-          "IP Address": d.ipAddress || "",
-          "Status": d.status,
-          "Server": srv,
-          "Uplink Switch": sw,
-          "Total Ports": d.totalPorts || "",
-          "AP Number": d.apNumber || "",
-          "Customer Name": d.customerName || "",
-          "Customer Mobile": d.customerMobile || "",
-          "GPS Link": d.gpsLink || "",
-          "Activation Date": d.activationDate ? new Date(d.activationDate).toISOString().split("T")[0] : "",
-          "Online Link": d.onlineLink || "",
-          "Description": d.description || "",
-        };
-      });
+      const rows = devices.map(mapDeviceToExportRow);
 
       const dateStr = new Date().toISOString().slice(0, 10);
       await exportToExcel(
         rows,
         DEVICE_EXPORT_HEADERS,
         "All Devices",
-        `all-devices-inventory-${dateStr}.xlsx`
+        `all-devices-inventory-${dateStr}.xlsx`,
       );
       toast.success(`Exported ${devices.length} device records!`);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to export devices");
+      toast.error(
+        err instanceof Error ? err.message : "Failed to export devices",
+      );
     } finally {
       setIsExporting(false);
     }
@@ -149,25 +87,9 @@ export function AllDevicesHeader({ total }: AllDevicesHeaderProps) {
   const handleDownloadTemplate = async () => {
     try {
       await downloadTemplate(
-      DEVICE_TEMPLATE_HEADERS,
-      {
-        "Device Name": "Access Point North 1",
-        "Device Type": "access-point",
-        "MAC Address": "48:8F:5A:11:22:33",
-        "IP Address": "192.168.1.50",
-        "Status": "Active",
-        "Server": "Main Gateway Server",
-        "Uplink Switch": "Core Switch 1",
-        "Total Ports": "",
-        "AP Number": "AP-001",
-        "Customer Name": "Md. Rahim Uddin",
-        "Customer Mobile": "01700000000",
-        "GPS Link": "https://maps.google.com/?q=23.8103,90.4125",
-        "Activation Date": new Date().toISOString().split("T")[0],
-        "Online Link": "https://192.168.1.50",
-        "Description": "Sector Access Point",
-      },
-      `devices-import-template.xlsx`
+        DEVICE_IMPORT_HEADERS,
+        createDeviceImportSample("access-point", "Access Point"),
+        `devices-import-template.xlsx`,
       );
       toast.success("Excel template downloaded!");
     } catch {
@@ -209,15 +131,13 @@ export function AllDevicesHeader({ total }: AllDevicesHeaderProps) {
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button
-                className="rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-semibold text-xs shadow-md shadow-sky-600/10 gap-1.5 h-10 px-4"
-              >
+              <Button className="rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-semibold text-xs shadow-md shadow-sky-600/10 gap-1.5 h-10 px-4">
                 <span>Actions</span>
                 <ChevronDown className="w-3.5 h-3.5 opacity-80" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
-          {canAddDevice && (
+              {canAddDevice && (
                 <>
                   <DropdownMenuLabel>Inventory Management</DropdownMenuLabel>
                   <DropdownMenuItem onClick={() => setIsAddOpen(true)}>
@@ -267,24 +187,8 @@ export function AllDevicesHeader({ total }: AllDevicesHeaderProps) {
         onOpenChange={setIsImportOpen}
         title="Bulk Import Devices"
         description="Upload an Excel or CSV file to register multiple devices into inventory at once."
-        templateHeaders={DEVICE_TEMPLATE_HEADERS}
-        sampleRow={{
-          "Device Name": "Access Point North 1",
-          "Device Type": "access-point",
-          "MAC Address": "48:8F:5A:11:22:33",
-          "IP Address": "192.168.1.50",
-          "Status": "Active",
-          "Server": "Main Gateway Server",
-          "Uplink Switch": "Core Switch 1",
-          "Total Ports": "",
-          "AP Number": "AP-001",
-          "Customer Name": "Md. Rahim Uddin",
-          "Customer Mobile": "01700000000",
-          "GPS Link": "https://maps.google.com/?q=23.8103,90.4125",
-          "Activation Date": new Date().toISOString().split("T")[0],
-          "Online Link": "https://192.168.1.50",
-          "Description": "Sector Access Point",
-        }}
+        templateHeaders={DEVICE_IMPORT_HEADERS}
+        sampleRow={createDeviceImportSample("access-point", "Access Point")}
         templateFilename="devices-import-template.xlsx"
         onImport={async (rows) => importDevicesBulk(rows)}
         onSuccess={() => router.refresh()}

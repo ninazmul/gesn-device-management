@@ -2,10 +2,18 @@
 
 import { connectToDatabase } from "@/lib/database";
 import Device from "@/lib/database/models/device.model";
+import DeviceType from "@/lib/database/models/deviceType.model";
 import Counter from "@/lib/database/models/counter.model";
 import Notification from "@/lib/database/models/notification.model";
 import ActivityLog from "@/lib/database/models/activityLog.model";
 import { formatSL, isValidIPv4, normalizeMAC } from "@/lib/utils";
+import { DEVICE_STATUSES, PRIMARY_DEVICE_TYPES } from "@/lib/constants";
+import {
+  getFlexibleField,
+  safeParseDate,
+  safeParseNumber,
+  safeParseString,
+} from "@/lib/excel";
 import { revalidatePath } from "next/cache";
 import type { FilterQuery } from "mongoose";
 import type {
@@ -390,6 +398,7 @@ export async function createDevice(data: {
   customerMobile?: string;
   gpsLink?: string;
   status?: DeviceStatus;
+  rejectionReason?: string;
 }) {
   const actor = await requirePermission("devices", "write");
   await connectToDatabase();
@@ -512,7 +521,7 @@ export async function createDevice(data: {
     deviceType: type,
     deviceName,
     totalPorts:
-      data.totalPorts !== undefined && !isNaN(Number(data.totalPorts))
+      data.totalPorts !== undefined && Number.isFinite(Number(data.totalPorts))
         ? Number(data.totalPorts)
         : undefined,
     uplinkSwitch: data.uplinkSwitch ? data.uplinkSwitch : null,
@@ -523,12 +532,28 @@ export async function createDevice(data: {
     ipAddress: rawIp,
     activationDate: data.activationDate
       ? new Date(data.activationDate)
-      : new Date(),
+      : undefined,
     apNumber: data.apNumber?.trim() || "",
     customerName: data.customerName?.trim() || "",
     customerMobile: data.customerMobile?.trim() || "",
     gpsLink: data.gpsLink?.trim() || "",
     status: finalStatus,
+    rejectionReason:
+      finalStatus === "Rejected"
+        ? data.rejectionReason?.trim() || "Imported as rejected"
+        : "",
+    ...(finalStatus === "Rejected"
+      ? {
+          rejectedBy: {
+            email: actor.email,
+            name: actor.name || actor.email.split("@")[0],
+            role: actor.role,
+            userId: actor._id,
+            date: new Date(),
+            reason: data.rejectionReason?.trim() || "Imported as rejected",
+          },
+        }
+      : {}),
     submittedBy: {
       email: actor.email,
       name: actor.name || actor.email.split("@")[0],
@@ -1569,32 +1594,44 @@ export async function importDevicesBulk(
   }
 
   // Pre-fetch servers, switches, and existing devices for fast resolution
-  const [servers, switches, existingDevices] = await Promise.all([
-    Device.find(
-      { deviceType: "server" },
-      { _id: 1, sl: 1, deviceName: 1 },
-    ).lean(),
-    Device.find(
-      { deviceType: "switch" },
-      { _id: 1, sl: 1, deviceName: 1 },
-    ).lean(),
-    Device.find(
-      { macAddress: { $ne: "" } },
-      {
-        macAddress: 1,
-        deviceType: 1,
-        deviceName: 1,
-        ipAddress: 1,
-        status: 1,
-        totalPorts: 1,
-        apNumber: 1,
-        customerName: 1,
-        customerMobile: 1,
-        description: 1,
-        onlineLink: 1,
-        gpsLink: 1,
-      },
-    ).lean(),
+  const [servers, switches, existingDevices, activeDeviceTypes] =
+    await Promise.all([
+      Device.find(
+        {
+          deviceType: "server",
+          status: { $nin: ["Retired", "Pending", "Rejected"] },
+        },
+        { _id: 1, sl: 1, deviceName: 1 },
+      ).lean(),
+      Device.find(
+        {
+          deviceType: "switch",
+          status: { $nin: ["Retired", "Pending", "Rejected"] },
+        },
+        { _id: 1, sl: 1, deviceName: 1 },
+      ).lean(),
+      Device.find(
+        { macAddress: { $ne: "" } },
+        {
+          macAddress: 1,
+          deviceType: 1,
+          deviceName: 1,
+          ipAddress: 1,
+          status: 1,
+          totalPorts: 1,
+          apNumber: 1,
+          customerName: 1,
+          customerMobile: 1,
+          description: 1,
+          onlineLink: 1,
+          gpsLink: 1,
+        },
+      ).lean(),
+      DeviceType.find({ isActive: true }).select("slug").lean(),
+    ]);
+  const validTypes = new Set([
+    ...PRIMARY_DEVICE_TYPES.map((type) => type.slug),
+    ...activeDeviceTypes.map((type) => type.slug.toLowerCase().trim()),
   ]);
 
   // Build a MAC → existing device map for O(1) duplicate lookups
@@ -1611,6 +1648,8 @@ export async function importDevicesBulk(
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i];
     const rowNum = i + 2; // Row 1 is header in Excel, data starts at Row 2
+    const readText = (...keys: string[]) =>
+      safeParseString(getFlexibleField(r, ...keys));
 
     // 1. Verification: Skip completely blank rows
     const hasAnyValue = Object.values(r).some(
@@ -1622,30 +1661,21 @@ export async function importDevicesBulk(
 
     try {
       // 2. Verification: Device Type (Required)
-      const rawType = String(
-        r["Device Type"] ||
-          r["Type"] ||
-          r["deviceType"] ||
-          defaultType(defaultDeviceType) ||
-          "",
+      const rawType = (
+        readText("Device Type", "Type", "deviceType") ||
+        defaultType(defaultDeviceType)
       )
-        .trim()
-        .toLowerCase();
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "");
 
-      const validTypes = [
-        "switch",
-        "router",
-        "antenna",
-        "access-point",
-        "server",
-      ];
       if (!rawType) {
         errors.push(`Row ${rowNum}: Device Type is required.`);
         continue;
       }
-      if (!validTypes.includes(rawType)) {
+      if (!validTypes.has(rawType)) {
         errors.push(
-          `Row ${rowNum}: Invalid Device Type "${rawType}". Must be one of: switch, router, antenna, access-point, server.`,
+          `Row ${rowNum}: Invalid Device Type "${rawType}". Must match an active device type in the catalog.`,
         );
         continue;
       }
@@ -1658,14 +1688,13 @@ export async function importDevicesBulk(
       }
 
       // 3. Verification: MAC Address (Required)
-      const rawMac = String(
-        r["MAC Address"] ||
-          r["MAC"] ||
-          r["macAddress"] ||
-          r["Mac Address"] ||
-          r["mac"] ||
-          "",
-      ).trim();
+      const rawMac = readText(
+        "MAC Address",
+        "MAC",
+        "macAddress",
+        "Mac Address",
+        "mac",
+      );
 
       if (!rawMac) {
         errors.push(`Row ${rowNum}: MAC Address is required.`);
@@ -1697,9 +1726,7 @@ export async function importDevicesBulk(
       }
 
       // 5. Verification: Optional IPv4 Address
-      const rawIp = String(
-        r["IP Address"] || r["IP"] || r["ipAddress"] || r["Ip Address"] || "",
-      ).trim();
+      const rawIp = readText("IP Address", "IP", "ipAddress", "Ip Address");
       let ipAddress = "";
       if (rawIp) {
         if (!isValidIPv4(rawIp)) {
@@ -1712,71 +1739,59 @@ export async function importDevicesBulk(
       }
 
       // 6. Optional text fields (Device Name, Notes, Online Link)
-      const rawName = String(
-        r["Device Name"] || r["Name"] || r["deviceName"] || "",
-      ).trim();
-      const rawBrand = String(r["Brand"] || r["brand"] || "").trim();
-      const rawModel = String(r["Model"] || r["model"] || "").trim();
+      const rawName = readText("Device Name", "Name", "deviceName");
+      const rawBrand = readText("Brand", "brand");
+      const rawModel = readText("Model", "model");
       const brandModelHint = [rawBrand, rawModel].filter(Boolean).join(" ");
       const deviceName =
         rawName ||
         (brandModelHint
           ? `${brandModelHint} ${macAddress.slice(-5)}`
           : `${deviceType.toUpperCase()} ${macAddress.slice(-5)}`);
-      const rawDesc = String(
-        r["Description"] || r["Notes"] || r["description"] || "",
-      ).trim();
+      const rawDesc = readText("Description", "Notes", "description");
       const description = rawDesc || `${deviceType.toUpperCase()} unit`;
-      const onlineLink = String(
-        r["Online Link"] ||
-          r["Portal"] ||
-          r["Management URL"] ||
-          r["onlineLink"] ||
-          "",
-      ).trim();
+      const onlineLink = readText(
+        "Online Link",
+        "Portal",
+        "Management URL",
+        "onlineLink",
+      );
 
       // 7. Verification: Optional Switch Ports
-      const rawPorts = r["Total Ports"] || r["Ports"] || r["totalPorts"];
+      const rawPorts = getFlexibleField(
+        r,
+        "Total Ports",
+        "Ports",
+        "totalPorts",
+      );
       let totalPorts: number | undefined = undefined;
-      if (deviceType === "switch") {
-        if (rawPorts !== undefined && rawPorts !== null && rawPorts !== "") {
-          const numPorts = Number(rawPorts);
-          if (!isNaN(numPorts) && numPorts > 0) {
-            totalPorts = Math.floor(numPorts);
-          } else {
-            totalPorts = 8;
-          }
-        } else {
-          totalPorts = 8;
+      if (deviceType === "switch" && safeParseString(rawPorts) !== "") {
+        const numPorts = safeParseNumber(rawPorts, Number.NaN);
+        if (!Number.isFinite(numPorts) || numPorts <= 0) {
+          errors.push(`Row ${rowNum}: Total Ports must be a positive number.`);
+          continue;
         }
+        totalPorts = Math.floor(numPorts);
       }
 
       // 8. Verification: Status (Forced to "Pending" for non-super-admins)
       const isSuperAdmin = actor.role === "super_admin";
-      const rawStatus = String(r["Status"] || r["status"] || "").trim();
+      const rawStatus = readText("Status", "status");
       let status: DeviceStatus = "Pending";
       if (isSuperAdmin) {
-        status = [
-          "Pending",
-          "Active",
-          "Available",
-          "Offline",
-          "Maintenance",
-          "Inactive",
-          "Retired",
-        ].includes(rawStatus)
-          ? (rawStatus as DeviceStatus)
-          : "Active";
+        status =
+          DEVICE_STATUSES.find(
+            (candidate) => candidate.toLowerCase() === rawStatus.toLowerCase(),
+          ) || "Active";
       }
 
       // 9. Verification: Server lookup
-      const rawServer = String(
-        r["Server"] ||
-          r["Connected Server"] ||
-          r["Server SL"] ||
-          r["server"] ||
-          "",
-      ).trim();
+      const rawServer = readText(
+        "Server",
+        "Connected Server",
+        "Server SL",
+        "server",
+      );
       let serverId: string | null = null;
       if (rawServer && deviceType !== "server") {
         const found = (
@@ -1810,13 +1825,12 @@ export async function importDevicesBulk(
       }
 
       // 10. Verification: Optional Uplink Switch lookup
-      const rawSwitch = String(
-        r["Uplink Switch"] ||
-          r["Switch"] ||
-          r["Switch SL"] ||
-          r["uplinkSwitch"] ||
-          "",
-      ).trim();
+      const rawSwitch = readText(
+        "Uplink Switch",
+        "Switch",
+        "Switch SL",
+        "uplinkSwitch",
+      );
       let switchId: string | null = null;
       if (
         rawSwitch &&
@@ -1837,56 +1851,43 @@ export async function importDevicesBulk(
 
       // 11. Optional AP & Customer fields & GPS Link
       const apNumber =
-        String(r["AP Number"] || r["AP"] || r["apNumber"] || "").trim() ||
+        readText("AP Number", "AP", "apNumber") ||
         (deviceType === "access-point"
           ? `AP-${macAddress.slice(-5).replace(/:/g, "")}`
           : "");
       const customerName =
-        String(
-          r["Customer Name"] || r["Customer"] || r["customerName"] || "",
-        ).trim() ||
+        readText("Customer Name", "Customer", "customerName") ||
         (["access-point", "router"].includes(deviceType)
           ? "Office / Stock"
           : "");
       const customerMobile =
-        String(
-          r["Customer Mobile"] ||
-            r["Mobile Number"] ||
-            r["Mobile"] ||
-            r["Phone"] ||
-            r["customerMobile"] ||
-            "",
-        ).trim() ||
-        (["access-point", "router"].includes(deviceType) ? "N/A" : "");
+        readText(
+          "Customer Mobile",
+          "Mobile Number",
+          "Mobile",
+          "Phone",
+          "customerMobile",
+        ) || (["access-point", "router"].includes(deviceType) ? "N/A" : "");
 
       // Handle GPS Link & legacy Latitude/Longitude fallback
-      const rawGps = String(
-        r["GPS Link"] ||
-          r["Map Link"] ||
-          r["GPS"] ||
-          r["gpsLink"] ||
-          r["Location"] ||
-          r["Address"] ||
-          "",
-      ).trim();
-      const rawLat =
-        r["GPS Latitude"] ?? r["Latitude"] ?? r["Lat"] ?? r["gpsLatitude"];
-      const rawLng =
-        r["GPS Longitude"] ??
-        r["Longitude"] ??
-        r["Lng"] ??
-        r["Long"] ??
-        r["gpsLongitude"];
+      const rawGps = readText(
+        "GPS Link",
+        "Map Link",
+        "GPS",
+        "gpsLink",
+        "Location",
+        "Address",
+      );
+      const rawLat = readText("GPS Latitude", "Latitude", "Lat", "gpsLatitude");
+      const rawLng = readText(
+        "GPS Longitude",
+        "Longitude",
+        "Lng",
+        "Long",
+        "gpsLongitude",
+      );
       let gpsLink = rawGps;
-      if (
-        !gpsLink &&
-        rawLat !== undefined &&
-        rawLat !== null &&
-        rawLat !== "" &&
-        rawLng !== undefined &&
-        rawLng !== null &&
-        rawLng !== ""
-      ) {
+      if (!gpsLink && rawLat && rawLng) {
         gpsLink = `https://maps.google.com/?q=${rawLat},${rawLng}`;
       }
       if (
@@ -1897,20 +1898,23 @@ export async function importDevicesBulk(
       }
 
       // 12. Verification: Optional Activation Date
-      const rawActDate =
-        r["Activation Date"] ?? r["Date of Activation"] ?? r["activationDate"];
+      const rawActDate = getFlexibleField(
+        r,
+        "Activation Date",
+        "Date of Activation",
+        "activationDate",
+      );
       let activationDate: Date | undefined;
-      if (rawActDate) {
-        if (rawActDate instanceof Date && !isNaN(rawActDate.getTime())) {
-          activationDate = rawActDate;
-        } else if (
-          typeof rawActDate === "string" ||
-          typeof rawActDate === "number"
-        ) {
-          const parsed = new Date(rawActDate);
-          if (!isNaN(parsed.getTime())) activationDate = parsed;
+      if (safeParseString(rawActDate)) {
+        const parsed = safeParseDate(rawActDate, new Date(Number.NaN));
+        if (Number.isNaN(parsed.getTime())) {
+          errors.push(`Row ${rowNum}: Activation Date is not a valid date.`);
+          continue;
         }
+        activationDate = parsed;
       }
+
+      const rejectionReason = readText("Rejection Reason", "rejectionReason");
 
       // Execute createDevice in isolated row try/catch
       await createDevice({
@@ -1931,6 +1935,7 @@ export async function importDevicesBulk(
         gpsLink: gpsLink || undefined,
         activationDate,
         status,
+        rejectionReason,
         description,
         onlineLink,
       });

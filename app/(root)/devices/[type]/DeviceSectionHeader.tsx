@@ -27,8 +27,17 @@ import {
 import { DeviceFormDialog } from "@/components/devices/DeviceFormDialog";
 import { BulkImportDialog } from "@/components/shared/BulkImportDialog";
 import { usePermissions } from "@/components/providers/PermissionContext";
-import { getAllDevicesForExport, importDevicesBulk } from "@/lib/actions/device.actions";
+import {
+  getAllDevicesForExport,
+  importDevicesBulk,
+} from "@/lib/actions/device.actions";
 import { exportToExcel, downloadTemplate } from "@/lib/excel";
+import {
+  DEVICE_EXPORT_HEADERS,
+  DEVICE_IMPORT_HEADERS,
+  createDeviceImportSample,
+  mapDeviceToExportRow,
+} from "@/lib/device-excel";
 import { toast } from "react-hot-toast";
 
 function getDeviceIcon(type: string) {
@@ -46,63 +55,6 @@ function getDeviceIcon(type: string) {
     default:
       return Network;
   }
-}
-
-const DEVICE_EXPORT_HEADERS = [
-  "SL",
-  "Device Name",
-  "Device Type",
-  "MAC Address",
-  "IP Address",
-  "Status",
-  "Server",
-  "Uplink Switch",
-  "Total Ports",
-  "AP Number",
-  "Customer Name",
-  "Customer Mobile",
-  "GPS Link",
-  "Activation Date",
-  "Online Link",
-  "Description",
-];
-
-const DEVICE_TEMPLATE_HEADERS = [
-  "Device Name",
-  "Device Type",
-  "MAC Address",
-  "IP Address",
-  "Status",
-  "Server",
-  "Uplink Switch",
-  "Total Ports",
-  "AP Number",
-  "Customer Name",
-  "Customer Mobile",
-  "GPS Link",
-  "Activation Date",
-  "Online Link",
-  "Description",
-];
-
-function getSectionSampleRow(typeSlug: string, typeName: string): Record<string, string | number> {
-  return {
-    "Device Name": `${typeName} Node 1`,
-    "Device Type": typeSlug,
-    "MAC Address": "48:8F:5A:11:22:33",
-    "IP Address": "192.168.1.10",
-    "Status": "Active",
-    "Server": typeSlug === "server" ? "" : "Main Gateway Server",
-    "Uplink Switch": ["antenna", "access-point", "router"].includes(typeSlug) ? "Core Switch 1" : "",
-    "Total Ports": typeSlug === "switch" ? 24 : "",
-    "AP Number": typeSlug === "access-point" ? "AP-001" : "",
-    "Customer Name": ["access-point", "router"].includes(typeSlug) ? "Md. Rahim Uddin" : "",
-    "Customer Mobile": ["access-point", "router"].includes(typeSlug) ? "01700000000" : "",
-    "GPS Link": typeSlug === "server" ? "" : "https://maps.google.com/?q=23.8103,90.4125",
-    "Activation Date": new Date().toISOString().split("T")[0],
-    "Online Link": "https://192.168.1.10",
-    "Description": `${typeName} installed at main site`,
-  };
 }
 
 interface DeviceSectionHeaderProps {
@@ -140,54 +92,22 @@ export function DeviceSectionHeader({
         return;
       }
 
-      const rows = devices.map((d) => {
-        const srv =
-          d.server && typeof d.server === "object"
-            ? (d.server as { sl?: string; deviceName?: string }).deviceName ||
-              (d.server as { sl?: string; deviceName?: string }).sl ||
-              ""
-            : d.server
-            ? String(d.server)
-            : "";
-        const sw =
-          d.uplinkSwitch && typeof d.uplinkSwitch === "object"
-            ? (d.uplinkSwitch as { sl?: string; deviceName?: string }).deviceName ||
-              (d.uplinkSwitch as { sl?: string; deviceName?: string }).sl ||
-              ""
-            : d.uplinkSwitch
-            ? String(d.uplinkSwitch)
-            : "";
-
-        return {
-          "SL": d.sl,
-          "Device Name": d.deviceName,
-          "Device Type": d.deviceType,
-          "MAC Address": d.macAddress || "",
-          "IP Address": d.ipAddress || "",
-          "Status": d.status,
-          "Server": srv,
-          "Uplink Switch": sw,
-          "Total Ports": d.totalPorts || "",
-          "AP Number": d.apNumber || "",
-          "Customer Name": d.customerName || "",
-          "Customer Mobile": d.customerMobile || "",
-          "GPS Link": d.gpsLink || "",
-          "Activation Date": d.activationDate ? new Date(d.activationDate).toISOString().split("T")[0] : "",
-          "Online Link": d.onlineLink || "",
-          "Description": d.description || "",
-        };
-      });
+      const rows = devices.map(mapDeviceToExportRow);
 
       const dateStr = new Date().toISOString().slice(0, 10);
       await exportToExcel(
         rows,
         DEVICE_EXPORT_HEADERS,
         typeName,
-        `${typeSlug}-inventory-${dateStr}.xlsx`
+        `${typeSlug}-inventory-${dateStr}.xlsx`,
       );
-      toast.success(`Exported ${devices.length} ${typeName.toLowerCase()} records!`);
+      toast.success(
+        `Exported ${devices.length} ${typeName.toLowerCase()} records!`,
+      );
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to export devices");
+      toast.error(
+        err instanceof Error ? err.message : "Failed to export devices",
+      );
     } finally {
       setIsExporting(false);
     }
@@ -196,9 +116,9 @@ export function DeviceSectionHeader({
   const handleDownloadTemplate = async () => {
     try {
       await downloadTemplate(
-      DEVICE_TEMPLATE_HEADERS,
-      getSectionSampleRow(typeSlug, typeName),
-      `${typeSlug}-import-template.xlsx`
+        DEVICE_IMPORT_HEADERS,
+        createDeviceImportSample(typeSlug, typeName),
+        `${typeSlug}-import-template.xlsx`,
       );
       toast.success("Excel template downloaded!");
     } catch {
@@ -218,7 +138,11 @@ export function DeviceSectionHeader({
               {typeName}s
             </h1>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Active inventory: <span className="font-bold text-slate-800 dark:text-slate-200">{total.toLocaleString()}</span> units deployed
+              Active inventory:{" "}
+              <span className="font-bold text-slate-800 dark:text-slate-200">
+                {total.toLocaleString()}
+              </span>{" "}
+              units deployed
             </p>
           </div>
         </div>
@@ -227,15 +151,13 @@ export function DeviceSectionHeader({
         <div className="flex items-center gap-2 shrink-0 ml-auto">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button
-                className="rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-semibold text-xs shadow-md shadow-sky-600/10 gap-1.5 h-10 px-4"
-              >
+              <Button className="rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-semibold text-xs shadow-md shadow-sky-600/10 gap-1.5 h-10 px-4">
                 <span>Actions</span>
                 <ChevronDown className="w-3.5 h-3.5 opacity-80" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
-          {canAddDevice && (
+              {canAddDevice && (
                 <>
                   <DropdownMenuLabel>Inventory Management</DropdownMenuLabel>
                   <DropdownMenuItem onClick={() => setIsAddOpen(true)}>
@@ -286,8 +208,8 @@ export function DeviceSectionHeader({
         onOpenChange={setIsImportOpen}
         title={`Bulk Import ${typeName}s`}
         description={`Upload an Excel or CSV file to register multiple ${typeName.toLowerCase()} units at once.`}
-        templateHeaders={DEVICE_TEMPLATE_HEADERS}
-        sampleRow={getSectionSampleRow(typeSlug, typeName)}
+        templateHeaders={DEVICE_IMPORT_HEADERS}
+        sampleRow={createDeviceImportSample(typeSlug, typeName)}
         templateFilename={`${typeSlug}-import-template.xlsx`}
         onImport={async (rows) => importDevicesBulk(rows, typeSlug)}
         onSuccess={() => router.refresh()}
