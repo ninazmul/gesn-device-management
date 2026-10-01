@@ -8,15 +8,15 @@
 
 **GESN Device Management System (DMS)** is a Next.js 15 (App Router) application for managing ISP network hardware — Access Points, Routers, Switches, Antennas, and Servers — along with customers, billing, and staff administration.
 
-| Layer        | Stack                                                     |
-| ------------ | --------------------------------------------------------- |
-| Framework    | Next.js 15 (App Router, Server Actions, React 19)        |
-| Language     | TypeScript 5                                              |
-| Database     | MongoDB via Mongoose 8                                    |
-| Auth         | Clerk (`@clerk/nextjs`)                                   |
-| UI           | shadcn/ui, Radix primitives, Tailwind CSS 4, Lucide icons |
-| Toasts       | `react-hot-toast`                                         |
-| State        | React Context (`PermissionContext`) + Server Components   |
+| Layer     | Stack                                                     |
+| --------- | --------------------------------------------------------- |
+| Framework | Next.js 15 (App Router, Server Actions, React 19)         |
+| Language  | TypeScript 5                                              |
+| Database  | MongoDB via Mongoose 8                                    |
+| Auth      | Clerk (`@clerk/nextjs`)                                   |
+| UI        | shadcn/ui, Radix primitives, Tailwind CSS 4, Lucide icons |
+| Toasts    | `react-hot-toast`                                         |
+| State     | React Context (`PermissionContext`) + Server Components   |
 
 ---
 
@@ -75,15 +75,15 @@ docs/
 super_admin → engineer → admin → editor → moderator → viewer → custom
 ```
 
-| Role          | Summary                                                    |
-| ------------- | ---------------------------------------------------------- |
-| `super_admin` | Full immutable access; exclusively manages users, roles, permissions, and settings |
-| `engineer`   | Full operational access and device approval; no user, role, permission, or critical-settings control |
-| `admin`       | No automatic access; Super Admin configures sections and actions per account |
-| `editor`      | Adds devices, manages billing, and can freeze or archive devices |
-| `moderator`   | Adds devices and manages billing; no archive/freeze unless explicitly granted |
-| `viewer`      | Super Admin-configured, strictly read-only section access  |
-| `custom`      | Fully configurable by Super Admin                          |
+| Role          | Summary                                                                                              |
+| ------------- | ---------------------------------------------------------------------------------------------------- |
+| `super_admin` | Full immutable access; exclusively manages users, roles, permissions, and settings                   |
+| `engineer`    | Full operational access and device approval; no user, role, permission, or critical-settings control |
+| `admin`       | No automatic access; Super Admin configures sections and actions per account                         |
+| `editor`      | Adds devices and customers, manages billing, and can freeze or archive devices                       |
+| `moderator`   | Adds devices and manages billing; no archive/freeze unless explicitly granted                        |
+| `viewer`      | Super Admin-configured, strictly read-only section access                                            |
+| `custom`      | Fully configurable by Super Admin                                                                    |
 
 ### 3.2 Module Permissions (`ModulePermissions`)
 
@@ -108,11 +108,11 @@ server_view, server_manage, customer_view, user_manage, report_view, setting_man
 
 ### 3.4 Permission Enforcement
 
-| Layer    | Mechanism                                                      | File                                 |
-| -------- | -------------------------------------------------------------- | ------------------------------------ |
-| Backend  | `requirePermission(module, level)` — module-level guard        | `lib/auth-guard.ts`                  |
-| Backend  | `requireGranularPermission(key)` — granular guard              | `lib/auth-guard.ts`                  |
-| Frontend | `usePermissions()` hook → `can()`, `canApproveDevice`, etc.    | `components/providers/PermissionContext.tsx` |
+| Layer    | Mechanism                                                   | File                                         |
+| -------- | ----------------------------------------------------------- | -------------------------------------------- |
+| Backend  | `requirePermission(module, level)` — module-level guard     | `lib/auth-guard.ts`                          |
+| Backend  | `requireGranularPermission(key)` — granular guard           | `lib/auth-guard.ts`                          |
+| Frontend | `usePermissions()` hook → `can()`, `canApproveDevice`, etc. | `components/providers/PermissionContext.tsx` |
 
 ---
 
@@ -128,12 +128,12 @@ server_view, server_manage, customer_view, user_manage, report_view, setting_man
 
 ### 4.2 Required Fields by Device Type (Backend Enforced)
 
-| Type         | Required Fields                                                          |
-| ------------ | ------------------------------------------------------------------------ |
-| Access Point | MAC, AP Number, Connected Server, Customer Name, Mobile, GPS Link, Desc |
-| Router       | MAC, Connected Server, Customer Name, Mobile, GPS Link, Description      |
-| Switch       | MAC, Connected Server, GPS Link / Location, Description                  |
-| Antenna      | MAC, Connected Server, Location / GPS Link, Description                  |
+| Type         | Required Fields                                                                             |
+| ------------ | ------------------------------------------------------------------------------------------- |
+| Access Point | MAC, AP Number, Connected Server, Customer Name, Mobile, GPS Link, Desc                     |
+| Router       | MAC, Connected Server, Customer Name, Mobile, GPS Link, Description                         |
+| Switch       | MAC, Connected Server, GPS Link / Location, Description                                     |
+| Antenna      | MAC, Connected Server, Location / GPS Link, Description                                     |
 | Server       | MAC, Server Name, GPS Link, IPv4, Online Mgmt Link, Date of Activation, Status, Description |
 
 ### 4.3 Approval / Rejection
@@ -156,6 +156,7 @@ server_view, server_manage, customer_view, user_manage, report_view, setting_man
 ### Device (`lib/database/models/device.model.ts`)
 
 Notable fields beyond basic device data:
+
 - `submittedBy: { email, name, role, userId, date }` — who submitted the device
 - `approvedBy: { email, name, role, userId, date }` — who approved
 - `rejectedBy: { email, name, role, userId, date, reason }` — who rejected
@@ -220,28 +221,28 @@ Notable fields beyond basic device data:
 
 ## 8. Key Files Quick Reference
 
-| What                          | Where                                                    |
-| ----------------------------- | -------------------------------------------------------- |
-| All TypeScript types          | `types/index.ts`                                         |
-| Role defaults & permissions   | `lib/rbac-utils.ts`                                      |
-| Server-side auth guards       | `lib/auth-guard.ts`                                      |
-| Client-side permission hook   | `components/providers/PermissionContext.tsx`              |
-| Device CRUD + approve/reject  | `lib/actions/device.actions.ts`                          |
-| Admin CRUD + role updates     | `lib/actions/admin.actions.ts`                           |
-| Notification fetch/read       | `lib/actions/notification.actions.ts`                    |
-| Device form (create/edit)     | `components/devices/DeviceFormDialog.tsx`                |
-| Device table (desktop)        | `components/devices/DeviceTable.tsx`                     |
-| Device cards (mobile)         | `components/devices/DeviceMobileCards.tsx`                |
-| Device detail view            | `components/devices/DeviceDetailsView.tsx`               |
-| Rejection dialog              | `components/devices/RejectDeviceDialog.tsx`              |
-| Device filters + search       | `components/devices/DeviceFilters.tsx`                   |
-| Admin management              | `app/(root)/admins/components/AdminsClient.tsx`          |
-| Notification dropdown         | `components/layout/NotificationDropdown.tsx`             |
-| Mongoose device schema        | `lib/database/models/device.model.ts`                    |
-| Mongoose admin schema         | `lib/database/models/admin.model.ts`                     |
-| Pending devices page          | `app/(root)/devices/pending/page.tsx`                    |
-| Pending devices client UI     | `app/(root)/devices/pending/PendingDevicesClient.tsx`     |
-| Status enums & styling        | `lib/constants.ts`                                       |
+| What                         | Where                                                 |
+| ---------------------------- | ----------------------------------------------------- |
+| All TypeScript types         | `types/index.ts`                                      |
+| Role defaults & permissions  | `lib/rbac-utils.ts`                                   |
+| Server-side auth guards      | `lib/auth-guard.ts`                                   |
+| Client-side permission hook  | `components/providers/PermissionContext.tsx`          |
+| Device CRUD + approve/reject | `lib/actions/device.actions.ts`                       |
+| Admin CRUD + role updates    | `lib/actions/admin.actions.ts`                        |
+| Notification fetch/read      | `lib/actions/notification.actions.ts`                 |
+| Device form (create/edit)    | `components/devices/DeviceFormDialog.tsx`             |
+| Device table (desktop)       | `components/devices/DeviceTable.tsx`                  |
+| Device cards (mobile)        | `components/devices/DeviceMobileCards.tsx`            |
+| Device detail view           | `components/devices/DeviceDetailsView.tsx`            |
+| Rejection dialog             | `components/devices/RejectDeviceDialog.tsx`           |
+| Device filters + search      | `components/devices/DeviceFilters.tsx`                |
+| Admin management             | `app/(root)/admins/components/AdminsClient.tsx`       |
+| Notification dropdown        | `components/layout/NotificationDropdown.tsx`          |
+| Mongoose device schema       | `lib/database/models/device.model.ts`                 |
+| Mongoose admin schema        | `lib/database/models/admin.model.ts`                  |
+| Pending devices page         | `app/(root)/devices/pending/page.tsx`                 |
+| Pending devices client UI    | `app/(root)/devices/pending/PendingDevicesClient.tsx` |
+| Status enums & styling       | `lib/constants.ts`                                    |
 
 ---
 
@@ -279,14 +280,17 @@ importDevicesBulk(rows: Record<string, unknown>[], defaultDeviceType?: string)
 ## 11. Customer, Billing & Catalog Actions
 
 ### Customer (`lib/actions/customer.actions.ts`)
+
 `getCustomers`, `getCustomerById`, `createCustomer`, `updateCustomer`, `updateCustomerStatus`, `deleteCustomer`, `searchActiveCustomers`, `getAllCustomersForExport`, `importCustomersBulk`
 
 ### Billing (`lib/actions/billing.actions.ts`)
+
 `getBillings`, `getCustomerBillingHistory`, `generateMonthlyBills`, `updatePayment`, `updateBillingStatus`, `deleteBilling`, `getAllBillingsForExport`
 
 - `generateMonthlyBills(targetMonth?)` auto-creates billing records for all active customers for the target month.
 
 ### Catalog (`lib/actions/catalog.actions.ts`)
+
 `seedDefaultCatalog`, `getDeviceTypes`, `createDeviceType`, `updateDeviceType`, `deleteDeviceType`, `getBrands`, `createBrand`, `updateBrand`, `deleteBrand`, `getModels`, `createModel`, `updateModel`, `deleteModel`
 
 - `seedDefaultCatalog()` initializes default device types (Access Point, Router, Switch, Antenna, Server) and common brands.
@@ -296,25 +300,25 @@ importDevicesBulk(rows: Record<string, unknown>[], defaultDeviceType?: string)
 
 ## 12. Device Actions — Full API Surface
 
-| Function                  | Auth                          | Description                                    |
-| ------------------------- | ----------------------------- | ---------------------------------------------- |
-| `getAvailableSwitches()`  | `devices:read`                | Active switches with port availability         |
-| `getAvailableServers()`   | `devices:read`                | Active servers for form dropdowns              |
-| `getDevices(params?)`     | `devices:read`                | Paginated list with filters, search, sort      |
-| `getDeviceById(id)`       | `devices:read`                | Single device with populated refs              |
-| `createDevice(data)`      | `devices:write`               | Create + type validation + submittedBy         |
-| `updateDevice(id, data)`  | `devices:write`               | Update fields, re-validate MAC/IP              |
-| `approveDevice(id)`       | `device_approve` granular     | Pending → Active, idempotent                   |
-| `rejectDevice(id, reason)`| `device_approve` granular     | Pending → Rejected, idempotent                 |
-| `updateDeviceStatus(id, status)` | `devices:write`        | General status change (approval-gated for Active/Rejected) |
-| `toggleDeviceActive(id)`  | `devices:write`               | Toggle Active ↔ Inactive                       |
-| `deleteDevice(id)`        | `device_delete` granular      | Hard delete (blocks if has connected children) |
-| `searchGlobalDevices(q)`  | `devices:read`                | Global search across all types                 |
-| `getDeviceFilterOptions(type?)` | `devices:read`           | Filter options (e.g. server list) for dropdowns |
-| `getAllDevicesForExport()` | `devices:read`                | Full dataset for Excel/CSV export              |
-| `getPendingDevices(params?)` | `devices:read`             | Pending devices with pagination and type counts |
-| `getPendingDevicesCount()` | `none` (internal/fast)         | Total pending count for badges & alerts        |
-| `importDevicesBulk(rows)` | `devices:write`               | Batch import from parsed spreadsheet           |
+| Function                         | Auth                      | Description                                                |
+| -------------------------------- | ------------------------- | ---------------------------------------------------------- |
+| `getAvailableSwitches()`         | `devices:read`            | Active switches with port availability                     |
+| `getAvailableServers()`          | `devices:read`            | Active servers for form dropdowns                          |
+| `getDevices(params?)`            | `devices:read`            | Paginated list with filters, search, sort                  |
+| `getDeviceById(id)`              | `devices:read`            | Single device with populated refs                          |
+| `createDevice(data)`             | `devices:write`           | Create + type validation + submittedBy                     |
+| `updateDevice(id, data)`         | `devices:write`           | Update fields, re-validate MAC/IP                          |
+| `approveDevice(id)`              | `device_approve` granular | Pending → Active, idempotent                               |
+| `rejectDevice(id, reason)`       | `device_approve` granular | Pending → Rejected, idempotent                             |
+| `updateDeviceStatus(id, status)` | `devices:write`           | General status change (approval-gated for Active/Rejected) |
+| `toggleDeviceActive(id)`         | `devices:write`           | Toggle Active ↔ Inactive                                   |
+| `deleteDevice(id)`               | `device_delete` granular  | Hard delete (blocks if has connected children)             |
+| `searchGlobalDevices(q)`         | `devices:read`            | Global search across all types                             |
+| `getDeviceFilterOptions(type?)`  | `devices:read`            | Filter options (e.g. server list) for dropdowns            |
+| `getAllDevicesForExport()`       | `devices:read`            | Full dataset for Excel/CSV export                          |
+| `getPendingDevices(params?)`     | `devices:read`            | Pending devices with pagination and type counts            |
+| `getPendingDevicesCount()`       | `none` (internal/fast)    | Total pending count for badges & alerts                    |
+| `importDevicesBulk(rows)`        | `devices:write`           | Batch import from parsed spreadsheet                       |
 
 ---
 
@@ -340,16 +344,16 @@ interface RejectDeviceDialogProps {
 
 ## 14. Environment Variables
 
-| Variable                                   | Purpose                        |
-| ------------------------------------------ | ------------------------------ |
-| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`        | Clerk frontend auth            |
-| `CLERK_SECRET_KEY`                         | Clerk server-side auth         |
-| `NEXT_PUBLIC_CLERK_SIGN_IN_URL`            | `/sign-in`                     |
-| `NEXT_PUBLIC_CLERK_SIGN_UP_URL`            | `/sign-up`                     |
-| `NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL`      | `/dashboard`                   |
-| `NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL`      | `/dashboard`                   |
-| `MONGODB_URI`                              | MongoDB Atlas connection string |
+| Variable                              | Purpose                         |
+| ------------------------------------- | ------------------------------- |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`   | Clerk frontend auth             |
+| `CLERK_SECRET_KEY`                    | Clerk server-side auth          |
+| `NEXT_PUBLIC_CLERK_SIGN_IN_URL`       | `/sign-in`                      |
+| `NEXT_PUBLIC_CLERK_SIGN_UP_URL`       | `/sign-up`                      |
+| `NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL` | `/dashboard`                    |
+| `NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL` | `/dashboard`                    |
+| `MONGODB_URI`                         | MongoDB Atlas connection string |
 
 ---
 
-*Last updated: 2026-09-27*
+_Last updated: 2026-09-27_

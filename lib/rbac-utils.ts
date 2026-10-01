@@ -52,7 +52,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<AdminRole, ModulePermissions> = {
   editor: {
     dashboard: "none",
     devices: "write",
-    customers: "none",
+    customers: "write",
     billing: "write",
     catalog: "none",
     admins: "none",
@@ -219,7 +219,8 @@ export const GRANULAR_PERMISSIONS_LIST: GranularPermissionMeta[] = [
     key: "device_edit",
     label: "Edit Device",
     category: "Devices",
-    description: "Update device metadata, coordinates, and network configuration",
+    description:
+      "Update device metadata, coordinates, and network configuration",
   },
   {
     key: "device_delete",
@@ -255,7 +256,8 @@ export const GRANULAR_PERMISSIONS_LIST: GranularPermissionMeta[] = [
     key: "customer_view",
     label: "View Customer Information",
     category: "Customers & Reports",
-    description: "Access subscriber records, phone numbers, and assigned equipment",
+    description:
+      "Access subscriber records, phone numbers, and assigned equipment",
   },
   {
     key: "report_view",
@@ -282,13 +284,15 @@ export const GRANULAR_PERMISSIONS_LIST: GranularPermissionMeta[] = [
  */
 export function resolveEffectivePermissions(
   role: AdminRole,
-  customPerms?: Partial<ModulePermissions> | Map<string, string>
+  customPerms?: Partial<ModulePermissions> | Map<string, string>,
 ): ModulePermissions {
   if (role === "super_admin") {
     return { ...DEFAULT_ROLE_PERMISSIONS.super_admin };
   }
 
-  const base = { ...(DEFAULT_ROLE_PERMISSIONS[role] || DEFAULT_ROLE_PERMISSIONS.custom) };
+  const base = {
+    ...(DEFAULT_ROLE_PERMISSIONS[role] || DEFAULT_ROLE_PERMISSIONS.custom),
+  };
 
   if (customPerms) {
     let customObj: Record<string, string> = {};
@@ -327,14 +331,15 @@ export function resolveEffectivePermissions(
  */
 export function resolveEffectiveGranularPermissions(
   role: AdminRole,
-  customGranular?: GranularPermissions | Map<string, boolean>
+  customGranular?: GranularPermissions | Map<string, boolean>,
 ): Record<GranularPermissionKey, boolean> {
   if (role === "super_admin") {
     return { ...DEFAULT_GRANULAR_PERMISSIONS.super_admin };
   }
 
   const base: Record<GranularPermissionKey, boolean> = {
-    ...(DEFAULT_GRANULAR_PERMISSIONS[role] || DEFAULT_GRANULAR_PERMISSIONS.custom),
+    ...(DEFAULT_GRANULAR_PERMISSIONS[role] ||
+      DEFAULT_GRANULAR_PERMISSIONS.custom),
   };
 
   if (customGranular) {
@@ -381,11 +386,12 @@ export function resolveEffectiveGranularPermissions(
 export function hasPermissionLevel(
   effectivePerms: ModulePermissions,
   module: AppModule,
-  requiredLevel: PermissionLevel
+  requiredLevel: PermissionLevel,
 ): boolean {
   const current = effectivePerms[module] || "none";
   if (requiredLevel === "none") return true;
-  if (requiredLevel === "read") return current === "read" || current === "write";
+  if (requiredLevel === "read")
+    return current === "read" || current === "write";
   if (requiredLevel === "write") return current === "write";
   return false;
 }
