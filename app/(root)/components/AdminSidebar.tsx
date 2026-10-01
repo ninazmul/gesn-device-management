@@ -212,7 +212,7 @@ const AppSidebar = () => {
       items: section.items.filter((item) => {
         // Strongest gate first: strictly super-admin-only items
         if (item.superAdminOnly && !isSuperAdmin) return false;
-        if (!canRead(item.module)) return false;
+        if (item.module !== "dashboard" && !canRead(item.module)) return false;
         // Extra granular gate (e.g. server_view for Servers link)
         if (item.granular && !isSuperAdmin && !can(item.granular)) return false;
         return true;

@@ -7,24 +7,42 @@ import Customer from "@/lib/database/models/customer.model";
 import Billing from "@/lib/database/models/billing.model";
 import { PRIMARY_DEVICE_TYPES } from "@/lib/constants";
 import type { DashboardStats } from "@/types";
-import { requirePermission } from "@/lib/auth-guard";
+import { getCurrentAdminProfile } from "@/lib/auth-guard";
+import {
+  hasPermissionLevel,
+  resolveEffectivePermissions,
+} from "@/lib/rbac-utils";
 import { syncOverdueBillsIfNeeded } from "./billing.actions";
 
 export async function getDashboardStats(): Promise<DashboardStats> {
-  const profile = await requirePermission("dashboard", "read");
+  const profile = await getCurrentAdminProfile();
+  if (!profile) {
+    throw new Error(
+      "Unauthorized: Access is restricted to authorized administrators.",
+    );
+  }
+
+  const permissions = resolveEffectivePermissions(
+    profile.role,
+    profile.permissions,
+  );
+  const canReadDevices = hasPermissionLevel(permissions, "devices", "read");
+  const canReadCustomers = hasPermissionLevel(permissions, "customers", "read");
+  const canReadBilling = hasPermissionLevel(permissions, "billing", "read");
   await connectToDatabase();
 
   const isSuperAdmin = profile.role === "super_admin";
   const isEngineer = profile.role === "engineer";
   const canViewServer =
-    isSuperAdmin ||
-    isEngineer ||
-    Boolean(profile.granularPermissions?.server_view);
+    canReadDevices &&
+    (isSuperAdmin ||
+      isEngineer ||
+      Boolean(profile.granularPermissions?.server_view));
 
   const now = new Date();
   const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 
-  await syncOverdueBillsIfNeeded();
+  if (canReadBilling) await syncOverdueBillsIfNeeded();
 
   // Run aggregations across Devices, Customers, and Billings in parallel
   const [
@@ -277,6 +295,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   }
 
   for (const t of allTypes) {
+    if (t.slug === "server" && !canViewServer) continue;
     if (!knownSlugs.has(t.slug)) {
       knownSlugs.add(t.slug);
       const sm = typeStatusMap[t.slug] || {};
@@ -345,50 +364,58 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   });
 
   return {
-    totalDevices,
-    activeDevices: statusCountsMap["Active"] || 0,
-    availableDevices: statusCountsMap["Available"] || 0,
-    offlineDevices: statusCountsMap["Offline"] || 0,
-    maintenanceDevices: statusCountsMap["Maintenance"] || 0,
-    inactiveDevices: statusCountsMap["Inactive"] || 0,
-    retiredDevices: statusCountsMap["Retired"] || 0,
-    pendingDevices:
-      devFacet.pendingCount?.[0]?.total || statusCountsMap["Pending"] || 0,
-    byType,
-    recentDevices: JSON.parse(
-      JSON.stringify(
-        (devFacet.recent || []).filter(
-          (d: { deviceType?: string }) => canViewServer || d.deviceType !== "server"
+    totalDevices: canReadDevices ? totalDevices : 0,
+    activeDevices: canReadDevices ? statusCountsMap["Active"] || 0 : 0,
+    availableDevices: canReadDevices ? statusCountsMap["Available"] || 0 : 0,
+    offlineDevices: canReadDevices ? statusCountsMap["Offline"] || 0 : 0,
+    maintenanceDevices: canReadDevices
+      ? statusCountsMap["Maintenance"] || 0
+      : 0,
+    inactiveDevices: canReadDevices ? statusCountsMap["Inactive"] || 0 : 0,
+    retiredDevices: canReadDevices ? statusCountsMap["Retired"] || 0 : 0,
+    pendingDevices: canReadDevices
+      ? devFacet.pendingCount?.[0]?.total || statusCountsMap["Pending"] || 0
+      : 0,
+    byType: canReadDevices ? byType : [],
+    recentDevices: canReadDevices
+      ? JSON.parse(
+          JSON.stringify(
+            (devFacet.recent || []).filter(
+              (d: { deviceType?: string }) =>
+                canViewServer || d.deviceType !== "server",
+            ),
+          ),
         )
-      )
-    ),
+      : [],
     serverStats: {
       totalServers: canViewServer ? totalServers : 0,
       activeServers: canViewServer ? activeServers : 0,
       locations: canViewServer ? serverLocationsCount : 0,
-      routersCount,
+      routersCount: canReadDevices ? routersCount : 0,
     },
     customerStats: {
-      totalCustomers,
-      activeCustomers: custStatusMap["Active"] || 0,
-      suspendedCustomers: custStatusMap["Suspended"] || 0,
-      paidThisMonth,
-      pendingCount,
-      overdueCount,
-      totalOutstandingAmount,
-      dueCustomers,
+      totalCustomers: canReadCustomers ? totalCustomers : 0,
+      activeCustomers: canReadCustomers ? custStatusMap["Active"] || 0 : 0,
+      suspendedCustomers: canReadCustomers
+        ? custStatusMap["Suspended"] || 0
+        : 0,
+      paidThisMonth: canReadBilling ? paidThisMonth : 0,
+      pendingCount: canReadBilling ? pendingCount : 0,
+      overdueCount: canReadBilling ? overdueCount : 0,
+      totalOutstandingAmount: canReadBilling ? totalOutstandingAmount : 0,
+      dueCustomers: canReadBilling ? dueCustomers : 0,
     },
-    awaitingCollectionCustomers: JSON.parse(
-      JSON.stringify(formattedAwaitingCustomers),
-    ),
+    awaitingCollectionCustomers: canReadBilling
+      ? JSON.parse(JSON.stringify(formattedAwaitingCustomers))
+      : [],
     billingStats: {
       currentMonth,
-      monthlyBilled: currentMonthData.monthlyBilled || 0,
-      collected: currentMonthData.collected || 0,
-      pending: pendingCount,
-      overdue: overdueCount,
-      paidCount: paidThisMonth,
-      dueCount: dueCustomers,
+      monthlyBilled: canReadBilling ? currentMonthData.monthlyBilled || 0 : 0,
+      collected: canReadBilling ? currentMonthData.collected || 0 : 0,
+      pending: canReadBilling ? pendingCount : 0,
+      overdue: canReadBilling ? overdueCount : 0,
+      paidCount: canReadBilling ? paidThisMonth : 0,
+      dueCount: canReadBilling ? dueCustomers : 0,
     },
   };
 }
