@@ -25,8 +25,8 @@ import Link from "next/link";
 import { toast } from "react-hot-toast";
 
 export function NotificationDropdown() {
-  const { admin } = usePermissions();
-  const canAccessNotifications = Boolean(admin);
+  const { isSuperAdmin, isEngineer, admin } = usePermissions();
+  const canAccessNotifications = isSuperAdmin || isEngineer;
   const currentEmail = admin?.email.toLowerCase() || "";
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<INotification[]>([]);
@@ -394,23 +394,6 @@ export function NotificationDropdown() {
                 })
               )}
             </div>
-
-            {/* Quick Pending Devices Link */}
-            {notifications.some((n) => n.action === "DEVICE_SUBMISSION") && (
-              <div className="px-3.5 py-2 bg-amber-500/10 border-t border-amber-500/20 flex items-center justify-between">
-                <span className="text-[11px] font-bold text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5" />
-                  Devices awaiting approval
-                </span>
-                <Link
-                  href="/devices/pending"
-                  onClick={() => setOpen(false)}
-                  className="text-[11px] font-bold text-amber-700 dark:text-amber-400 hover:underline flex items-center gap-0.5"
-                >
-                  Pending Section &rarr;
-                </Link>
-              </div>
-            )}
 
             {/* Footer */}
             <div className="px-4 py-2.5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-950/60 flex items-center justify-between gap-2">

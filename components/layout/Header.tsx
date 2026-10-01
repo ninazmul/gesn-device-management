@@ -5,6 +5,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { ThemeToggle } from "@/components/shared/ThemeToggle";
 import { GlobalSearchModal } from "@/components/shared/GlobalSearchModal";
 import { NotificationDropdown } from "@/components/layout/NotificationDropdown";
+import { PendingDevicesLink } from "@/components/layout/PendingDevicesLink";
 import { UserButton } from "@clerk/nextjs";
 import { Search, Command } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -37,7 +38,7 @@ export function Header() {
           </div>
         </div>
 
-        {/* Center/Right: Quick Search + Notification Bell + Theme Toggle + User Button */}
+        {/* Center/Right: Search, device approvals, notifications, theme, and profile */}
         <div className="flex items-center gap-2">
           {/* Quick Search Button */}
           <Button
@@ -46,13 +47,18 @@ export function Header() {
             className="h-9 px-3 rounded-xl border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/60 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-medium gap-2 transition-all"
           >
             <Search className="w-4 h-4 text-slate-500 dark:text-slate-400" />
-            <span className="hidden md:inline text-xs text-slate-500 dark:text-slate-400 font-normal">Quick Search...</span>
+            <span className="hidden md:inline text-xs text-slate-500 dark:text-slate-400 font-normal">
+              Quick Search...
+            </span>
             <kbd className="hidden md:inline-flex items-center gap-0.5 text-[10px] font-semibold bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700 text-slate-400">
               <Command className="w-2.5 h-2.5" /> K
             </kbd>
           </Button>
 
-          {/* Super Admin Notifications Bell */}
+          {/* Pending device approvals */}
+          <PendingDevicesLink />
+
+          {/* Super Admin / Engineer Notifications Bell */}
           <NotificationDropdown />
 
           {/* Theme Switcher */}

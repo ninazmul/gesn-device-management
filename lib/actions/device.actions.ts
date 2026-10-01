@@ -862,9 +862,17 @@ export async function updateDevice(
       readBy: [actor.email.toLowerCase()],
     });
   } else {
+    const action =
+      updatePayload.status === "Active"
+        ? "DEVICE_APPROVAL"
+        : updatePayload.status === "Rejected"
+          ? "DEVICE_REJECTION"
+          : updatePayload.status === "Pending"
+            ? "DEVICE_SUBMISSION"
+            : "UPDATE_DEVICE";
     await logActivityAndNotify({
       actor,
-      action: "UPDATE_DEVICE",
+      action,
       module: "devices",
       resourceId: updatedDevice.sl,
       resourceName,
@@ -1386,7 +1394,12 @@ export async function updateDeviceStatus(
 
   await logActivityAndNotify({
     actor,
-    action: "STATUS_CHANGE",
+    action:
+      status === "Active"
+        ? "DEVICE_APPROVAL"
+        : status === "Rejected"
+          ? "DEVICE_REJECTION"
+          : "STATUS_CHANGE",
     module: "devices",
     resourceId: device.sl,
     resourceName: `${device.deviceName} (${device.sl})`,
@@ -1453,7 +1466,7 @@ export async function toggleDeviceActive(id: string) {
 
   await logActivityAndNotify({
     actor,
-    action: "STATUS_CHANGE",
+    action: newStatus === "Active" ? "DEVICE_APPROVAL" : "DEVICE_SUBMISSION",
     module: "devices",
     resourceId: device.sl,
     resourceName: `${device.deviceName} (${device.sl})`,

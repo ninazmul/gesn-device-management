@@ -5,6 +5,12 @@ import Notification from "@/lib/database/models/notification.model";
 import { getCurrentAdminProfile } from "@/lib/auth-guard";
 import { INotification } from "@/types";
 
+const DEVICE_APPROVAL_ACTIONS = [
+  "DEVICE_SUBMISSION",
+  "DEVICE_APPROVAL",
+  "DEVICE_REJECTION",
+];
+
 /**
  * Fetches notifications for super admins and engineers along with the unread count.
  */
@@ -12,22 +18,26 @@ export async function getSuperAdminNotifications() {
   await connectToDatabase();
   const profile = await getCurrentAdminProfile();
 
-  if (!profile) {
+  if (
+    !profile ||
+    (profile.role !== "super_admin" && profile.role !== "engineer")
+  ) {
     return { notifications: [], unreadCount: 0 };
   }
 
-  const canViewAll =
-    profile.role === "super_admin" || profile.role === "engineer";
-  const audienceFilter = canViewAll
-    ? {}
-    : { recipientEmails: profile.email.toLowerCase() };
-  const notifications = (await Notification.find(audienceFilter)
+  const normalNotificationFilter = {
+    $nor: [
+      { action: { $in: DEVICE_APPROVAL_ACTIONS } },
+      { module: "devices", action: "STATUS_CHANGE" },
+    ],
+  };
+  const notifications = (await Notification.find(normalNotificationFilter)
     .sort({ createdAt: -1 })
     .limit(30)
     .lean()) as unknown as INotification[];
 
   const unreadCount = await Notification.countDocuments({
-    ...audienceFilter,
+    ...normalNotificationFilter,
     readBy: { $ne: profile.email.toLowerCase() },
   });
 
@@ -42,14 +52,18 @@ export async function getSuperAdminUnreadCount() {
   await connectToDatabase();
   const profile = await getCurrentAdminProfile();
 
-  if (!profile) {
+  if (
+    !profile ||
+    (profile.role !== "super_admin" && profile.role !== "engineer")
+  ) {
     return 0;
   }
 
-  const canViewAll =
-    profile.role === "super_admin" || profile.role === "engineer";
   return Notification.countDocuments({
-    ...(canViewAll ? {} : { recipientEmails: profile.email.toLowerCase() }),
+    $nor: [
+      { action: { $in: DEVICE_APPROVAL_ACTIONS } },
+      { module: "devices", action: "STATUS_CHANGE" },
+    ],
     readBy: { $ne: profile.email.toLowerCase() },
   });
 }
@@ -64,22 +78,24 @@ export async function markNotificationAsRead(notificationId: string) {
   await connectToDatabase();
   const profile = await getCurrentAdminProfile();
 
-  if (!profile) {
+  if (
+    !profile ||
+    (profile.role !== "super_admin" && profile.role !== "engineer")
+  ) {
     throw new Error(
-      "Unauthorized: Access is restricted to authorized administrators.",
+      "Only Super Admins and Engineers can manage notifications.",
     );
   }
 
-  const notification =
-    await Notification.findById(notificationId).select("recipientEmails");
-  const canViewAll =
-    profile.role === "super_admin" || profile.role === "engineer";
-  if (
-    !notification ||
-    (!canViewAll &&
-      !notification.recipientEmails.includes(profile.email.toLowerCase()))
-  ) {
-    throw new Error("You do not have permission to read this notification.");
+  const notification = await Notification.findOne({
+    _id: notificationId,
+    $nor: [
+      { action: { $in: DEVICE_APPROVAL_ACTIONS } },
+      { module: "devices", action: "STATUS_CHANGE" },
+    ],
+  }).select("_id");
+  if (!notification) {
+    throw new Error("Notification not found.");
   }
 
   await Notification.findByIdAndUpdate(notificationId, {
@@ -96,17 +112,21 @@ export async function markAllNotificationsAsRead() {
   await connectToDatabase();
   const profile = await getCurrentAdminProfile();
 
-  if (!profile) {
+  if (
+    !profile ||
+    (profile.role !== "super_admin" && profile.role !== "engineer")
+  ) {
     throw new Error(
-      "Unauthorized: Access is restricted to authorized administrators.",
+      "Only Super Admins and Engineers can manage notifications.",
     );
   }
 
-  const canViewAll =
-    profile.role === "super_admin" || profile.role === "engineer";
   await Notification.updateMany(
     {
-      ...(canViewAll ? {} : { recipientEmails: profile.email.toLowerCase() }),
+      $nor: [
+        { action: { $in: DEVICE_APPROVAL_ACTIONS } },
+        { module: "devices", action: "STATUS_CHANGE" },
+      ],
       readBy: { $ne: profile.email.toLowerCase() },
     },
     { $addToSet: { readBy: profile.email.toLowerCase() } },
