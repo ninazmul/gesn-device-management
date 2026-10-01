@@ -1,9 +1,11 @@
+import { redirect } from "next/navigation";
 import { getDevices } from "@/lib/actions/device.actions";
 import { DeviceTable } from "@/components/devices/DeviceTable";
 import { DeviceMobileCards } from "@/components/devices/DeviceMobileCards";
 import { DeviceFilters } from "@/components/devices/DeviceFilters";
 import { PRIMARY_DEVICE_TYPES } from "@/lib/constants";
 import { DeviceSectionHeader } from "./DeviceSectionHeader";
+import { getCurrentAdminProfile } from "@/lib/auth-guard";
 
 export const dynamic = "force-dynamic";
 
@@ -45,6 +47,19 @@ export default async function DeviceTypePage({
   const resolvedSearchParams = await searchParams;
 
   const typeSlug = resolvedParams.type.toLowerCase().trim();
+
+  // ── Server section is restricted: super_admin, engineer, or server_view grant only ──
+  if (typeSlug === "server") {
+    const admin = await getCurrentAdminProfile();
+    if (!admin) redirect("/sign-in");
+    const role = admin.role;
+    const hasServerView =
+      role === "super_admin" ||
+      role === "engineer" ||
+      Boolean(admin.granularPermissions?.server_view);
+    if (!hasServerView) redirect("/access-denied");
+  }
+
   const typeInfo = getDeviceTypeInfo(typeSlug);
 
   const page = resolvedSearchParams.page

@@ -8,7 +8,13 @@ import ActivityLog from "@/lib/database/models/activityLog.model";
 import { formatSL, isValidIPv4, normalizeMAC } from "@/lib/utils";
 import { revalidatePath } from "next/cache";
 import type { FilterQuery } from "mongoose";
-import type { DeviceStatus, GetDevicesParams, IDevice, ISwitchOption, IServerOption } from "@/types";
+import type {
+  DeviceStatus,
+  GetDevicesParams,
+  IDevice,
+  ISwitchOption,
+  IServerOption,
+} from "@/types";
 import {
   getCurrentAdminProfile,
   requirePermission,
@@ -28,7 +34,7 @@ async function getNextSL(): Promise<string> {
   const counter = await Counter.findByIdAndUpdate(
     "device_sl",
     { $inc: { seq: 1 } },
-    { new: true, upsert: true }
+    { new: true, upsert: true },
   );
   return formatSL(counter.seq, 3);
 }
@@ -97,8 +103,16 @@ export async function getAvailableSwitches(): Promise<ISwitchOption[]> {
 // GET AVAILABLE SERVERS
 // ==========================================
 export async function getAvailableServers(): Promise<IServerOption[]> {
-  await requirePermission("devices", "read");
+  const actor = await requirePermission("devices", "read");
   await connectToDatabase();
+
+  const isSuperAdmin = actor.role === "super_admin";
+  const isEngineer = actor.role === "engineer";
+  const canViewServer =
+    isSuperAdmin ||
+    isEngineer ||
+    Boolean(actor.granularPermissions?.server_view);
+  if (!canViewServer) return [];
 
   const servers = await Device.find({
     deviceType: "server",
@@ -115,8 +129,15 @@ export async function getAvailableServers(): Promise<IServerOption[]> {
 // GET DEVICES (PAGINATED & SERVER FILTERED)
 // ==========================================
 export async function getDevices(params?: GetDevicesParams) {
-  await requirePermission("devices", "read");
+  const actor = await requirePermission("devices", "read");
   await connectToDatabase();
+
+  const isSuperAdmin = actor.role === "super_admin";
+  const isEngineer = actor.role === "engineer";
+  const canViewServer =
+    isSuperAdmin ||
+    isEngineer ||
+    Boolean(actor.granularPermissions?.server_view);
 
   const {
     deviceType,
@@ -132,7 +153,20 @@ export async function getDevices(params?: GetDevicesParams) {
   const query: FilterQuery<typeof Device> = {};
 
   if (deviceType && deviceType !== "all") {
-    query.deviceType = deviceType.toLowerCase().trim();
+    const requestedType = deviceType.toLowerCase().trim();
+    if (requestedType === "server" && !canViewServer) {
+      return {
+        devices: [] as unknown as IDevice[],
+        total: 0,
+        totalPages: 0,
+        currentPage: 1,
+        limit,
+      };
+    }
+    query.deviceType = requestedType;
+  } else if (!canViewServer) {
+    // When viewing general inventory, hide server hardware for unauthorized users
+    query.deviceType = { $ne: "server" };
   }
 
   if (status && status !== "all") {
@@ -170,7 +204,9 @@ export async function getDevices(params?: GetDevicesParams) {
       { ipAddress: regex },
       { macAddress: regex },
       { description: regex },
-      ...(matchingServerIds.length > 0 ? [{ server: { $in: matchingServerIds } }] : []),
+      ...(matchingServerIds.length > 0
+        ? [{ server: { $in: matchingServerIds } }]
+        : []),
     ];
   }
 
@@ -217,7 +253,9 @@ export async function getDevices(params?: GetDevicesParams) {
   const devices = rawDevices as unknown as IDevice[];
 
   // For switches in the returned list, calculate connected devices count
-  const switchIds = devices.filter((d) => d.deviceType === "switch").map((d) => d._id);
+  const switchIds = devices
+    .filter((d) => d.deviceType === "switch")
+    .map((d) => d._id);
   const switchCountMap = new Map<string, number>();
   if (switchIds.length > 0) {
     const counts = await Device.aggregate([
@@ -266,7 +304,7 @@ export async function getDevices(params?: GetDevicesParams) {
 // GET SINGLE DEVICE BY ID
 // ==========================================
 export async function getDeviceById(id: string) {
-  await requirePermission("devices", "read");
+  const actor = await requirePermission("devices", "read");
   await connectToDatabase();
   const device = (await Device.findById(id)
     .populate("uplinkSwitch", "sl deviceName totalPorts ipAddress status")
@@ -282,7 +320,9 @@ export async function getDeviceById(id: string) {
       .lean()) as unknown as IDevice[];
 
     const totalPorts = device.totalPorts || 0;
-    const activePortsCount = connectedDevices.filter((d) => d.status !== "Retired").length;
+    const activePortsCount = connectedDevices.filter(
+      (d) => d.status !== "Retired",
+    ).length;
     const availablePorts = Math.max(0, totalPorts - activePortsCount);
 
     return JSON.parse(
@@ -291,12 +331,24 @@ export async function getDeviceById(id: string) {
         connectedDevices,
         activePortsCount,
         availablePorts,
-      })
+      }),
     );
   }
 
-  // If the device is a server, fetch all devices hosted/assigned to this server
+  // If the device is a server, verify server_view permission
   if (device.deviceType === "server") {
+    const isSuperAdmin = actor.role === "super_admin";
+    const isEngineer = actor.role === "engineer";
+    const canViewServer =
+      isSuperAdmin ||
+      isEngineer ||
+      Boolean(actor.granularPermissions?.server_view);
+    if (!canViewServer) {
+      throw new Error(
+        "Forbidden: You do not have permission to view server hardware.",
+      );
+    }
+
     const connectedDevices = (await Device.find({ server: id })
       .select("sl deviceName deviceType ipAddress macAddress status")
       .sort({ sl: 1 })
@@ -306,7 +358,7 @@ export async function getDeviceById(id: string) {
       JSON.stringify({
         ...device,
         connectedDevices,
-      })
+      }),
     );
   }
 
@@ -351,9 +403,14 @@ export async function createDevice(data: {
 
   // If registering a server, check server_manage permission
   if (type === "server") {
-    const canManageServer = isSuperAdmin || (actor.granularPermissions && actor.granularPermissions.server_manage);
+    const canManageServer =
+      isSuperAdmin ||
+      isEngineer ||
+      Boolean(actor.granularPermissions?.server_manage);
     if (!canManageServer) {
-      throw new Error("Forbidden: You do not have permission to register server hardware.");
+      throw new Error(
+        "Forbidden: You do not have permission to register server hardware.",
+      );
     }
   }
 
@@ -373,41 +430,58 @@ export async function createDevice(data: {
   if (existingDevice) {
     if (existingDevice.status === "Pending") {
       throw new Error(
-        `A device with MAC address ${normalizedMAC} has already been submitted and is currently Pending Approval (SL: #${existingDevice.sl}, Name: ${existingDevice.deviceName}).`
+        `A device with MAC address ${normalizedMAC} has already been submitted and is currently Pending Approval (SL: #${existingDevice.sl}, Name: ${existingDevice.deviceName}).`,
       );
     }
     if (existingDevice.status === "Rejected") {
       throw new Error(
-        `A device with MAC address ${normalizedMAC} was previously rejected (SL: #${existingDevice.sl}, Reason: ${existingDevice.rejectionReason || "N/A"}). Please review existing records or consult an administrator.`
+        `A device with MAC address ${normalizedMAC} was previously rejected (SL: #${existingDevice.sl}, Reason: ${existingDevice.rejectionReason || "N/A"}). Please review existing records or consult an administrator.`,
       );
     }
     throw new Error(
-      `A device with MAC address ${normalizedMAC} already exists in the system (SL: #${existingDevice.sl}, Name: ${existingDevice.deviceName}, Status: ${existingDevice.status}).`
+      `A device with MAC address ${normalizedMAC} already exists in the system (SL: #${existingDevice.sl}, Name: ${existingDevice.deviceName}, Status: ${existingDevice.status}).`,
     );
   }
 
   // 3. Strict type-specific required fields validation
   if (type === "access-point") {
-    if (!data.apNumber?.trim()) throw new Error("AP Number is required for Access Point");
-    if (!data.server) throw new Error("Connected Server is required for Access Point");
-    if (!data.customerName?.trim()) throw new Error("Customer Name is required for Access Point");
-    if (!data.customerMobile?.trim()) throw new Error("Mobile Number is required for Access Point");
-    if (!data.gpsLink?.trim()) throw new Error("GPS Link is required for Access Point");
-    if (!data.description?.trim()) throw new Error("Description is required for Access Point");
+    if (!data.apNumber?.trim())
+      throw new Error("AP Number is required for Access Point");
+    if (!data.server)
+      throw new Error("Connected Server is required for Access Point");
+    if (!data.customerName?.trim())
+      throw new Error("Customer Name is required for Access Point");
+    if (!data.customerMobile?.trim())
+      throw new Error("Mobile Number is required for Access Point");
+    if (!data.gpsLink?.trim())
+      throw new Error("GPS Link is required for Access Point");
+    if (!data.description?.trim())
+      throw new Error("Description is required for Access Point");
   } else if (type === "router") {
-    if (!data.server) throw new Error("Connected Server is required for Router");
-    if (!data.customerName?.trim()) throw new Error("Customer Name is required for Router");
-    if (!data.customerMobile?.trim()) throw new Error("Mobile Number is required for Router");
-    if (!data.gpsLink?.trim()) throw new Error("GPS Link is required for Router");
-    if (!data.description?.trim()) throw new Error("Description is required for Router");
+    if (!data.server)
+      throw new Error("Connected Server is required for Router");
+    if (!data.customerName?.trim())
+      throw new Error("Customer Name is required for Router");
+    if (!data.customerMobile?.trim())
+      throw new Error("Mobile Number is required for Router");
+    if (!data.gpsLink?.trim())
+      throw new Error("GPS Link is required for Router");
+    if (!data.description?.trim())
+      throw new Error("Description is required for Router");
   } else if (type === "switch") {
-    if (!data.server) throw new Error("Connected Server is required for Switch");
-    if (!data.gpsLink?.trim()) throw new Error("GPS Link / Location is required for Switch");
-    if (!data.description?.trim()) throw new Error("Description is required for Switch");
+    if (!data.server)
+      throw new Error("Connected Server is required for Switch");
+    if (!data.gpsLink?.trim())
+      throw new Error("GPS Link / Location is required for Switch");
+    if (!data.description?.trim())
+      throw new Error("Description is required for Switch");
   } else if (type === "antenna") {
-    if (!data.server) throw new Error("Connected Server is required for Antenna");
-    if (!data.gpsLink?.trim()) throw new Error("Location / GPS Link is required for Antenna");
-    if (!data.description?.trim()) throw new Error("Description is required for Antenna");
+    if (!data.server)
+      throw new Error("Connected Server is required for Antenna");
+    if (!data.gpsLink?.trim())
+      throw new Error("Location / GPS Link is required for Antenna");
+    if (!data.description?.trim())
+      throw new Error("Description is required for Antenna");
   }
 
   // IP Address is optional
@@ -416,25 +490,34 @@ export async function createDevice(data: {
     throw new Error("Invalid IPv4 Address format. Example: 192.168.1.100");
   }
 
-  const deviceName = data.deviceName?.trim() || `${data.deviceType.toUpperCase()} ${normalizedMAC.slice(-5)}`;
+  const deviceName =
+    data.deviceName?.trim() ||
+    `${data.deviceType.toUpperCase()} ${normalizedMAC.slice(-5)}`;
   const sl = await getNextSL();
 
   // Non-super-admins and non-engineers cannot activate devices directly; status is forced to "Pending"
   const canDirectlyActivate = isSuperAdmin || isEngineer;
-  const finalStatus: DeviceStatus = canDirectlyActivate ? (data.status || "Active") : "Pending";
+  const finalStatus: DeviceStatus = canDirectlyActivate
+    ? data.status || "Active"
+    : "Pending";
 
   const device = await Device.create({
     sl,
     deviceType: type,
     deviceName,
-    totalPorts: data.totalPorts !== undefined && !isNaN(Number(data.totalPorts)) ? Number(data.totalPorts) : undefined,
+    totalPorts:
+      data.totalPorts !== undefined && !isNaN(Number(data.totalPorts))
+        ? Number(data.totalPorts)
+        : undefined,
     uplinkSwitch: data.uplinkSwitch ? data.uplinkSwitch : null,
     server: type !== "server" && data.server ? data.server : null,
     description: data.description?.trim() || "",
     onlineLink: data.onlineLink?.trim() || "",
     macAddress: normalizedMAC,
     ipAddress: rawIp,
-    activationDate: data.activationDate ? new Date(data.activationDate) : new Date(),
+    activationDate: data.activationDate
+      ? new Date(data.activationDate)
+      : new Date(),
     apNumber: data.apNumber?.trim() || "",
     customerName: data.customerName?.trim() || "",
     customerMobile: data.customerMobile?.trim() || "",
@@ -512,7 +595,7 @@ export async function updateDevice(
     customerMobile?: string;
     gpsLink?: string;
     status?: DeviceStatus;
-  }
+  },
 ) {
   const actor = await requirePermission("devices", "write");
   await connectToDatabase();
@@ -524,22 +607,37 @@ export async function updateDevice(
 
   const isSuperAdmin = actor.role === "super_admin";
   const isEngineer = actor.role === "engineer";
-  const canEdit = isSuperAdmin || Boolean(actor.granularPermissions?.device_edit);
+  const canEdit =
+    isSuperAdmin || Boolean(actor.granularPermissions?.device_edit);
   if (!canEdit) {
     throw new Error("Forbidden: You do not have permission to edit devices.");
   }
 
   const updatePayload: Record<string, unknown> = {};
 
-  const requestedType = data.deviceType?.toLowerCase().trim() || device.deviceType;
-  if (requestedType === "server" && !isSuperAdmin && !actor.granularPermissions?.server_manage) {
-    throw new Error("Forbidden: You do not have permission to manage server hardware.");
+  const requestedType =
+    data.deviceType?.toLowerCase().trim() || device.deviceType;
+  const canManageServer =
+    isSuperAdmin ||
+    isEngineer ||
+    Boolean(actor.granularPermissions?.server_manage);
+  if (
+    (requestedType === "server" || device.deviceType === "server") &&
+    !canManageServer
+  ) {
+    throw new Error(
+      "Forbidden: You do not have permission to manage server hardware.",
+    );
   }
 
-  if (data.deviceType) updatePayload.deviceType = data.deviceType.toLowerCase().trim();
-  if (data.deviceName !== undefined) updatePayload.deviceName = data.deviceName.trim();
+  if (data.deviceType)
+    updatePayload.deviceType = data.deviceType.toLowerCase().trim();
+  if (data.deviceName !== undefined)
+    updatePayload.deviceName = data.deviceName.trim();
   if (data.totalPorts !== undefined) {
-    updatePayload.totalPorts = !isNaN(Number(data.totalPorts)) ? Number(data.totalPorts) : undefined;
+    updatePayload.totalPorts = !isNaN(Number(data.totalPorts))
+      ? Number(data.totalPorts)
+      : undefined;
   }
   if (data.uplinkSwitch !== undefined) {
     updatePayload.uplinkSwitch = data.uplinkSwitch || null;
@@ -547,15 +645,19 @@ export async function updateDevice(
   if (data.server !== undefined) {
     updatePayload.server = data.server || null;
   }
-  if (data.description !== undefined) updatePayload.description = data.description.trim();
-  if (data.onlineLink !== undefined) updatePayload.onlineLink = data.onlineLink.trim();
-  
+  if (data.description !== undefined)
+    updatePayload.description = data.description.trim();
+  if (data.onlineLink !== undefined)
+    updatePayload.onlineLink = data.onlineLink.trim();
+
   if (data.macAddress !== undefined) {
     const rawMac = data.macAddress.trim();
     if (rawMac) {
       const normalized = normalizeMAC(rawMac);
       if (!normalized) {
-        throw new Error("Invalid MAC Address format. Example: AA:BB:CC:DD:EE:FF");
+        throw new Error(
+          "Invalid MAC Address format. Example: AA:BB:CC:DD:EE:FF",
+        );
       }
       updatePayload.macAddress = normalized;
     } else {
@@ -572,21 +674,41 @@ export async function updateDevice(
   }
 
   if (data.activationDate !== undefined) {
-    updatePayload.activationDate = data.activationDate ? new Date(data.activationDate) : undefined;
+    updatePayload.activationDate = data.activationDate
+      ? new Date(data.activationDate)
+      : undefined;
   }
 
-  if (data.apNumber !== undefined) updatePayload.apNumber = data.apNumber.trim();
-  if (data.customerName !== undefined) updatePayload.customerName = data.customerName.trim();
-  if (data.customerMobile !== undefined) updatePayload.customerMobile = data.customerMobile.trim();
+  if (data.apNumber !== undefined)
+    updatePayload.apNumber = data.apNumber.trim();
+  if (data.customerName !== undefined)
+    updatePayload.customerName = data.customerName.trim();
+  if (data.customerMobile !== undefined)
+    updatePayload.customerMobile = data.customerMobile.trim();
   if (data.gpsLink !== undefined) updatePayload.gpsLink = data.gpsLink.trim();
 
   if (data.status) {
-    const canApprove = isSuperAdmin || isEngineer || Boolean(actor.granularPermissions?.device_approve);
-    if ((data.status === "Active" || data.status === "Rejected") && !canApprove && device.status !== data.status) {
-      throw new Error("Only Super Admins and Engineers can approve or reject devices.");
+    const canApprove =
+      isSuperAdmin ||
+      isEngineer ||
+      Boolean(actor.granularPermissions?.device_approve);
+    if (
+      (data.status === "Active" || data.status === "Rejected") &&
+      !canApprove &&
+      device.status !== data.status
+    ) {
+      throw new Error(
+        "Only Super Admins and Engineers can approve or reject devices.",
+      );
     }
-    if (["Inactive", "Retired"].includes(data.status) && !isSuperAdmin && !actor.granularPermissions?.device_archive) {
-      throw new Error("Forbidden: You do not have permission to freeze or archive devices.");
+    if (
+      ["Inactive", "Retired"].includes(data.status) &&
+      !isSuperAdmin &&
+      !actor.granularPermissions?.device_archive
+    ) {
+      throw new Error(
+        "Forbidden: You do not have permission to freeze or archive devices.",
+      );
     }
     updatePayload.status = data.status;
     if (data.status === "Active" && device.status !== "Active") {
@@ -622,7 +744,9 @@ export async function updateDevice(
 
   safeRevalidatePath("/");
   safeRevalidatePath("/devices");
-  safeRevalidatePath(`/devices/${updatedDevice.deviceType.toLowerCase().trim()}`);
+  safeRevalidatePath(
+    `/devices/${updatedDevice.deviceType.toLowerCase().trim()}`,
+  );
   if (updatedDevice.uplinkSwitch) {
     safeRevalidatePath(`/devices/switch/${updatedDevice.uplinkSwitch}`);
   }
@@ -640,7 +764,9 @@ export async function approveDevice(id: string) {
   await connectToDatabase();
   const actor = await getCurrentAdminProfile();
   if (!actor) {
-    throw new Error("Unauthorized: Access is restricted to authorized administrators.");
+    throw new Error(
+      "Unauthorized: Access is restricted to authorized administrators.",
+    );
   }
 
   const isSuperAdmin = actor.role === "super_admin";
@@ -651,20 +777,38 @@ export async function approveDevice(id: string) {
     Boolean(actor.granularPermissions?.device_approve);
 
   if (!canApprove) {
-    throw new Error("Forbidden: Only Super Admins and Engineers can approve devices.");
+    throw new Error(
+      "Forbidden: Only Super Admins and Engineers can approve devices.",
+    );
   }
 
   const device = await Device.findById(id);
   if (!device) throw new Error("Device not found");
 
+  if (device.deviceType === "server") {
+    const canManageServer =
+      isSuperAdmin ||
+      isEngineer ||
+      Boolean(actor.granularPermissions?.server_manage);
+    if (!canManageServer) {
+      throw new Error(
+        "Forbidden: You do not have permission to approve server hardware.",
+      );
+    }
+  }
+
   if (device.status === "Active") {
     throw new Error("Device has already been approved and is Active.");
   }
   if (device.status === "Rejected") {
-    throw new Error("Device has already been rejected and cannot be approved directly.");
+    throw new Error(
+      "Device has already been rejected and cannot be approved directly.",
+    );
   }
   if (device.status !== "Pending") {
-    throw new Error(`Device cannot be approved because its current status is '${device.status}'. Only Pending devices can be approved.`);
+    throw new Error(
+      `Device cannot be approved because its current status is '${device.status}'. Only Pending devices can be approved.`,
+    );
   }
 
   // Atomic state transition to prevent race conditions during concurrent approval clicks
@@ -683,11 +827,13 @@ export async function approveDevice(id: string) {
         rejectionReason: "",
       },
     },
-    { new: true }
+    { new: true },
   );
 
   if (!updatedDevice) {
-    throw new Error("Device could not be approved. It may have already been processed by another administrator.");
+    throw new Error(
+      "Device could not be approved. It may have already been processed by another administrator.",
+    );
   }
 
   await ActivityLog.create({
@@ -719,7 +865,7 @@ export async function approveDevice(id: string) {
         { message: { $regex: String(updatedDevice.sl) } },
       ],
     },
-    { $addToSet: { readBy: actor.email.toLowerCase() } }
+    { $addToSet: { readBy: actor.email.toLowerCase() } },
   );
 
   // Send approval notification
@@ -737,8 +883,12 @@ export async function approveDevice(id: string) {
   safeRevalidatePath("/");
   safeRevalidatePath("/devices");
   safeRevalidatePath("/devices/pending");
-  safeRevalidatePath(`/devices/${updatedDevice.deviceType.toLowerCase().trim()}`);
-  safeRevalidatePath(`/devices/${updatedDevice.deviceType.toLowerCase().trim()}/${updatedDevice._id}`);
+  safeRevalidatePath(
+    `/devices/${updatedDevice.deviceType.toLowerCase().trim()}`,
+  );
+  safeRevalidatePath(
+    `/devices/${updatedDevice.deviceType.toLowerCase().trim()}/${updatedDevice._id}`,
+  );
 
   return JSON.parse(JSON.stringify(updatedDevice)) as IDevice;
 }
@@ -750,7 +900,9 @@ export async function rejectDevice(id: string, reason?: string) {
   await connectToDatabase();
   const actor = await getCurrentAdminProfile();
   if (!actor) {
-    throw new Error("Unauthorized: Access is restricted to authorized administrators.");
+    throw new Error(
+      "Unauthorized: Access is restricted to authorized administrators.",
+    );
   }
 
   const isSuperAdmin = actor.role === "super_admin";
@@ -761,11 +913,25 @@ export async function rejectDevice(id: string, reason?: string) {
     Boolean(actor.granularPermissions?.device_approve);
 
   if (!canApprove) {
-    throw new Error("Forbidden: Only Super Admins and Engineers can reject devices.");
+    throw new Error(
+      "Forbidden: Only Super Admins and Engineers can reject devices.",
+    );
   }
 
   const device = await Device.findById(id);
   if (!device) throw new Error("Device not found");
+
+  if (device.deviceType === "server") {
+    const canManageServer =
+      isSuperAdmin ||
+      isEngineer ||
+      Boolean(actor.granularPermissions?.server_manage);
+    if (!canManageServer) {
+      throw new Error(
+        "Forbidden: You do not have permission to reject server hardware.",
+      );
+    }
+  }
 
   const cleanReason = reason?.trim() || "No specific reason provided.";
 
@@ -776,7 +942,9 @@ export async function rejectDevice(id: string, reason?: string) {
     throw new Error("Device has already been rejected.");
   }
   if (device.status !== "Pending") {
-    throw new Error(`Device cannot be rejected because its current status is '${device.status}'. Only Pending devices can be rejected.`);
+    throw new Error(
+      `Device cannot be rejected because its current status is '${device.status}'. Only Pending devices can be rejected.`,
+    );
   }
 
   // Atomic state transition to prevent race conditions during concurrent rejection clicks
@@ -796,11 +964,13 @@ export async function rejectDevice(id: string, reason?: string) {
         rejectionReason: cleanReason,
       },
     },
-    { new: true }
+    { new: true },
   );
 
   if (!updatedDevice) {
-    throw new Error("Device could not be rejected. It may have already been processed by another administrator.");
+    throw new Error(
+      "Device could not be rejected. It may have already been processed by another administrator.",
+    );
   }
 
   await ActivityLog.create({
@@ -833,7 +1003,7 @@ export async function rejectDevice(id: string, reason?: string) {
         { message: { $regex: String(updatedDevice.sl) } },
       ],
     },
-    { $addToSet: { readBy: actor.email.toLowerCase() } }
+    { $addToSet: { readBy: actor.email.toLowerCase() } },
   );
 
   // Send rejection notification
@@ -851,8 +1021,12 @@ export async function rejectDevice(id: string, reason?: string) {
   safeRevalidatePath("/");
   safeRevalidatePath("/devices");
   safeRevalidatePath("/devices/pending");
-  safeRevalidatePath(`/devices/${updatedDevice.deviceType.toLowerCase().trim()}`);
-  safeRevalidatePath(`/devices/${updatedDevice.deviceType.toLowerCase().trim()}/${updatedDevice._id}`);
+  safeRevalidatePath(
+    `/devices/${updatedDevice.deviceType.toLowerCase().trim()}`,
+  );
+  safeRevalidatePath(
+    `/devices/${updatedDevice.deviceType.toLowerCase().trim()}/${updatedDevice._id}`,
+  );
 
   return JSON.parse(JSON.stringify(updatedDevice)) as IDevice;
 }
@@ -867,8 +1041,15 @@ export async function getPendingDevices(params?: {
   page?: number;
   limit?: number;
 }) {
-  await requirePermission("devices", "read");
+  const actor = await requirePermission("devices", "read");
   await connectToDatabase();
+
+  const isSuperAdmin = actor.role === "super_admin";
+  const isEngineer = actor.role === "engineer";
+  const canViewServer =
+    isSuperAdmin ||
+    isEngineer ||
+    Boolean(actor.granularPermissions?.server_view);
 
   const {
     deviceType,
@@ -882,7 +1063,20 @@ export async function getPendingDevices(params?: {
   const query: FilterQuery<typeof Device> = { status: "Pending" };
 
   if (deviceType && deviceType !== "all") {
-    query.deviceType = deviceType.toLowerCase().trim();
+    const requestedType = deviceType.toLowerCase().trim();
+    if (requestedType === "server" && !canViewServer) {
+      return {
+        devices: [] as IDevice[],
+        total: 0,
+        page,
+        limit,
+        totalPages: 1,
+        byType: {},
+      };
+    }
+    query.deviceType = requestedType;
+  } else if (!canViewServer) {
+    query.deviceType = { $ne: "server" };
   }
 
   if (search && search.trim()) {
@@ -916,7 +1110,11 @@ export async function getPendingDevices(params?: {
       .lean(),
     Device.countDocuments(query),
     Device.aggregate([
-      { $match: { status: "Pending" } },
+      {
+        $match: canViewServer
+          ? { status: "Pending" }
+          : { status: "Pending", deviceType: { $ne: "server" } },
+      },
       { $group: { _id: "$deviceType", count: { $sum: 1 } } },
     ]),
   ]);
@@ -940,9 +1138,21 @@ export async function getPendingDevices(params?: {
 // GET PENDING DEVICES COUNT (FAST BADGE QUERY)
 // ==========================================
 export async function getPendingDevicesCount(): Promise<number> {
-  await requirePermission("devices", "read");
+  const actor = await requirePermission("devices", "read");
   await connectToDatabase();
-  return Device.countDocuments({ status: "Pending" });
+
+  const isSuperAdmin = actor.role === "super_admin";
+  const isEngineer = actor.role === "engineer";
+  const canViewServer =
+    isSuperAdmin ||
+    isEngineer ||
+    Boolean(actor.granularPermissions?.server_view);
+
+  const query: FilterQuery<typeof Device> = { status: "Pending" };
+  if (!canViewServer) {
+    query.deviceType = { $ne: "server" };
+  }
+  return Device.countDocuments(query);
 }
 
 // ==========================================
@@ -951,7 +1161,7 @@ export async function getPendingDevicesCount(): Promise<number> {
 export async function updateDeviceStatus(
   id: string,
   status: DeviceStatus,
-  rejectionReason?: string
+  rejectionReason?: string,
 ) {
   const actor = await requirePermission("devices", "write");
   await connectToDatabase();
@@ -964,13 +1174,42 @@ export async function updateDeviceStatus(
     Boolean(actor.granularPermissions?.device_approve);
 
   if ((status === "Active" || status === "Rejected") && !canApprove) {
-    throw new Error("Only Super Admins and Engineers can approve or reject devices.");
+    throw new Error(
+      "Only Super Admins and Engineers can approve or reject devices.",
+    );
   }
-  if (["Inactive", "Retired"].includes(status) && !isSuperAdmin && !actor.granularPermissions?.device_archive) {
-    throw new Error("Forbidden: You do not have permission to freeze or archive devices.");
+  if (
+    ["Inactive", "Retired"].includes(status) &&
+    !isSuperAdmin &&
+    !actor.granularPermissions?.device_archive
+  ) {
+    throw new Error(
+      "Forbidden: You do not have permission to freeze or archive devices.",
+    );
   }
-  if (!["Active", "Rejected", "Inactive", "Retired"].includes(status) && !isSuperAdmin && !actor.granularPermissions?.device_edit) {
-    throw new Error("Forbidden: You do not have permission to change device status.");
+  if (
+    !["Active", "Rejected", "Inactive", "Retired"].includes(status) &&
+    !isSuperAdmin &&
+    !actor.granularPermissions?.device_edit
+  ) {
+    throw new Error(
+      "Forbidden: You do not have permission to change device status.",
+    );
+  }
+
+  const existing = await Device.findById(id);
+  if (!existing) throw new Error("Device not found");
+
+  if (existing.deviceType === "server") {
+    const canManageServer =
+      isSuperAdmin ||
+      isEngineer ||
+      Boolean(actor.granularPermissions?.server_manage);
+    if (!canManageServer) {
+      throw new Error(
+        "Forbidden: You do not have permission to manage server hardware.",
+      );
+    }
   }
 
   const updateFields: Record<string, unknown> = { status };
@@ -984,7 +1223,8 @@ export async function updateDeviceStatus(
     };
     updateFields.rejectionReason = "";
   } else if (status === "Rejected") {
-    const cleanReason = rejectionReason?.trim() || "No specific reason provided.";
+    const cleanReason =
+      rejectionReason?.trim() || "No specific reason provided.";
     updateFields.rejectedBy = {
       email: actor.email,
       name: actor.name || actor.email.split("@")[0],
@@ -996,7 +1236,9 @@ export async function updateDeviceStatus(
     updateFields.rejectionReason = cleanReason;
   }
 
-  const device = (await Device.findByIdAndUpdate(id, updateFields, { new: true }).lean()) as IDevice | null;
+  const device = (await Device.findByIdAndUpdate(id, updateFields, {
+    new: true,
+  }).lean()) as IDevice | null;
   if (!device) throw new Error("Device not found");
 
   await logActivityAndNotify({
@@ -1031,13 +1273,28 @@ export async function toggleDeviceActive(id: string) {
     Boolean(actor.granularPermissions?.device_approve);
 
   if (!canApprove) {
-    throw new Error("Only Super Admins and Engineers can activate or approve devices.");
+    throw new Error(
+      "Only Super Admins and Engineers can activate or approve devices.",
+    );
   }
 
   const device = await Device.findById(id);
   if (!device) throw new Error("Device not found");
 
-  const newStatus: DeviceStatus = device.status === "Active" ? "Pending" : "Active";
+  if (device.deviceType === "server") {
+    const canManageServer =
+      isSuperAdmin ||
+      isEngineer ||
+      Boolean(actor.granularPermissions?.server_manage);
+    if (!canManageServer) {
+      throw new Error(
+        "Forbidden: You do not have permission to manage server hardware.",
+      );
+    }
+  }
+
+  const newStatus: DeviceStatus =
+    device.status === "Active" ? "Pending" : "Active";
   device.status = newStatus;
   if (newStatus === "Active") {
     device.approvedBy = {
@@ -1076,7 +1333,8 @@ export async function deleteDevice(id: string) {
   await connectToDatabase();
 
   const isSuperAdmin = actor.role === "super_admin";
-  const canDelete = isSuperAdmin || Boolean(actor.granularPermissions?.device_delete);
+  const canDelete =
+    isSuperAdmin || Boolean(actor.granularPermissions?.device_delete);
   if (!canDelete) {
     throw new Error("Forbidden: You do not have permission to delete devices.");
   }
@@ -1086,11 +1344,24 @@ export async function deleteDevice(id: string) {
     throw new Error("Device not found");
   }
 
+  if (device.deviceType === "server") {
+    const isEngineer = actor.role === "engineer";
+    const canManageServer =
+      isSuperAdmin ||
+      isEngineer ||
+      Boolean(actor.granularPermissions?.server_manage);
+    if (!canManageServer) {
+      throw new Error(
+        "Forbidden: You do not have permission to delete server hardware.",
+      );
+    }
+  }
+
   // Check if any devices are connected to this device as an uplink switch
   const connectedCount = await Device.countDocuments({ uplinkSwitch: id });
   if (connectedCount > 0) {
     throw new Error(
-      `Cannot delete this switch. It is currently acting as an uplink switch for ${connectedCount} connected device(s). Reassign them first.`
+      `Cannot delete this switch. It is currently acting as an uplink switch for ${connectedCount} connected device(s). Reassign them first.`,
     );
   }
 
@@ -1098,7 +1369,7 @@ export async function deleteDevice(id: string) {
   const serverClientsCount = await Device.countDocuments({ server: id });
   if (serverClientsCount > 0) {
     throw new Error(
-      `Cannot delete this server. It is linked to ${serverClientsCount} client device(s). Reassign them first.`
+      `Cannot delete this server. It is linked to ${serverClientsCount} client device(s). Reassign them first.`,
     );
   }
 
@@ -1126,20 +1397,33 @@ export async function deleteDevice(id: string) {
 // ==========================================
 export async function searchGlobalDevices(searchTerm: string) {
   if (!searchTerm || searchTerm.trim().length < 2) return [];
-  await requirePermission("devices", "read");
+  const actor = await requirePermission("devices", "read");
   await connectToDatabase();
+
+  const isSuperAdmin = actor.role === "super_admin";
+  const isEngineer = actor.role === "engineer";
+  const canViewServer =
+    isSuperAdmin ||
+    isEngineer ||
+    Boolean(actor.granularPermissions?.server_view);
 
   const term = searchTerm.trim();
   const regex = new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
 
-  const results = await Device.find({
+  const query: FilterQuery<typeof Device> = {
     $or: [
       { sl: regex },
       { deviceName: regex },
       { ipAddress: regex },
       { macAddress: regex },
     ],
-  })
+  };
+
+  if (!canViewServer) {
+    query.deviceType = { $ne: "server" };
+  }
+
+  const results = await Device.find(query)
     .select("sl deviceName deviceType ipAddress macAddress status")
     .limit(10)
     .lean();
@@ -1151,8 +1435,19 @@ export async function searchGlobalDevices(searchTerm: string) {
 // GET FILTER OPTIONS
 // ==========================================
 export async function getDeviceFilterOptions() {
-  await requirePermission("devices", "read");
+  const actor = await requirePermission("devices", "read");
   await connectToDatabase();
+
+  const isSuperAdmin = actor.role === "super_admin";
+  const isEngineer = actor.role === "engineer";
+  const canViewServer =
+    isSuperAdmin ||
+    isEngineer ||
+    Boolean(actor.granularPermissions?.server_view);
+
+  if (!canViewServer) {
+    return { servers: [] };
+  }
 
   const servers = await Device.find({
     deviceType: "server",
@@ -1180,12 +1475,27 @@ export async function getAllDevicesForExport(params?: {
   server?: string;
   search?: string;
 }) {
-  await requirePermission("devices", "read");
+  const actor = await requirePermission("devices", "read");
   await connectToDatabase();
+
+  const isSuperAdmin = actor.role === "super_admin";
+  const isEngineer = actor.role === "engineer";
+  const canViewServer =
+    isSuperAdmin ||
+    isEngineer ||
+    Boolean(actor.granularPermissions?.server_view);
 
   const query: FilterQuery<typeof Device> = {};
   if (params?.deviceType && params.deviceType !== "all") {
-    query.deviceType = params.deviceType;
+    const requestedType = params.deviceType.toLowerCase().trim();
+    if (requestedType === "server" && !canViewServer) {
+      throw new Error(
+        "Forbidden: You do not have permission to export server records.",
+      );
+    }
+    query.deviceType = requestedType;
+  } else if (!canViewServer) {
+    query.deviceType = { $ne: "server" };
   }
   if (params?.status && params.status !== "all") {
     query.status = params.status;
@@ -1223,13 +1533,29 @@ export async function getAllDevicesForExport(params?: {
 // ==========================================
 export async function importDevicesBulk(
   rows: Record<string, unknown>[],
-  defaultDeviceType?: string
+  defaultDeviceType?: string,
 ) {
   const actor = await requirePermission("devices", "write");
   await connectToDatabase();
 
+  const isSuperAdmin = actor.role === "super_admin";
+  const isEngineer = actor.role === "engineer";
+  const canManageServer =
+    isSuperAdmin ||
+    isEngineer ||
+    Boolean(actor.granularPermissions?.server_manage);
+
   if (actor.role !== "super_admin" && !actor.granularPermissions?.device_add) {
     throw new Error("Forbidden: You do not have permission to add devices.");
+  }
+
+  if (
+    defaultDeviceType?.toLowerCase().trim() === "server" &&
+    !canManageServer
+  ) {
+    throw new Error(
+      "Forbidden: You do not have permission to bulk import server hardware.",
+    );
   }
 
   if (!rows || rows.length === 0) {
@@ -1238,21 +1564,35 @@ export async function importDevicesBulk(
 
   // Pre-fetch servers, switches, and existing devices for fast resolution
   const [servers, switches, existingDevices] = await Promise.all([
-    Device.find({ deviceType: "server" }, { _id: 1, sl: 1, deviceName: 1 }).lean(),
-    Device.find({ deviceType: "switch" }, { _id: 1, sl: 1, deviceName: 1 }).lean(),
+    Device.find(
+      { deviceType: "server" },
+      { _id: 1, sl: 1, deviceName: 1 },
+    ).lean(),
+    Device.find(
+      { deviceType: "switch" },
+      { _id: 1, sl: 1, deviceName: 1 },
+    ).lean(),
     Device.find(
       { macAddress: { $ne: "" } },
       {
-        macAddress: 1, deviceType: 1, deviceName: 1,
-        ipAddress: 1, status: 1, totalPorts: 1, apNumber: 1,
-        customerName: 1, customerMobile: 1, description: 1,
-        onlineLink: 1, gpsLink: 1,
-      }
+        macAddress: 1,
+        deviceType: 1,
+        deviceName: 1,
+        ipAddress: 1,
+        status: 1,
+        totalPorts: 1,
+        apNumber: 1,
+        customerName: 1,
+        customerMobile: 1,
+        description: 1,
+        onlineLink: 1,
+        gpsLink: 1,
+      },
     ).lean(),
   ]);
 
   // Build a MAC → existing device map for O(1) duplicate lookups
-  const existingByMac = new Map<string, typeof existingDevices[number]>();
+  const existingByMac = new Map<string, (typeof existingDevices)[number]>();
   for (const d of existingDevices) {
     if (d.macAddress) existingByMac.set(d.macAddress.toUpperCase(), d);
   }
@@ -1268,7 +1608,7 @@ export async function importDevicesBulk(
 
     // 1. Verification: Skip completely blank rows
     const hasAnyValue = Object.values(r).some(
-      (v) => v !== null && v !== undefined && String(v).trim() !== ""
+      (v) => v !== null && v !== undefined && String(v).trim() !== "",
     );
     if (!hasAnyValue) {
       continue;
@@ -1281,23 +1621,35 @@ export async function importDevicesBulk(
           r["Type"] ||
           r["deviceType"] ||
           defaultType(defaultDeviceType) ||
-          ""
+          "",
       )
         .trim()
         .toLowerCase();
 
-      const validTypes = ["switch", "router", "antenna", "access-point", "server"];
+      const validTypes = [
+        "switch",
+        "router",
+        "antenna",
+        "access-point",
+        "server",
+      ];
       if (!rawType) {
         errors.push(`Row ${rowNum}: Device Type is required.`);
         continue;
       }
       if (!validTypes.includes(rawType)) {
         errors.push(
-          `Row ${rowNum}: Invalid Device Type "${rawType}". Must be one of: switch, router, antenna, access-point, server.`
+          `Row ${rowNum}: Invalid Device Type "${rawType}". Must be one of: switch, router, antenna, access-point, server.`,
         );
         continue;
       }
       const deviceType = rawType;
+      if (deviceType === "server" && !canManageServer) {
+        errors.push(
+          `Row ${rowNum}: Forbidden: You do not have permission to import server hardware.`,
+        );
+        continue;
+      }
 
       // 3. Verification: MAC Address (Required)
       const rawMac = String(
@@ -1306,7 +1658,7 @@ export async function importDevicesBulk(
           r["macAddress"] ||
           r["Mac Address"] ||
           r["mac"] ||
-          ""
+          "",
       ).trim();
 
       if (!rawMac) {
@@ -1317,7 +1669,7 @@ export async function importDevicesBulk(
       const macAddress = normalizeMAC(rawMac);
       if (!macAddress) {
         errors.push(
-          `Row ${rowNum}: Invalid MAC Address "${rawMac}". Must be a valid 12-hex MAC address (e.g. AA:BB:CC:DD:EE:FF).`
+          `Row ${rowNum}: Invalid MAC Address "${rawMac}". Must be a valid 12-hex MAC address (e.g. AA:BB:CC:DD:EE:FF).`,
         );
         continue;
       }
@@ -1325,7 +1677,7 @@ export async function importDevicesBulk(
       // 4a. Verification: Duplicate MAC check within uploaded spreadsheet batch
       if (seenMacsInBatch.has(macAddress)) {
         errors.push(
-          `Row ${rowNum}: Duplicate MAC Address "${macAddress}" found within the uploaded spreadsheet.`
+          `Row ${rowNum}: Duplicate MAC Address "${macAddress}" found within the uploaded spreadsheet.`,
         );
         continue;
       }
@@ -1340,13 +1692,13 @@ export async function importDevicesBulk(
 
       // 5. Verification: Optional IPv4 Address
       const rawIp = String(
-        r["IP Address"] || r["IP"] || r["ipAddress"] || r["Ip Address"] || ""
+        r["IP Address"] || r["IP"] || r["ipAddress"] || r["Ip Address"] || "",
       ).trim();
       let ipAddress = "";
       if (rawIp) {
         if (!isValidIPv4(rawIp)) {
           errors.push(
-            `Row ${rowNum}: Invalid IPv4 format "${rawIp}". Example: 192.168.1.100`
+            `Row ${rowNum}: Invalid IPv4 format "${rawIp}". Example: 192.168.1.100`,
           );
           continue;
         }
@@ -1355,17 +1707,26 @@ export async function importDevicesBulk(
 
       // 6. Optional text fields (Device Name, Notes, Online Link)
       const rawName = String(
-        r["Device Name"] || r["Name"] || r["deviceName"] || ""
+        r["Device Name"] || r["Name"] || r["deviceName"] || "",
       ).trim();
       const rawBrand = String(r["Brand"] || r["brand"] || "").trim();
       const rawModel = String(r["Model"] || r["model"] || "").trim();
       const brandModelHint = [rawBrand, rawModel].filter(Boolean).join(" ");
       const deviceName =
-        rawName || (brandModelHint ? `${brandModelHint} ${macAddress.slice(-5)}` : `${deviceType.toUpperCase()} ${macAddress.slice(-5)}`);
-      const rawDesc = String(r["Description"] || r["Notes"] || r["description"] || "").trim();
+        rawName ||
+        (brandModelHint
+          ? `${brandModelHint} ${macAddress.slice(-5)}`
+          : `${deviceType.toUpperCase()} ${macAddress.slice(-5)}`);
+      const rawDesc = String(
+        r["Description"] || r["Notes"] || r["description"] || "",
+      ).trim();
       const description = rawDesc || `${deviceType.toUpperCase()} unit`;
       const onlineLink = String(
-        r["Online Link"] || r["Portal"] || r["Management URL"] || r["onlineLink"] || ""
+        r["Online Link"] ||
+          r["Portal"] ||
+          r["Management URL"] ||
+          r["onlineLink"] ||
+          "",
       ).trim();
 
       // 7. Verification: Optional Switch Ports
@@ -1389,28 +1750,42 @@ export async function importDevicesBulk(
       const rawStatus = String(r["Status"] || r["status"] || "").trim();
       let status: DeviceStatus = "Pending";
       if (isSuperAdmin) {
-        status = ["Pending", "Active", "Available", "Offline", "Maintenance", "Inactive", "Retired"].includes(rawStatus)
+        status = [
+          "Pending",
+          "Active",
+          "Available",
+          "Offline",
+          "Maintenance",
+          "Inactive",
+          "Retired",
+        ].includes(rawStatus)
           ? (rawStatus as DeviceStatus)
           : "Active";
       }
 
       // 9. Verification: Server lookup
       const rawServer = String(
-        r["Server"] || r["Connected Server"] || r["Server SL"] || r["server"] || ""
+        r["Server"] ||
+          r["Connected Server"] ||
+          r["Server SL"] ||
+          r["server"] ||
+          "",
       ).trim();
       let serverId: string | null = null;
       if (rawServer && deviceType !== "server") {
-        const found = (servers as Array<{ _id: unknown; sl?: string; deviceName?: string }>).find(
+        const found = (
+          servers as Array<{ _id: unknown; sl?: string; deviceName?: string }>
+        ).find(
           (s) =>
             s.sl?.toLowerCase() === rawServer.toLowerCase() ||
             s.deviceName?.toLowerCase() === rawServer.toLowerCase() ||
-            String(s._id) === rawServer
+            String(s._id) === rawServer,
         );
         if (found) {
           serverId = String(found._id);
         } else {
           errors.push(
-            `Row ${rowNum}: Server "${rawServer}" not found in database.`
+            `Row ${rowNum}: Server "${rawServer}" not found in database.`,
           );
           continue;
         }
@@ -1418,9 +1793,11 @@ export async function importDevicesBulk(
         // Fallback: If there is at least one server, assign the primary server
         if (servers.length > 0) {
           serverId = String((servers[0] as { _id: unknown })._id);
-        } else if (["access-point", "router", "switch", "antenna"].includes(deviceType)) {
+        } else if (
+          ["access-point", "router", "switch", "antenna"].includes(deviceType)
+        ) {
           errors.push(
-            `Row ${rowNum}: Connected Server is required for ${deviceType}, but no servers are registered yet.`
+            `Row ${rowNum}: Connected Server is required for ${deviceType}, but no servers are registered yet.`,
           );
           continue;
         }
@@ -1428,15 +1805,24 @@ export async function importDevicesBulk(
 
       // 10. Verification: Optional Uplink Switch lookup
       const rawSwitch = String(
-        r["Uplink Switch"] || r["Switch"] || r["Switch SL"] || r["uplinkSwitch"] || ""
+        r["Uplink Switch"] ||
+          r["Switch"] ||
+          r["Switch SL"] ||
+          r["uplinkSwitch"] ||
+          "",
       ).trim();
       let switchId: string | null = null;
-      if (rawSwitch && ["antenna", "access-point", "router"].includes(deviceType)) {
-        const found = (switches as Array<{ _id: unknown; sl?: string; deviceName?: string }>).find(
+      if (
+        rawSwitch &&
+        ["antenna", "access-point", "router"].includes(deviceType)
+      ) {
+        const found = (
+          switches as Array<{ _id: unknown; sl?: string; deviceName?: string }>
+        ).find(
           (sw) =>
             sw.sl?.toLowerCase() === rawSwitch.toLowerCase() ||
             sw.deviceName?.toLowerCase() === rawSwitch.toLowerCase() ||
-            String(sw._id) === rawSwitch
+            String(sw._id) === rawSwitch,
         );
         if (found) {
           switchId = String(found._id);
@@ -1446,48 +1832,75 @@ export async function importDevicesBulk(
       // 11. Optional AP & Customer fields & GPS Link
       const apNumber =
         String(r["AP Number"] || r["AP"] || r["apNumber"] || "").trim() ||
-        (deviceType === "access-point" ? `AP-${macAddress.slice(-5).replace(/:/g, "")}` : "");
+        (deviceType === "access-point"
+          ? `AP-${macAddress.slice(-5).replace(/:/g, "")}`
+          : "");
       const customerName =
-        String(r["Customer Name"] || r["Customer"] || r["customerName"] || "").trim() ||
-        (["access-point", "router"].includes(deviceType) ? "Office / Stock" : "");
+        String(
+          r["Customer Name"] || r["Customer"] || r["customerName"] || "",
+        ).trim() ||
+        (["access-point", "router"].includes(deviceType)
+          ? "Office / Stock"
+          : "");
       const customerMobile =
         String(
           r["Customer Mobile"] ||
-          r["Mobile Number"] ||
-          r["Mobile"] ||
-          r["Phone"] ||
-          r["customerMobile"] ||
-          ""
+            r["Mobile Number"] ||
+            r["Mobile"] ||
+            r["Phone"] ||
+            r["customerMobile"] ||
+            "",
         ).trim() ||
         (["access-point", "router"].includes(deviceType) ? "N/A" : "");
 
       // Handle GPS Link & legacy Latitude/Longitude fallback
       const rawGps = String(
         r["GPS Link"] ||
-        r["Map Link"] ||
-        r["GPS"] ||
-        r["gpsLink"] ||
-        r["Location"] ||
-        r["Address"] ||
-        ""
+          r["Map Link"] ||
+          r["GPS"] ||
+          r["gpsLink"] ||
+          r["Location"] ||
+          r["Address"] ||
+          "",
       ).trim();
-      const rawLat = r["GPS Latitude"] ?? r["Latitude"] ?? r["Lat"] ?? r["gpsLatitude"];
-      const rawLng = r["GPS Longitude"] ?? r["Longitude"] ?? r["Lng"] ?? r["Long"] ?? r["gpsLongitude"];
+      const rawLat =
+        r["GPS Latitude"] ?? r["Latitude"] ?? r["Lat"] ?? r["gpsLatitude"];
+      const rawLng =
+        r["GPS Longitude"] ??
+        r["Longitude"] ??
+        r["Lng"] ??
+        r["Long"] ??
+        r["gpsLongitude"];
       let gpsLink = rawGps;
-      if (!gpsLink && rawLat !== undefined && rawLat !== null && rawLat !== "" && rawLng !== undefined && rawLng !== null && rawLng !== "") {
+      if (
+        !gpsLink &&
+        rawLat !== undefined &&
+        rawLat !== null &&
+        rawLat !== "" &&
+        rawLng !== undefined &&
+        rawLng !== null &&
+        rawLng !== ""
+      ) {
         gpsLink = `https://maps.google.com/?q=${rawLat},${rawLng}`;
       }
-      if (!gpsLink && ["access-point", "router", "switch", "antenna"].includes(deviceType)) {
+      if (
+        !gpsLink &&
+        ["access-point", "router", "switch", "antenna"].includes(deviceType)
+      ) {
         gpsLink = "Deployment Location";
       }
 
       // 12. Verification: Optional Activation Date
-      const rawActDate = r["Activation Date"] ?? r["Date of Activation"] ?? r["activationDate"];
+      const rawActDate =
+        r["Activation Date"] ?? r["Date of Activation"] ?? r["activationDate"];
       let activationDate: Date | undefined;
       if (rawActDate) {
         if (rawActDate instanceof Date && !isNaN(rawActDate.getTime())) {
           activationDate = rawActDate;
-        } else if (typeof rawActDate === "string" || typeof rawActDate === "number") {
+        } else if (
+          typeof rawActDate === "string" ||
+          typeof rawActDate === "number"
+        ) {
           const parsed = new Date(rawActDate);
           if (!isNaN(parsed.getTime())) activationDate = parsed;
         }
@@ -1503,8 +1916,12 @@ export async function importDevicesBulk(
         server: serverId,
         uplinkSwitch: switchId,
         apNumber: ["access-point"].includes(deviceType) ? apNumber : undefined,
-        customerName: ["access-point", "router"].includes(deviceType) ? customerName : undefined,
-        customerMobile: ["access-point", "router"].includes(deviceType) ? customerMobile : undefined,
+        customerName: ["access-point", "router"].includes(deviceType)
+          ? customerName
+          : undefined,
+        customerMobile: ["access-point", "router"].includes(deviceType)
+          ? customerMobile
+          : undefined,
         gpsLink: gpsLink || undefined,
         activationDate,
         status,
@@ -1515,7 +1932,8 @@ export async function importDevicesBulk(
       createdCount++;
     } catch (err) {
       // Individual row failure never stops the remaining batch
-      const errMsg = err instanceof Error ? err.message : "Unknown error creating device";
+      const errMsg =
+        err instanceof Error ? err.message : "Unknown error creating device";
       errors.push(`Row ${rowNum}: ${errMsg}`);
     }
   }
@@ -1534,8 +1952,14 @@ export async function importDevicesBulk(
 
     // Always create a notification (logActivityAndNotify skips super_admin)
     // so the bell badge is updated for every role after bulk import
-    const skippedNote = skippedCount > 0 ? ` · ${skippedCount} duplicate${skippedCount > 1 ? "s" : ""} skipped` : "";
-    const errNote = errors.length > 0 ? ` · ${errors.length} error${errors.length > 1 ? "s" : ""}` : "";
+    const skippedNote =
+      skippedCount > 0
+        ? ` · ${skippedCount} duplicate${skippedCount > 1 ? "s" : ""} skipped`
+        : "";
+    const errNote =
+      errors.length > 0
+        ? ` · ${errors.length} error${errors.length > 1 ? "s" : ""}`
+        : "";
     await Notification.create({
       actorEmail: actor.email,
       actorRole: actor.role,

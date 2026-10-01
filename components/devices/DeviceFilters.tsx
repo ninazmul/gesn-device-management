@@ -37,7 +37,8 @@ export function DeviceFilters({ totalDevices }: DeviceFiltersProps) {
   const currentSort = searchParams.get("sortBy") || "sl_asc";
   const currentSubmittedBy = searchParams.get("submittedBy") || "";
 
-  const { admin } = usePermissions();
+  const { admin, isSuperAdmin, isEngineer, can } = usePermissions();
+  const canViewServer = isSuperAdmin || isEngineer || can("server_view");
   const isMySubmissionsActive = Boolean(
     admin?.email && currentSubmittedBy.toLowerCase() === admin.email.toLowerCase()
   );
@@ -71,10 +72,11 @@ export function DeviceFilters({ totalDevices }: DeviceFiltersProps) {
 
   // Load filter options dynamically
   useEffect(() => {
+    if (!canViewServer) return;
     getDeviceFilterOptions().then((res) => {
       setServers(res.servers || []);
     });
-  }, []);
+  }, [canViewServer]);
 
   // Push updated searchParams to URL
   const updateQuery = (key: string, value: string) => {
@@ -168,24 +170,26 @@ export function DeviceFilters({ totalDevices }: DeviceFiltersProps) {
         </div>
 
         {/* Server Dropdown */}
-        <div className="w-full md:w-48">
-          <Select
-            value={currentServer}
-            onValueChange={(val) => updateQuery("server", val)}
-          >
-            <SelectTrigger className="rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm">
-              <SelectValue placeholder="All Servers" />
-            </SelectTrigger>
-            <SelectContent className="dark:bg-slate-900 dark:border-slate-800">
-              <SelectItem value="all">All Servers</SelectItem>
-              {servers.map((server) => (
-                <SelectItem key={server._id} value={server._id}>
-                  {server.deviceName || `Server #${server.sl}`}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        {canViewServer && (
+          <div className="w-full md:w-48">
+            <Select
+              value={currentServer}
+              onValueChange={(val) => updateQuery("server", val)}
+            >
+              <SelectTrigger className="rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-sm">
+                <SelectValue placeholder="All Servers" />
+              </SelectTrigger>
+              <SelectContent className="dark:bg-slate-900 dark:border-slate-800">
+                <SelectItem value="all">All Servers</SelectItem>
+                {servers.map((server) => (
+                  <SelectItem key={server._id} value={server._id}>
+                    {server.deviceName || `Server #${server.sl}`}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
         {/* Sort Dropdown */}
         <div className="w-full md:w-44">

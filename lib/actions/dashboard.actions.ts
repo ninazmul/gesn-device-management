@@ -11,8 +11,15 @@ import { requirePermission } from "@/lib/auth-guard";
 import { syncOverdueBillsIfNeeded } from "./billing.actions";
 
 export async function getDashboardStats(): Promise<DashboardStats> {
-  await requirePermission("dashboard", "read");
+  const profile = await requirePermission("dashboard", "read");
   await connectToDatabase();
+
+  const isSuperAdmin = profile.role === "super_admin";
+  const isEngineer = profile.role === "engineer";
+  const canViewServer =
+    isSuperAdmin ||
+    isEngineer ||
+    Boolean(profile.granularPermissions?.server_view);
 
   const now = new Date();
   const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
@@ -254,6 +261,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   }> = [];
 
   for (const core of PRIMARY_DEVICE_TYPES) {
+    if (core.slug === "server" && !canViewServer) continue;
     knownSlugs.add(core.slug);
     const sm = typeStatusMap[core.slug] || {};
     byType.push({
@@ -347,11 +355,17 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     pendingDevices:
       devFacet.pendingCount?.[0]?.total || statusCountsMap["Pending"] || 0,
     byType,
-    recentDevices: JSON.parse(JSON.stringify(devFacet.recent || [])),
+    recentDevices: JSON.parse(
+      JSON.stringify(
+        (devFacet.recent || []).filter(
+          (d: { deviceType?: string }) => canViewServer || d.deviceType !== "server"
+        )
+      )
+    ),
     serverStats: {
-      totalServers,
-      activeServers,
-      locations: serverLocationsCount,
+      totalServers: canViewServer ? totalServers : 0,
+      activeServers: canViewServer ? activeServers : 0,
+      locations: canViewServer ? serverLocationsCount : 0,
       routersCount,
     },
     customerStats: {

@@ -155,8 +155,11 @@ interface DashboardClientProps {
 
 export function DashboardClient({ stats }: DashboardClientProps) {
   const router = useRouter();
-  const { canRead, canWrite, isSuperAdmin, role } = usePermissions();
-  const canViewServerInfra = isSuperAdmin || role === "admin";
+  const { canRead, canWrite, isSuperAdmin, isEngineer, can } = usePermissions();
+  const canViewServerInfra =
+    isSuperAdmin || isEngineer || Boolean(can("server_view"));
+  const canManageServerInUi =
+    isSuperAdmin || isEngineer || Boolean(can("server_manage"));
   const canWriteDevices = canWrite("devices");
   const canWriteCustomers = canWrite("customers");
   const canReadCustomers = canRead("customers");
@@ -563,10 +566,10 @@ export function DashboardClient({ stats }: DashboardClientProps) {
           </div>
 
           <div
-            className={`grid ${canWriteDevices ? "grid-cols-2" : "grid-cols-1"} gap-2`}
+            className={`grid ${canManageServerInUi ? "grid-cols-2" : "grid-cols-1"} gap-2`}
           >
             {/* Top Action: Add Server */}
-            {canWriteDevices && (
+            {canManageServerInUi && (
               <button
                 type="button"
                 onClick={() => openCreateFor("server")}

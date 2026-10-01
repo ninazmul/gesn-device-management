@@ -130,11 +130,13 @@ export function DeviceTable({
     isSuperAdmin,
     isEngineer,
     admin,
+    can,
     canApproveDevice,
     canDeleteDevice,
     canEditDevice,
     canArchiveDevice,
   } = usePermissions();
+  const canManageServer = isSuperAdmin || isEngineer || can("server_manage");
 
   // Modals state
   const [editingDevice, setEditingDevice] = useState<IDevice | null>(null);
@@ -492,9 +494,11 @@ export function DeviceTable({
                       {/* Status & Super Admin Activation Toggle */}
                       <TableCell className="whitespace-nowrap">
                         <div className="flex items-center gap-2">
-                          {canEditDevice ||
-                          canArchiveDevice ||
-                          canApproveDevice ? (
+                          {(canEditDevice ||
+                            canArchiveDevice ||
+                            canApproveDevice) &&
+                          (device.deviceType !== "server" ||
+                            canManageServer) ? (
                             <button
                               type="button"
                               onClick={() => setStatusDevice(device)}
@@ -507,31 +511,35 @@ export function DeviceTable({
                             <DeviceStatusBadge status={device.status} />
                           )}
 
-                          {isSuperAdmin && (
-                            <button
-                              type="button"
-                              disabled={togglingId === device._id}
-                              onClick={(e) => handleToggleActive(e, device._id)}
-                              className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                                device.status === "Active"
-                                  ? "bg-emerald-500"
-                                  : "bg-slate-200 dark:bg-slate-700"
-                              } ${togglingId === device._id ? "opacity-50 cursor-wait" : ""}`}
-                              title={
-                                device.status === "Active"
-                                  ? "Super Admin: Click to deactivate (set to Pending)"
-                                  : "Super Admin: Click to activate device"
-                              }
-                            >
-                              <span
-                                className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
+                          {isSuperAdmin &&
+                            (device.deviceType !== "server" ||
+                              canManageServer) && (
+                              <button
+                                type="button"
+                                disabled={togglingId === device._id}
+                                onClick={(e) =>
+                                  handleToggleActive(e, device._id)
+                                }
+                                className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
                                   device.status === "Active"
-                                    ? "translate-x-4"
-                                    : "translate-x-0"
-                                }`}
-                              />
-                            </button>
-                          )}
+                                    ? "bg-emerald-500"
+                                    : "bg-slate-200 dark:bg-slate-700"
+                                } ${togglingId === device._id ? "opacity-50 cursor-wait" : ""}`}
+                                title={
+                                  device.status === "Active"
+                                    ? "Super Admin: Click to deactivate (set to Pending)"
+                                    : "Super Admin: Click to activate device"
+                                }
+                              >
+                                <span
+                                  className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
+                                    device.status === "Active"
+                                      ? "translate-x-4"
+                                      : "translate-x-0"
+                                  }`}
+                                />
+                              </button>
+                            )}
                         </div>
                       </TableCell>
 
@@ -539,33 +547,36 @@ export function DeviceTable({
                       <TableCell className="text-right whitespace-nowrap">
                         <div className="flex items-center justify-end gap-1">
                           {/* Quick Approve/Reject for Pending Devices */}
-                          {device.status === "Pending" && canApproveDevice && (
-                            <>
-                              <button
-                                type="button"
-                                disabled={approvingId === device._id}
-                                onClick={(e) =>
-                                  handleApproveDevice(e, device._id)
-                                }
-                                className="p-1.5 rounded-lg text-emerald-500 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors disabled:opacity-50"
-                                title="Approve Device"
-                              >
-                                {approvingId === device._id ? (
-                                  <Loader2 className="w-4 h-4 animate-spin" />
-                                ) : (
-                                  <CheckCircle2 className="w-4 h-4" />
-                                )}
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setRejectingDevice(device)}
-                                className="p-1.5 rounded-lg text-rose-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
-                                title="Reject Device"
-                              >
-                                <XCircle className="w-4 h-4" />
-                              </button>
-                            </>
-                          )}
+                          {device.status === "Pending" &&
+                            canApproveDevice &&
+                            (device.deviceType !== "server" ||
+                              canManageServer) && (
+                              <>
+                                <button
+                                  type="button"
+                                  disabled={approvingId === device._id}
+                                  onClick={(e) =>
+                                    handleApproveDevice(e, device._id)
+                                  }
+                                  className="p-1.5 rounded-lg text-emerald-500 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors disabled:opacity-50"
+                                  title="Approve Device"
+                                >
+                                  {approvingId === device._id ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                  ) : (
+                                    <CheckCircle2 className="w-4 h-4" />
+                                  )}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setRejectingDevice(device)}
+                                  className="p-1.5 rounded-lg text-rose-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                                  title="Reject Device"
+                                >
+                                  <XCircle className="w-4 h-4" />
+                                </button>
+                              </>
+                            )}
                           {/* Rejection reason tooltip for Rejected devices */}
                           {device.status === "Rejected" &&
                             (device.rejectionReason ||
@@ -584,26 +595,30 @@ export function DeviceTable({
                           >
                             <Eye className="w-4 h-4" />
                           </Link>
-                          {canEditDevice && (
-                            <button
-                              type="button"
-                              onClick={() => setEditingDevice(device)}
-                              className="p-1.5 rounded-lg text-slate-400 hover:text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-950/40 transition-colors"
-                              title="Edit Device"
-                            >
-                              <Pencil className="w-4 h-4" />
-                            </button>
-                          )}
-                          {canDeleteDevice && (
-                            <button
-                              type="button"
-                              onClick={() => setDeletingDevice(device)}
-                              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
-                              title="Delete Device"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          )}
+                          {canEditDevice &&
+                            (device.deviceType !== "server" ||
+                              canManageServer) && (
+                              <button
+                                type="button"
+                                onClick={() => setEditingDevice(device)}
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-950/40 transition-colors"
+                                title="Edit Device"
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </button>
+                            )}
+                          {canDeleteDevice &&
+                            (device.deviceType !== "server" ||
+                              canManageServer) && (
+                              <button
+                                type="button"
+                                onClick={() => setDeletingDevice(device)}
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                                title="Delete Device"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
                         </div>
                       </TableCell>
                     </TableRow>

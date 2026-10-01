@@ -2,15 +2,15 @@
 
 import { connectToDatabase } from "@/lib/database";
 import ActivityLog from "@/lib/database/models/activityLog.model";
-import { requirePermission } from "@/lib/auth-guard";
+import { requireSuperAdmin } from "@/lib/auth-guard";
 import { GetActivityLogsParams, IActivityLog } from "@/types";
 import { FilterQuery } from "mongoose";
 
 /**
- * Get paginated, filtered, and searchable activity audit logs.
+ * Get paginated, filtered, and searchable activity audit logs. Super Admin only.
  */
 export async function getActivityLogs(params?: GetActivityLogsParams) {
-  await requirePermission("activity_logs", "read");
+  await requireSuperAdmin();
   await connectToDatabase();
 
   const {
@@ -82,10 +82,10 @@ export async function getActivityLogs(params?: GetActivityLogsParams) {
 }
 
 /**
- * Get all activity logs matching filter criteria for Excel export.
+ * Get all activity logs matching filter criteria for Excel export. Super Admin only.
  */
 export async function getAllLogsForExport(params?: GetActivityLogsParams) {
-  await requirePermission("activity_logs", "read");
+  await requireSuperAdmin();
   await connectToDatabase();
 
   const {
@@ -131,7 +131,9 @@ export async function getAllLogsForExport(params?: GetActivityLogsParams) {
     }
   }
 
-  const logs = await ActivityLog.find(query).sort({ createdAt: -1 }).limit(1000).lean();
+  const logs = await ActivityLog.find(query)
+    .sort({ createdAt: -1 })
+    .limit(1000)
+    .lean();
   return JSON.parse(JSON.stringify(logs)) as IActivityLog[];
 }
-

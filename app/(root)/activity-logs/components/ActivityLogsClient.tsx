@@ -46,12 +46,17 @@ import {
   FileSpreadsheet,
   ChevronDown,
   Loader2,
+  ShieldAlert,
 } from "lucide-react";
-import { getActivityLogs, getAllLogsForExport } from "@/lib/actions/activityLog.actions";
+import {
+  getActivityLogs,
+  getAllLogsForExport,
+} from "@/lib/actions/activityLog.actions";
 import { exportToExcel } from "@/lib/excel";
 import { toast } from "react-hot-toast";
 import { IActivityLog } from "@/types";
 import { formatDate } from "@/lib/utils";
+import { usePermissions } from "@/components/providers/PermissionContext";
 
 const MODULE_OPTIONS = [
   { label: "All Modules", value: "all" },
@@ -72,6 +77,7 @@ export default function ActivityLogsClient({
   initialTotal: number;
   initialTotalPages: number;
 }) {
+  const { isSuperAdmin } = usePermissions();
   const [logs, setLogs] = useState<IActivityLog[]>(initialLogs);
   const [total, setTotal] = useState(initialTotal);
   const [totalPages, setTotalPages] = useState(initialTotalPages);
@@ -82,9 +88,16 @@ export default function ActivityLogsClient({
   const [endDate, setEndDate] = useState("");
   const [loading, setLoading] = useState(false);
   const [inspectedLog, setInspectedLog] = useState<IActivityLog | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
 
   const fetchLogs = useCallback(
-    async (currentPage = 1, mod = selectedModule, q = search, sDate = startDate, eDate = endDate) => {
+    async (
+      currentPage = 1,
+      mod = selectedModule,
+      q = search,
+      sDate = startDate,
+      eDate = endDate,
+    ) => {
       try {
         setLoading(true);
         const data = await getActivityLogs({
@@ -105,7 +118,7 @@ export default function ActivityLogsClient({
         setLoading(false);
       }
     },
-    [selectedModule, search, startDate, endDate]
+    [selectedModule, search, startDate, endDate],
   );
 
   const handleSearchSubmit = (e: React.FormEvent) => {
@@ -156,8 +169,6 @@ export default function ActivityLogsClient({
     }
   };
 
-  const [isExporting, setIsExporting] = useState(false);
-
   const handleExport = async () => {
     try {
       setIsExporting(true);
@@ -174,14 +185,14 @@ export default function ActivityLogsClient({
       }
 
       const rows = allLogs.map((l) => ({
-        "Timestamp": new Date(l.createdAt).toLocaleString("en-GB"),
+        Timestamp: new Date(l.createdAt).toLocaleString("en-GB"),
         "Actor Email": l.actorEmail,
         "Actor Role": l.actorRole,
-        "Action": l.action,
-        "Module": l.module,
+        Action: l.action,
+        Module: l.module,
         "Resource ID": l.resourceId || "",
         "Resource Name": l.resourceName || "",
-        "Details": l.details,
+        Details: l.details,
         "IP Address": l.ipAddress || "",
       }));
 
@@ -200,7 +211,7 @@ export default function ActivityLogsClient({
           "IP Address",
         ],
         "Audit Logs",
-        `audit-logs-${dateStr}.xlsx`
+        `audit-logs-${dateStr}.xlsx`,
       );
       toast.success(`Exported ${allLogs.length} audit log records!`);
     } catch (err) {
@@ -209,6 +220,24 @@ export default function ActivityLogsClient({
       setIsExporting(false);
     }
   };
+
+  if (!isSuperAdmin) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center p-4 sm:p-6 lg:p-8">
+        <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm p-8 max-w-md w-full text-center space-y-4">
+          <div className="mx-auto p-3 rounded-2xl bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 w-fit">
+            <ShieldAlert className="w-8 h-8" />
+          </div>
+          <h1 className="text-xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">
+            Restricted Area
+          </h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            Activity and audit logs are only visible to Super Administrators.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto">
@@ -223,8 +252,11 @@ export default function ActivityLogsClient({
               Activity & Audit Logs
             </h1>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Comprehensive trace of all actions across the system &bull; Total entries:{" "}
-              <span className="font-bold text-slate-800 dark:text-slate-200">{total}</span>
+              Comprehensive trace of all actions across the system &bull; Total
+              entries:{" "}
+              <span className="font-bold text-slate-800 dark:text-slate-200">
+                {total}
+              </span>
             </p>
           </div>
         </div>
@@ -239,8 +271,13 @@ export default function ActivityLogsClient({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-52">
               <DropdownMenuLabel>Log Operations</DropdownMenuLabel>
-              <DropdownMenuItem onClick={() => fetchLogs(page)} disabled={loading}>
-                <RotateCcw className={`w-4 h-4 text-sky-600 dark:text-sky-400 ${loading ? "animate-spin" : ""}`} />
+              <DropdownMenuItem
+                onClick={() => fetchLogs(page)}
+                disabled={loading}
+              >
+                <RotateCcw
+                  className={`w-4 h-4 text-sky-600 dark:text-sky-400 ${loading ? "animate-spin" : ""}`}
+                />
                 <span>Refresh Logs</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
@@ -260,7 +297,10 @@ export default function ActivityLogsClient({
 
       {/* Filter Bar */}
       <Card className="p-4 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900">
-        <form onSubmit={handleSearchSubmit} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+        <form
+          onSubmit={handleSearchSubmit}
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3"
+        >
           {/* Search Input */}
           <div className="relative lg:col-span-2">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -286,7 +326,11 @@ export default function ActivityLogsClient({
               </SelectTrigger>
               <SelectContent className="rounded-xl border-slate-200 dark:border-slate-800">
                 {MODULE_OPTIONS.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                  <SelectItem
+                    key={opt.value}
+                    value={opt.value}
+                    className="text-xs"
+                  >
                     {opt.label}
                   </SelectItem>
                 ))}
@@ -361,7 +405,10 @@ export default function ActivityLogsClient({
             <TableBody>
               {logs.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-12 text-slate-400 text-sm">
+                  <TableCell
+                    colSpan={6}
+                    className="text-center py-12 text-slate-400 text-sm"
+                  >
                     No activity logs match the selected criteria.
                   </TableCell>
                 </TableRow>
@@ -382,7 +429,7 @@ export default function ActivityLogsClient({
                         </span>
                         <span
                           className={`inline-block w-fit text-[10px] px-1.5 py-0.2 rounded border ${getRoleBadge(
-                            log.actorRole
+                            log.actorRole,
                           )}`}
                         >
                           {log.actorRole}
@@ -400,7 +447,7 @@ export default function ActivityLogsClient({
                     <TableCell className="whitespace-nowrap">
                       <span
                         className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full border ${getActionBadge(
-                          log.action
+                          log.action,
                         )}`}
                       >
                         <Activity className="w-3 h-3" />
@@ -433,8 +480,14 @@ export default function ActivityLogsClient({
         {totalPages > 1 && (
           <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40">
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Page <span className="font-bold text-slate-800 dark:text-slate-200">{page}</span> of{" "}
-              <span className="font-bold text-slate-800 dark:text-slate-200">{totalPages}</span>
+              Page{" "}
+              <span className="font-bold text-slate-800 dark:text-slate-200">
+                {page}
+              </span>{" "}
+              of{" "}
+              <span className="font-bold text-slate-800 dark:text-slate-200">
+                {totalPages}
+              </span>
             </p>
             <div className="flex items-center gap-2">
               <Button
@@ -462,7 +515,10 @@ export default function ActivityLogsClient({
 
       {/* Details Dialog */}
       {inspectedLog && (
-        <Dialog open={!!inspectedLog} onOpenChange={() => setInspectedLog(null)}>
+        <Dialog
+          open={!!inspectedLog}
+          onOpenChange={() => setInspectedLog(null)}
+        >
           <DialogContent className="max-w-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-base font-bold text-slate-900 dark:text-slate-100">
@@ -474,32 +530,42 @@ export default function ActivityLogsClient({
             <div className="space-y-4 pt-2 text-xs">
               <div className="grid grid-cols-2 gap-3 p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-100 dark:border-slate-800">
                 <div>
-                  <span className="text-slate-400 font-medium block">Timestamp</span>
+                  <span className="text-slate-400 font-medium block">
+                    Timestamp
+                  </span>
                   <span className="font-semibold text-slate-800 dark:text-slate-200">
                     {formatDate(inspectedLog.createdAt)}
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-400 font-medium block">Module</span>
+                  <span className="text-slate-400 font-medium block">
+                    Module
+                  </span>
                   <span className="font-semibold text-slate-800 dark:text-slate-200 capitalize">
                     {inspectedLog.module}
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-400 font-medium block">Actor Email</span>
+                  <span className="text-slate-400 font-medium block">
+                    Actor Email
+                  </span>
                   <span className="font-semibold text-slate-800 dark:text-slate-200">
                     {inspectedLog.actorEmail}
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-400 font-medium block">Actor Role</span>
+                  <span className="text-slate-400 font-medium block">
+                    Actor Role
+                  </span>
                   <span className="font-semibold text-slate-800 dark:text-slate-200">
                     {inspectedLog.actorRole}
                   </span>
                 </div>
                 {inspectedLog.resourceId && (
                   <div>
-                    <span className="text-slate-400 font-medium block">Resource Identifier</span>
+                    <span className="text-slate-400 font-medium block">
+                      Resource Identifier
+                    </span>
                     <span className="font-semibold text-slate-800 dark:text-slate-200">
                       {inspectedLog.resourceId}
                     </span>
@@ -507,7 +573,9 @@ export default function ActivityLogsClient({
                 )}
                 {inspectedLog.resourceName && (
                   <div>
-                    <span className="text-slate-400 font-medium block">Resource Name</span>
+                    <span className="text-slate-400 font-medium block">
+                      Resource Name
+                    </span>
                     <span className="font-semibold text-slate-800 dark:text-slate-200">
                       {inspectedLog.resourceName}
                     </span>
@@ -524,16 +592,17 @@ export default function ActivityLogsClient({
                 </p>
               </div>
 
-              {inspectedLog.metadata && Object.keys(inspectedLog.metadata).length > 0 && (
-                <div>
-                  <span className="font-bold text-slate-700 dark:text-slate-300 mb-1 block">
-                    Payload / Metadata Diff
-                  </span>
-                  <pre className="p-3 rounded-2xl bg-slate-950 text-slate-200 text-[11px] overflow-x-auto font-mono max-h-48">
-                    {JSON.stringify(inspectedLog.metadata, null, 2)}
-                  </pre>
-                </div>
-              )}
+              {inspectedLog.metadata &&
+                Object.keys(inspectedLog.metadata).length > 0 && (
+                  <div>
+                    <span className="font-bold text-slate-700 dark:text-slate-300 mb-1 block">
+                      Payload / Metadata Diff
+                    </span>
+                    <pre className="p-3 rounded-2xl bg-slate-950 text-slate-200 text-[11px] overflow-x-auto font-mono max-h-48">
+                      {JSON.stringify(inspectedLog.metadata, null, 2)}
+                    </pre>
+                  </div>
+                )}
             </div>
           </DialogContent>
         </Dialog>

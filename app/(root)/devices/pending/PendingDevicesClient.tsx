@@ -53,12 +53,44 @@ interface PendingDevicesClientProps {
   byType: Record<string, number>;
 }
 
-const DEVICE_TYPE_LABELS: Record<string, { name: string; icon: React.ComponentType<{ className?: string }>; color: string }> = {
-  antenna: { name: "Antenna", icon: Radio, color: "text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-950/60 border-sky-200 dark:border-sky-800" },
-  "access-point": { name: "Access Point", icon: Wifi, color: "text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/60 border-purple-200 dark:border-purple-800" },
-  router: { name: "Router", icon: Network, color: "text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 border-indigo-200 dark:border-indigo-800" },
-  switch: { name: "Switch", icon: Boxes, color: "text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 border-emerald-200 dark:border-emerald-800" },
-  server: { name: "Server", icon: Server, color: "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 border-blue-200 dark:border-blue-800" },
+const DEVICE_TYPE_LABELS: Record<
+  string,
+  {
+    name: string;
+    icon: React.ComponentType<{ className?: string }>;
+    color: string;
+  }
+> = {
+  antenna: {
+    name: "Antenna",
+    icon: Radio,
+    color:
+      "text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-950/60 border-sky-200 dark:border-sky-800",
+  },
+  "access-point": {
+    name: "Access Point",
+    icon: Wifi,
+    color:
+      "text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/60 border-purple-200 dark:border-purple-800",
+  },
+  router: {
+    name: "Router",
+    icon: Network,
+    color:
+      "text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 border-indigo-200 dark:border-indigo-800",
+  },
+  switch: {
+    name: "Switch",
+    icon: Boxes,
+    color:
+      "text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 border-emerald-200 dark:border-emerald-800",
+  },
+  server: {
+    name: "Server",
+    icon: Server,
+    color:
+      "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 border-blue-200 dark:border-blue-800",
+  },
 };
 
 export function PendingDevicesClient({
@@ -71,13 +103,20 @@ export function PendingDevicesClient({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { canApproveDevice } = usePermissions();
+  const { canApproveDevice, isSuperAdmin, isEngineer, can } = usePermissions();
   const canApprove = canApproveDevice;
+  const canViewServer = isSuperAdmin || isEngineer || can("server_view");
 
   const [isPending, startTransition] = useTransition();
-  const [searchTerm, setSearchTerm] = useState(searchParams.get("search") || "");
-  const [selectedType, setSelectedType] = useState(searchParams.get("deviceType") || "all");
-  const [selectedSort, setSelectedSort] = useState(searchParams.get("sortBy") || "sl_asc");
+  const [searchTerm, setSearchTerm] = useState(
+    searchParams.get("search") || "",
+  );
+  const [selectedType, setSelectedType] = useState(
+    searchParams.get("deviceType") || "all",
+  );
+  const [selectedSort, setSelectedSort] = useState(
+    searchParams.get("sortBy") || "sl_asc",
+  );
 
   // State for active device actions
   const [approvingId, setApprovingId] = useState<string | null>(null);
@@ -116,18 +155,20 @@ export function PendingDevicesClient({
     try {
       setApprovingId(device._id);
       await approveDevice(device._id);
-      toast.success(`Approved #${formatDisplaySL(device.sl)} (${device.deviceName})! Device is now Active.`);
+      toast.success(
+        `Approved #${formatDisplaySL(device.sl)} (${device.deviceName})! Device is now Active.`,
+      );
       startTransition(() => {
         router.refresh();
       });
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to approve device.";
+      const msg =
+        err instanceof Error ? err.message : "Failed to approve device.";
       toast.error(msg);
     } finally {
       setApprovingId(null);
     }
   };
-
 
   return (
     <div className="space-y-6">
@@ -149,7 +190,8 @@ export function PendingDevicesClient({
               )}
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              Review and authorize newly submitted hardware from staff members before integration into the active network.
+              Review and authorize newly submitted hardware from staff members
+              before integration into the active network.
             </p>
           </div>
         </div>
@@ -169,7 +211,9 @@ export function PendingDevicesClient({
             className="rounded-xl border-slate-200 dark:border-slate-800 h-9 gap-1.5 text-xs font-semibold"
             title="Refresh list"
           >
-            <RotateCcw className={`w-3.5 h-3.5 ${isPending ? "animate-spin" : ""}`} />
+            <RotateCcw
+              className={`w-3.5 h-3.5 ${isPending ? "animate-spin" : ""}`}
+            />
             <span>Refresh</span>
           </Button>
         </div>
@@ -190,50 +234,59 @@ export function PendingDevicesClient({
           }`}
         >
           <span>All Types</span>
-          <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${
-            selectedType === "all"
-              ? "bg-white/20 text-white dark:bg-slate-900/20 dark:text-slate-900"
-              : "bg-slate-100 dark:bg-slate-800 text-slate-500"
-          }`}>
+          <span
+            className={`px-1.5 py-0.5 rounded-full text-[10px] ${
+              selectedType === "all"
+                ? "bg-white/20 text-white dark:bg-slate-900/20 dark:text-slate-900"
+                : "bg-slate-100 dark:bg-slate-800 text-slate-500"
+            }`}
+          >
             {total}
           </span>
         </button>
 
-        {Object.entries(DEVICE_TYPE_LABELS).map(([slug, meta]) => {
-          const count = byType[slug] || 0;
-          const isSelected = selectedType === slug;
-          const Icon = meta.icon;
-          return (
-            <button
-              key={slug}
-              type="button"
-              onClick={() => {
-                setSelectedType(slug);
-                updateQuery("deviceType", slug);
-              }}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all shrink-0 border ${
-                isSelected
-                  ? "bg-sky-500 text-white border-sky-500 shadow-sm"
-                  : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:border-slate-300"
-              }`}
-            >
-              <Icon className="w-3.5 h-3.5" />
-              <span>{meta.name}</span>
-              <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${
-                isSelected
-                  ? "bg-white/20 text-white"
-                  : "bg-slate-100 dark:bg-slate-800 text-slate-500"
-              }`}>
-                {count}
-              </span>
-            </button>
-          );
-        })}
+        {Object.entries(DEVICE_TYPE_LABELS)
+          .filter(([slug]) => slug !== "server" || canViewServer)
+          .map(([slug, meta]) => {
+            const count = byType[slug] || 0;
+            const isSelected = selectedType === slug;
+            const Icon = meta.icon;
+            return (
+              <button
+                key={slug}
+                type="button"
+                onClick={() => {
+                  setSelectedType(slug);
+                  updateQuery("deviceType", slug);
+                }}
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all shrink-0 border ${
+                  isSelected
+                    ? "bg-sky-500 text-white border-sky-500 shadow-sm"
+                    : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:border-slate-300"
+                }`}
+              >
+                <Icon className="w-3.5 h-3.5" />
+                <span>{meta.name}</span>
+                <span
+                  className={`px-1.5 py-0.5 rounded-full text-[10px] ${
+                    isSelected
+                      ? "bg-white/20 text-white"
+                      : "bg-slate-100 dark:bg-slate-800 text-slate-500"
+                  }`}
+                >
+                  {count}
+                </span>
+              </button>
+            );
+          })}
       </div>
 
       {/* Filter and Search Bar */}
       <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
-        <form onSubmit={handleSearchSubmit} className="relative flex-1 min-w-[260px]">
+        <form
+          onSubmit={handleSearchSubmit}
+          className="relative flex-1 min-w-[260px]"
+        >
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <Input
             value={searchTerm}
@@ -282,7 +335,8 @@ export function PendingDevicesClient({
             No Pending Devices
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-sm mx-auto">
-            All submitted devices have been reviewed and approved or rejected. Newly submitted hardware from staff will appear here.
+            All submitted devices have been reviewed and approved or rejected.
+            Newly submitted hardware from staff will appear here.
           </p>
           <div className="mt-5">
             <Link
@@ -314,7 +368,9 @@ export function PendingDevicesClient({
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                   {/* Left: Device Info & Type */}
                   <div className="flex items-start gap-3.5 min-w-0 flex-1">
-                    <div className={`p-3 rounded-2xl border shrink-0 ${meta.color}`}>
+                    <div
+                      className={`p-3 rounded-2xl border shrink-0 ${meta.color}`}
+                    >
                       <Icon className="w-5 h-5" />
                     </div>
 
@@ -326,7 +382,9 @@ export function PendingDevicesClient({
                         <h3 className="font-bold text-sm sm:text-base text-slate-900 dark:text-slate-100 truncate">
                           {device.deviceName}
                         </h3>
-                        <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-lg border ${meta.color}`}>
+                        <span
+                          className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-lg border ${meta.color}`}
+                        >
                           {meta.name}
                         </span>
                         <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20">
@@ -337,13 +395,14 @@ export function PendingDevicesClient({
 
                       {/* Technical specifications row */}
                       <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 flex-wrap">
-
                         {device.macAddress && (
                           <div className="flex items-center gap-1 font-mono font-medium text-slate-700 dark:text-slate-300">
                             <span>MAC: {device.macAddress}</span>
                             <button
                               type="button"
-                              onClick={() => handleCopyMac(device.macAddress || "")}
+                              onClick={() =>
+                                handleCopyMac(device.macAddress || "")
+                              }
                               className="text-slate-400 hover:text-sky-600 transition-colors"
                               title="Copy MAC Address"
                             >
@@ -362,12 +421,20 @@ export function PendingDevicesClient({
                           </span>
                         )}
 
-                        {device.server && typeof device.server === "object" && "deviceName" in device.server && (
-                          <span className="flex items-center gap-1">
-                            <Server className="w-3 h-3 text-slate-400" />
-                            <span>Server: {String((device.server as { deviceName?: string }).deviceName)}</span>
-                          </span>
-                        )}
+                        {device.server &&
+                          typeof device.server === "object" &&
+                          "deviceName" in device.server && (
+                            <span className="flex items-center gap-1">
+                              <Server className="w-3 h-3 text-slate-400" />
+                              <span>
+                                Server:{" "}
+                                {String(
+                                  (device.server as { deviceName?: string })
+                                    .deviceName,
+                                )}
+                              </span>
+                            </span>
+                          )}
 
                         {device.customerName && (
                           <span className="flex items-center gap-1">
@@ -403,7 +470,8 @@ export function PendingDevicesClient({
                             <User className="w-3 h-3 text-slate-400" />
                             <span>Submitted by: </span>
                             <span className="font-bold text-slate-800 dark:text-slate-200">
-                              {device.submittedBy.name || device.submittedBy.email}
+                              {device.submittedBy.name ||
+                                device.submittedBy.email}
                             </span>
                             <span className="text-[10px] uppercase font-semibold px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-500">
                               {device.submittedBy.role || "staff"}
@@ -418,7 +486,9 @@ export function PendingDevicesClient({
 
                         <div className="flex items-center gap-1">
                           <Calendar className="w-3 h-3 text-slate-400" />
-                          <span>Submitted on: {formatDate(device.createdAt)}</span>
+                          <span>
+                            Submitted on: {formatDate(device.createdAt)}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -481,8 +551,15 @@ export function PendingDevicesClient({
       {totalPages > 1 && (
         <div className="flex items-center justify-between pt-4 border-t border-slate-200 dark:border-slate-800 text-xs text-slate-500">
           <div>
-            Showing page <span className="font-bold text-slate-800 dark:text-slate-200">{page}</span> of{" "}
-            <span className="font-bold text-slate-800 dark:text-slate-200">{totalPages}</span> ({total} pending)
+            Showing page{" "}
+            <span className="font-bold text-slate-800 dark:text-slate-200">
+              {page}
+            </span>{" "}
+            of{" "}
+            <span className="font-bold text-slate-800 dark:text-slate-200">
+              {totalPages}
+            </span>{" "}
+            ({total} pending)
           </div>
 
           <div className="flex items-center gap-1.5">

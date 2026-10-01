@@ -34,7 +34,7 @@ import {
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { usePermissions } from "@/components/providers/PermissionContext";
-import { AppModule } from "@/types";
+import { AppModule, GranularPermissionKey } from "@/types";
 import { getPendingDevicesCount } from "@/lib/actions/device.actions";
 
 interface SidebarItem {
@@ -42,6 +42,10 @@ interface SidebarItem {
   url: string;
   icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
   module: AppModule;
+  /** Optional granular permission gate — item hidden if user lacks this */
+  granular?: GranularPermissionKey;
+  /** If true, only super_admin can see this item (strongest gate) */
+  superAdminOnly?: boolean;
 }
 
 interface SidebarSection {
@@ -98,6 +102,7 @@ const sidebarSections: SidebarSection[] = [
         url: "/devices/server",
         icon: Server,
         module: "devices",
+        granular: "server_view" as GranularPermissionKey,
       },
       {
         title: "Switches",
@@ -144,18 +149,21 @@ const sidebarSections: SidebarSection[] = [
         url: "/admins",
         icon: ShieldCheck,
         module: "admins",
+        superAdminOnly: true,
       },
       {
         title: "Activity Logs",
         url: "/activity-logs",
         icon: History,
         module: "activity_logs",
+        superAdminOnly: true,
       },
       {
         title: "Settings",
         url: "/settings",
         icon: Settings,
         module: "settings",
+        superAdminOnly: true,
       },
     ],
   },
@@ -164,7 +172,7 @@ const sidebarSections: SidebarSection[] = [
 const AppSidebar = () => {
   const currentPath = usePathname();
   const { state, isMobile, setOpenMobile } = useSidebar();
-  const { canRead } = usePermissions();
+  const { canRead, can, isSuperAdmin } = usePermissions();
   const isCollapsed = state === "collapsed";
   const [pendingCount, setPendingCount] = useState<number>(0);
 
@@ -197,11 +205,18 @@ const AppSidebar = () => {
     }
   }, [currentPath, isMobile, setOpenMobile]);
 
-  // Filter sections and items based on permissions
+  // Filter sections and items based on module + granular permissions + super-admin-only gates
   const visibleSections = sidebarSections
     .map((section) => ({
       ...section,
-      items: section.items.filter((item) => canRead(item.module)),
+      items: section.items.filter((item) => {
+        // Strongest gate first: strictly super-admin-only items
+        if (item.superAdminOnly && !isSuperAdmin) return false;
+        if (!canRead(item.module)) return false;
+        // Extra granular gate (e.g. server_view for Servers link)
+        if (item.granular && !isSuperAdmin && !can(item.granular)) return false;
+        return true;
+      }),
     }))
     .filter((section) => section.items.length > 0);
 
@@ -282,11 +297,12 @@ const AppSidebar = () => {
                             >
                               {item.title}
                             </span>
-                            {item.url === "/devices/pending" && pendingCount > 0 && (
-                              <span className="ml-auto inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30 group-data-[collapsible=icon]:hidden">
-                                {pendingCount}
-                              </span>
-                            )}
+                            {item.url === "/devices/pending" &&
+                              pendingCount > 0 && (
+                                <span className="ml-auto inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30 group-data-[collapsible=icon]:hidden">
+                                  {pendingCount}
+                                </span>
+                              )}
                           </span>
 
                           {isActive && !isCollapsed && (

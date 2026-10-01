@@ -81,13 +81,15 @@ export function DeviceFormDialog({
   onSuccess,
   hideDeviceType = false,
 }: DeviceFormDialogProps) {
-  const { isSuperAdmin, canApproveDevice } = usePermissions();
+  const { isSuperAdmin, isEngineer, can, canApproveDevice } = usePermissions();
+  const canManageServer = isSuperAdmin || isEngineer || can("server_manage");
   const isEditing = !!deviceToEdit;
 
-  // Active Device Type
-  const [deviceType, setDeviceType] = useState(
-    deviceToEdit?.deviceType || defaultDeviceType,
-  );
+  // Active Device Type (fallback to antenna if server is requested without permission)
+  const initialType =
+    deviceToEdit?.deviceType ||
+    (defaultDeviceType === "server" && !canManageServer ? "antenna" : defaultDeviceType);
+  const [deviceType, setDeviceType] = useState(initialType);
 
   // Main Form Fields (Required based on deviceType)
   const [macAddress, setMacAddress] = useState(deviceToEdit?.macAddress || "");
@@ -606,7 +608,9 @@ export function DeviceFormDialog({
                   <SelectValue placeholder="Select Device Type" />
                 </SelectTrigger>
                 <SelectContent className="dark:bg-slate-900 dark:border-slate-800">
-                  {availableTypes.map((t) => (
+                  {availableTypes
+                    .filter((t) => t.slug !== "server" || canManageServer)
+                    .map((t) => (
                     <SelectItem
                       key={t.slug}
                       value={t.slug}

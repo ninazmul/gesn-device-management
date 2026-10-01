@@ -17,9 +17,31 @@ import {
   Sliders,
   CheckCircle2,
   ExternalLink,
+  ShieldAlert,
 } from "lucide-react";
+import { usePermissions } from "@/components/providers/PermissionContext";
 
 export default function SettingsClient() {
+  const { isSuperAdmin } = usePermissions();
+
+  if (!isSuperAdmin) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center p-4 sm:p-6 lg:p-8">
+        <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm p-8 max-w-md w-full text-center space-y-4">
+          <div className="mx-auto p-3 rounded-2xl bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 w-fit">
+            <ShieldAlert className="w-8 h-8" />
+          </div>
+          <h1 className="text-xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">
+            Restricted Area
+          </h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            System settings and administration shortcuts are only available to Super Administrators.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-5xl mx-auto">
       {/* Header */}

@@ -35,6 +35,7 @@ import {
   Plus,
   Trash2,
   ShieldCheck,
+  ShieldAlert,
   Loader2,
   Edit2,
   Crown,
@@ -173,10 +174,7 @@ const ROLE_OPTIONS: RoleDetail[] = [
     bgLight: "bg-blue-500/10",
     summary: "Device & Billing Operator",
     desc: "Can add devices and manage billing, without other operational access.",
-    canDo: [
-      "Add new devices",
-      "Manage permitted billing operations",
-    ],
+    canDo: ["Add new devices", "Manage permitted billing operations"],
     cannotDo: [
       "Cannot freeze or archive devices unless the Super Admin grants that action",
       "Cannot manage users, roles, permissions, or system settings",
@@ -191,9 +189,7 @@ const ROLE_OPTIONS: RoleDetail[] = [
     bgLight: "bg-slate-500/10",
     summary: "Super Admin Configured Read-Only Access",
     desc: "The Super Admin chooses which sections and data are visible; all access is read-only.",
-    canDo: [
-      "View only sections explicitly authorized by the Super Admin",
-    ],
+    canDo: ["View only sections explicitly authorized by the Super Admin"],
     cannotDo: [
       "Cannot create, edit, approve, reject, freeze, archive, or delete records",
       "Cannot manage users, roles, permissions, or system settings",
@@ -236,12 +232,9 @@ function GranularPermissionsEditor({
   perms: Record<GranularPermissionKey, boolean>;
   onChange: (key: GranularPermissionKey, value: boolean) => void;
 }) {
-  const categories: Array<"Devices" | "Servers" | "Customers & Reports" | "Administration"> = [
-    "Devices",
-    "Servers",
-    "Customers & Reports",
-    "Administration",
-  ];
+  const categories: Array<
+    "Devices" | "Servers" | "Customers & Reports" | "Administration"
+  > = ["Devices", "Servers", "Customers & Reports", "Administration"];
 
   return (
     <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 space-y-3">
@@ -262,7 +255,9 @@ function GranularPermissionsEditor({
 
       <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
         {categories.map((cat) => {
-          const list = GRANULAR_PERMISSIONS_LIST.filter((item) => item.category === cat);
+          const list = GRANULAR_PERMISSIONS_LIST.filter(
+            (item) => item.category === cat,
+          );
           if (list.length === 0) return null;
 
           return (
@@ -294,7 +289,9 @@ function GranularPermissionsEditor({
                       </div>
                       <span
                         className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out mt-0.5 ${
-                          active ? "bg-indigo-600" : "bg-slate-300 dark:bg-slate-700"
+                          active
+                            ? "bg-indigo-600"
+                            : "bg-slate-300 dark:bg-slate-700"
                         }`}
                       >
                         <span
@@ -315,24 +312,34 @@ function GranularPermissionsEditor({
   );
 }
 
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared form body — used by both mobile Sheet and desktop Dialog
 // ─────────────────────────────────────────────────────────────────────────────
 function AddAdminFormFields({
-  newEmail, setNewEmail,
-  newName, setNewName,
-  newRole, handleRoleChangeForNew,
-  customPerms, setCustomPerms,
-  newGranularPerms, setNewGranularPerms,
+  newEmail,
+  setNewEmail,
+  newName,
+  setNewName,
+  newRole,
+  handleRoleChangeForNew,
+  customPerms,
+  setCustomPerms,
+  newGranularPerms,
+  setNewGranularPerms,
   isSuperAdmin,
 }: {
-  newEmail: string; setNewEmail: (v: string) => void;
-  newName: string; setNewName: (v: string) => void;
-  newRole: AdminRole; handleRoleChangeForNew: (role: AdminRole) => void;
-  customPerms: ModulePermissions; setCustomPerms: React.Dispatch<React.SetStateAction<ModulePermissions>>;
+  newEmail: string;
+  setNewEmail: (v: string) => void;
+  newName: string;
+  setNewName: (v: string) => void;
+  newRole: AdminRole;
+  handleRoleChangeForNew: (role: AdminRole) => void;
+  customPerms: ModulePermissions;
+  setCustomPerms: React.Dispatch<React.SetStateAction<ModulePermissions>>;
   newGranularPerms: Record<GranularPermissionKey, boolean>;
-  setNewGranularPerms: React.Dispatch<React.SetStateAction<Record<GranularPermissionKey, boolean>>>;
+  setNewGranularPerms: React.Dispatch<
+    React.SetStateAction<Record<GranularPermissionKey, boolean>>
+  >;
   isSuperAdmin: boolean;
 }) {
   return (
@@ -370,7 +377,10 @@ function AddAdminFormFields({
         <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1.5">
           Role Preset
         </label>
-        <Select value={newRole} onValueChange={(val) => handleRoleChangeForNew(val as AdminRole)}>
+        <Select
+          value={newRole}
+          onValueChange={(val) => handleRoleChangeForNew(val as AdminRole)}
+        >
           <SelectTrigger className="rounded-xl border-slate-200 dark:border-slate-700 text-sm h-11 sm:text-xs sm:h-9">
             <SelectValue placeholder="Select role" />
           </SelectTrigger>
@@ -378,8 +388,12 @@ function AddAdminFormFields({
             {ROLE_OPTIONS.map((opt) => (
               <SelectItem key={opt.value} value={opt.value} className="text-xs">
                 <div className="flex flex-col py-0.5">
-                  <span className="font-semibold text-slate-800 dark:text-slate-200">{opt.label}</span>
-                  <span className="text-[10px] text-slate-400 leading-relaxed">{opt.desc}</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">
+                    {opt.label}
+                  </span>
+                  <span className="text-[10px] text-slate-400 leading-relaxed">
+                    {opt.desc}
+                  </span>
                 </div>
               </SelectItem>
             ))}
@@ -398,7 +412,9 @@ function AddAdminFormFields({
                 <Info className="w-3.5 h-3.5 text-sky-500 shrink-0" />
                 {roleDetail.label} Capabilities:
               </span>
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${roleDetail.bgLight} ${roleDetail.color} ${roleDetail.border}`}>
+              <span
+                className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${roleDetail.bgLight} ${roleDetail.color} ${roleDetail.border}`}
+              >
                 {roleDetail.summary}
               </span>
             </div>
@@ -407,13 +423,19 @@ function AddAdminFormFields({
             </p>
             <ul className="space-y-1.5 pt-1">
               {roleDetail.canDo.map((item, idx) => (
-                <li key={idx} className="flex items-start gap-1.5 text-[11px] text-slate-600 dark:text-slate-300">
+                <li
+                  key={idx}
+                  className="flex items-start gap-1.5 text-[11px] text-slate-600 dark:text-slate-300"
+                >
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
                   <span>{item}</span>
                 </li>
               ))}
               {roleDetail.cannotDo.map((item, idx) => (
-                <li key={idx} className="flex items-start gap-1.5 text-[11px] text-rose-500/80 dark:text-rose-400/80">
+                <li
+                  key={idx}
+                  className="flex items-start gap-1.5 text-[11px] text-rose-500/80 dark:text-rose-400/80"
+                >
                   <XCircle className="w-3.5 h-3.5 text-rose-400 shrink-0 mt-0.5" />
                   <span>{item}</span>
                 </li>
@@ -427,7 +449,9 @@ function AddAdminFormFields({
       {["admin", "viewer", "custom"].includes(newRole) && (
         <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 space-y-2">
           <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
-            {newRole === "viewer" ? "Viewer Section Access" : "Module Permissions"}
+            {newRole === "viewer"
+              ? "Viewer Section Access"
+              : "Module Permissions"}
           </span>
           <div className="grid grid-cols-1 gap-2">
             {ALL_APP_MODULES.map((mod) => (
@@ -441,7 +465,10 @@ function AddAdminFormFields({
                 <Select
                   value={customPerms[mod] || "none"}
                   onValueChange={(val) =>
-                    setCustomPerms((prev) => ({ ...prev, [mod]: val as PermissionLevel }))
+                    setCustomPerms((prev) => ({
+                      ...prev,
+                      [mod]: val as PermissionLevel,
+                    }))
                   }
                 >
                   <SelectTrigger className="h-8 w-28 rounded-lg text-[11px] font-semibold border-slate-200 dark:border-slate-700">
@@ -450,7 +477,9 @@ function AddAdminFormFields({
                   <SelectContent className="rounded-xl text-xs">
                     <SelectItem value="none">None</SelectItem>
                     <SelectItem value="read">Read Only</SelectItem>
-                    {newRole !== "viewer" && <SelectItem value="write">Read & Write</SelectItem>}
+                    {newRole !== "viewer" && (
+                      <SelectItem value="write">Read & Write</SelectItem>
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -460,38 +489,45 @@ function AddAdminFormFields({
       )}
 
       {/* Granular Action Permissions */}
-      {isSuperAdmin && (
-        newRole === "super_admin" ? (
+      {isSuperAdmin &&
+        (newRole === "super_admin" ? (
           <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-700 dark:text-amber-400 flex items-start gap-2">
             <Crown className="w-4 h-4 shrink-0 text-amber-500 mt-0.5" />
-            <span>Super Administrators retain unrestricted, immutable access across all modules and actions.</span>
+            <span>
+              Super Administrators retain unrestricted, immutable access across
+              all modules and actions.
+            </span>
           </div>
         ) : (
           <GranularPermissionsEditor
             perms={newGranularPerms}
-            onChange={(key, val) => setNewGranularPerms((prev) => ({ ...prev, [key]: val }))}
+            onChange={(key, val) =>
+              setNewGranularPerms((prev) => ({ ...prev, [key]: val }))
+            }
           />
-        )
-      )}
+        ))}
     </>
   );
 }
 
 export default function AdminsClient({
   initialAdmins,
-
 }: {
   initialAdmins: IAdminUser[];
 }) {
-  const { admin: currentLoggedInAdmin, canWrite } = usePermissions();
-  const isSuperAdmin = currentLoggedInAdmin?.role === "super_admin";
+  const {
+    admin: currentLoggedInAdmin,
+    canWrite,
+    isSuperAdmin,
+  } = usePermissions();
   const isMobile = useIsMobile();
   const [admins, setAdmins] = useState<IAdminUser[]>(initialAdmins);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingAdmin, setEditingAdmin] = useState<IAdminUser | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showRoleGuide, setShowRoleGuide] = useState(true);
-  const [selectedRoleGuide, setSelectedRoleGuide] = useState<AdminRole>("super_admin");
+  const [selectedRoleGuide, setSelectedRoleGuide] =
+    useState<AdminRole>("super_admin");
 
   // Form states for Add Admin
   const [newEmail, setNewEmail] = useState("");
@@ -500,7 +536,9 @@ export default function AdminsClient({
   const [customPerms, setCustomPerms] = useState<ModulePermissions>({
     ...DEFAULT_ROLE_PERMISSIONS.admin,
   });
-  const [newGranularPerms, setNewGranularPerms] = useState<Record<GranularPermissionKey, boolean>>({
+  const [newGranularPerms, setNewGranularPerms] = useState<
+    Record<GranularPermissionKey, boolean>
+  >({
     ...DEFAULT_GRANULAR_PERMISSIONS.admin,
   });
 
@@ -510,7 +548,9 @@ export default function AdminsClient({
   const [editPerms, setEditPerms] = useState<ModulePermissions>({
     ...DEFAULT_ROLE_PERMISSIONS.admin,
   });
-  const [editGranularPerms, setEditGranularPerms] = useState<Record<GranularPermissionKey, boolean>>({
+  const [editGranularPerms, setEditGranularPerms] = useState<
+    Record<GranularPermissionKey, boolean>
+  >({
     ...DEFAULT_GRANULAR_PERMISSIONS.admin,
   });
 
@@ -549,8 +589,11 @@ export default function AdminsClient({
         email: newEmail.trim(),
         name: newName.trim(),
         role: newRole,
-        permissions: ["admin", "viewer", "custom"].includes(newRole) ? customPerms : undefined,
-        granularPermissions: newRole === "super_admin" ? undefined : newGranularPerms,
+        permissions: ["admin", "viewer", "custom"].includes(newRole)
+          ? customPerms
+          : undefined,
+        granularPermissions:
+          newRole === "super_admin" ? undefined : newGranularPerms,
       });
       toast.success("Administrator added successfully");
       setNewEmail("");
@@ -577,7 +620,10 @@ export default function AdminsClient({
       ...(admin.permissions || {}),
     });
     setEditGranularPerms(
-      resolveEffectiveGranularPermissions(admin.role, admin.granularPermissions)
+      resolveEffectiveGranularPermissions(
+        admin.role,
+        admin.granularPermissions,
+      ),
     );
   };
 
@@ -590,8 +636,11 @@ export default function AdminsClient({
       await updateAdminRoleAndPermissions(editingAdmin._id, {
         name: editName.trim(),
         role: editRole,
-        permissions: ["admin", "viewer", "custom"].includes(editRole) ? editPerms : undefined,
-        granularPermissions: editRole === "super_admin" ? undefined : editGranularPerms,
+        permissions: ["admin", "viewer", "custom"].includes(editRole)
+          ? editPerms
+          : undefined,
+        granularPermissions:
+          editRole === "super_admin" ? undefined : editGranularPerms,
       });
       toast.success("Role & permissions updated successfully");
       setEditingAdmin(null);
@@ -606,12 +655,16 @@ export default function AdminsClient({
   };
 
   const handleRemoveAdmin = async (admin: IAdminUser) => {
-    if (admin.email.toLowerCase() === currentLoggedInAdmin?.email.toLowerCase()) {
+    if (
+      admin.email.toLowerCase() === currentLoggedInAdmin?.email.toLowerCase()
+    ) {
       toast.error("You cannot delete your own account.");
       return;
     }
 
-    if (!confirm(`Are you sure you want to revoke access for ${admin.email}?`)) {
+    if (
+      !confirm(`Are you sure you want to revoke access for ${admin.email}?`)
+    ) {
       return;
     }
 
@@ -625,6 +678,24 @@ export default function AdminsClient({
       toast.error(errMsg);
     }
   };
+
+  if (!isSuperAdmin) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center p-4 sm:p-6 lg:p-8">
+        <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm p-8 max-w-md w-full text-center space-y-4">
+          <div className="mx-auto p-3 rounded-2xl bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 w-fit">
+            <ShieldAlert className="w-8 h-8" />
+          </div>
+          <h1 className="text-xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">
+            Restricted Area
+          </h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            Only Super Administrators can manage staff accounts and permissions.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const getRoleBadge = (role: AdminRole) => {
     switch (role) {
@@ -686,8 +757,12 @@ export default function AdminsClient({
               Staff & Role Permissions
             </h1>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Control system access, assign roles, and configure granular module permissions &bull;{" "}
-              <span className="font-bold text-slate-800 dark:text-slate-200">{admins.length}</span> active staff
+              Control system access, assign roles, and configure granular module
+              permissions &bull;{" "}
+              <span className="font-bold text-slate-800 dark:text-slate-200">
+                {admins.length}
+              </span>{" "}
+              active staff
             </p>
           </div>
         </div>
@@ -717,22 +792,36 @@ export default function AdminsClient({
                   </SheetHeader>
                   <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
                     <AddAdminFormFields
-                      newEmail={newEmail} setNewEmail={setNewEmail}
-                      newName={newName} setNewName={setNewName}
-                      newRole={newRole} handleRoleChangeForNew={handleRoleChangeForNew}
-                      customPerms={customPerms} setCustomPerms={setCustomPerms}
-                      newGranularPerms={newGranularPerms} setNewGranularPerms={setNewGranularPerms}
+                      newEmail={newEmail}
+                      setNewEmail={setNewEmail}
+                      newName={newName}
+                      setNewName={setNewName}
+                      newRole={newRole}
+                      handleRoleChangeForNew={handleRoleChangeForNew}
+                      customPerms={customPerms}
+                      setCustomPerms={setCustomPerms}
+                      newGranularPerms={newGranularPerms}
+                      setNewGranularPerms={setNewGranularPerms}
                       isSuperAdmin={isSuperAdmin}
                     />
                   </div>
                   <div className="px-5 py-4 border-t border-slate-100 dark:border-slate-800 shrink-0 bg-white dark:bg-slate-900">
                     <Button
                       type="button"
-                      onClick={handleAddSubmit as unknown as React.MouseEventHandler}
+                      onClick={
+                        handleAddSubmit as unknown as React.MouseEventHandler
+                      }
                       className="w-full bg-sky-600 hover:bg-sky-700 active:bg-sky-800 rounded-xl text-white font-semibold text-sm h-12"
                       disabled={isLoading}
                     >
-                      {isLoading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Adding...</> : "Add Administrator"}
+                      {isLoading ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />{" "}
+                          Adding...
+                        </>
+                      ) : (
+                        "Add Administrator"
+                      )}
                     </Button>
                   </div>
                 </SheetContent>
@@ -748,14 +837,22 @@ export default function AdminsClient({
                       Add New Staff Administrator
                     </DialogTitle>
                   </DialogHeader>
-                  <form onSubmit={handleAddSubmit} className="flex flex-col flex-1 min-h-0">
+                  <form
+                    onSubmit={handleAddSubmit}
+                    className="flex flex-col flex-1 min-h-0"
+                  >
                     <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
                       <AddAdminFormFields
-                        newEmail={newEmail} setNewEmail={setNewEmail}
-                        newName={newName} setNewName={setNewName}
-                        newRole={newRole} handleRoleChangeForNew={handleRoleChangeForNew}
-                        customPerms={customPerms} setCustomPerms={setCustomPerms}
-                        newGranularPerms={newGranularPerms} setNewGranularPerms={setNewGranularPerms}
+                        newEmail={newEmail}
+                        setNewEmail={setNewEmail}
+                        newName={newName}
+                        setNewName={setNewName}
+                        newRole={newRole}
+                        handleRoleChangeForNew={handleRoleChangeForNew}
+                        customPerms={customPerms}
+                        setCustomPerms={setCustomPerms}
+                        newGranularPerms={newGranularPerms}
+                        setNewGranularPerms={setNewGranularPerms}
                         isSuperAdmin={isSuperAdmin}
                       />
                     </div>
@@ -765,7 +862,14 @@ export default function AdminsClient({
                         className="w-full bg-sky-600 hover:bg-sky-700 rounded-xl text-white font-semibold text-xs"
                         disabled={isLoading}
                       >
-                        {isLoading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Adding...</> : "Add Administrator"}
+                        {isLoading ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />{" "}
+                            Adding...
+                          </>
+                        ) : (
+                          "Add Administrator"
+                        )}
                       </Button>
                     </div>
                   </form>
@@ -796,7 +900,8 @@ export default function AdminsClient({
                 </span>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Select any role below to view its specific capabilities, restrictions, and module permissions.
+                Select any role below to view its specific capabilities,
+                restrictions, and module permissions.
               </p>
             </div>
           </div>
@@ -839,13 +944,27 @@ export default function AdminsClient({
                         : "bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700"
                     }`}
                   >
-                    {role.value === "super_admin" && <Crown className="w-3.5 h-3.5" />}
-                    {role.value === "engineer" && <Terminal className="w-3.5 h-3.5" />}
-                    {role.value === "admin" && <ShieldCheck className="w-3.5 h-3.5" />}
-                    {role.value === "editor" && <Edit2 className="w-3.5 h-3.5" />}
-                    {role.value === "moderator" && <UserCheck className="w-3.5 h-3.5" />}
-                    {role.value === "viewer" && <Lock className="w-3.5 h-3.5" />}
-                    {role.value === "custom" && <KeyRound className="w-3.5 h-3.5" />}
+                    {role.value === "super_admin" && (
+                      <Crown className="w-3.5 h-3.5" />
+                    )}
+                    {role.value === "engineer" && (
+                      <Terminal className="w-3.5 h-3.5" />
+                    )}
+                    {role.value === "admin" && (
+                      <ShieldCheck className="w-3.5 h-3.5" />
+                    )}
+                    {role.value === "editor" && (
+                      <Edit2 className="w-3.5 h-3.5" />
+                    )}
+                    {role.value === "moderator" && (
+                      <UserCheck className="w-3.5 h-3.5" />
+                    )}
+                    {role.value === "viewer" && (
+                      <Lock className="w-3.5 h-3.5" />
+                    )}
+                    {role.value === "custom" && (
+                      <KeyRound className="w-3.5 h-3.5" />
+                    )}
                     <span>{role.label}</span>
                   </button>
                 );
@@ -854,28 +973,48 @@ export default function AdminsClient({
 
             {/* Selected Role Interactive Card (High-Density 2-Column Layout) */}
             {(() => {
-              const activeRole = ROLE_OPTIONS.find((r) => r.value === selectedRoleGuide) || ROLE_OPTIONS[0];
+              const activeRole =
+                ROLE_OPTIONS.find((r) => r.value === selectedRoleGuide) ||
+                ROLE_OPTIONS[0];
 
               return (
                 <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-5 sm:p-6 shadow-xs space-y-5">
                   {/* Top Bar */}
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100 dark:border-slate-800">
                     <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-xl ${activeRole.bgLight} ${activeRole.color} border ${activeRole.border}`}>
-                        {activeRole.value === "super_admin" && <Crown className="w-5 h-5" />}
-                        {activeRole.value === "engineer" && <Terminal className="w-5 h-5" />}
-                        {activeRole.value === "admin" && <ShieldCheck className="w-5 h-5" />}
-                        {activeRole.value === "editor" && <Edit2 className="w-5 h-5" />}
-                        {activeRole.value === "moderator" && <UserCheck className="w-5 h-5" />}
-                        {activeRole.value === "viewer" && <Lock className="w-5 h-5" />}
-                        {activeRole.value === "custom" && <KeyRound className="w-5 h-5" />}
+                      <div
+                        className={`p-2 rounded-xl ${activeRole.bgLight} ${activeRole.color} border ${activeRole.border}`}
+                      >
+                        {activeRole.value === "super_admin" && (
+                          <Crown className="w-5 h-5" />
+                        )}
+                        {activeRole.value === "engineer" && (
+                          <Terminal className="w-5 h-5" />
+                        )}
+                        {activeRole.value === "admin" && (
+                          <ShieldCheck className="w-5 h-5" />
+                        )}
+                        {activeRole.value === "editor" && (
+                          <Edit2 className="w-5 h-5" />
+                        )}
+                        {activeRole.value === "moderator" && (
+                          <UserCheck className="w-5 h-5" />
+                        )}
+                        {activeRole.value === "viewer" && (
+                          <Lock className="w-5 h-5" />
+                        )}
+                        {activeRole.value === "custom" && (
+                          <KeyRound className="w-5 h-5" />
+                        )}
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
                           <h3 className="font-extrabold text-base sm:text-lg text-slate-900 dark:text-slate-100">
                             {activeRole.label}
                           </h3>
-                          <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${activeRole.bgLight} ${activeRole.color} ${activeRole.border}`}>
+                          <span
+                            className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${activeRole.bgLight} ${activeRole.color} ${activeRole.border}`}
+                          >
                             {activeRole.summary}
                           </span>
                         </div>
@@ -938,7 +1077,9 @@ export default function AdminsClient({
                           Module Permissions Breakdown
                         </span>
                         <span className="text-[10px] text-slate-400 font-medium">
-                          {activeRole.value === "custom" ? "Custom Matrix" : "Default Preset"}
+                          {activeRole.value === "custom"
+                            ? "Custom Matrix"
+                            : "Default Preset"}
                         </span>
                       </div>
 
@@ -948,8 +1089,10 @@ export default function AdminsClient({
                             activeRole.value === "super_admin"
                               ? "write"
                               : activeRole.value === "custom"
-                              ? "Configurable"
-                              : DEFAULT_ROLE_PERMISSIONS[activeRole.value]?.[mod] || "none";
+                                ? "Configurable"
+                                : DEFAULT_ROLE_PERMISSIONS[activeRole.value]?.[
+                                    mod
+                                  ] || "none";
 
                           return (
                             <div
@@ -964,13 +1107,19 @@ export default function AdminsClient({
                                   level === "write"
                                     ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
                                     : level === "read"
-                                    ? "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20"
-                                    : level === "Configurable"
-                                    ? "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20"
-                                    : "bg-slate-100 dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700"
+                                      ? "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20"
+                                      : level === "Configurable"
+                                        ? "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20"
+                                        : "bg-slate-100 dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700"
                                 }`}
                               >
-                                {level === "write" ? "Read & Write" : level === "read" ? "Read Only" : level === "Configurable" ? "Custom" : "No Access"}
+                                {level === "write"
+                                  ? "Read & Write"
+                                  : level === "read"
+                                    ? "Read Only"
+                                    : level === "Configurable"
+                                      ? "Custom"
+                                      : "No Access"}
                               </span>
                             </div>
                           );
@@ -984,7 +1133,6 @@ export default function AdminsClient({
           </div>
         )}
       </Card>
-
 
       {/* Admins Table */}
       <Card className="rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900 overflow-hidden">
@@ -1012,14 +1160,18 @@ export default function AdminsClient({
             <TableBody>
               {admins.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-slate-400 py-10 text-sm">
+                  <TableCell
+                    colSpan={5}
+                    className="text-center text-slate-400 py-10 text-sm"
+                  >
                     No administrators registered
                   </TableCell>
                 </TableRow>
               ) : (
                 admins.map((admin) => {
                   const isSelf =
-                    admin.email.toLowerCase() === currentLoggedInAdmin?.email.toLowerCase();
+                    admin.email.toLowerCase() ===
+                    currentLoggedInAdmin?.email.toLowerCase();
 
                   return (
                     <TableRow
@@ -1036,11 +1188,15 @@ export default function AdminsClient({
                               </span>
                             )}
                           </span>
-                          <span className="text-xs text-slate-400">{admin.email}</span>
+                          <span className="text-xs text-slate-400">
+                            {admin.email}
+                          </span>
                         </div>
                       </TableCell>
 
-                      <TableCell className="whitespace-nowrap">{getRoleBadge(admin.role)}</TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        {getRoleBadge(admin.role)}
+                      </TableCell>
 
                       <TableCell className="max-w-xs">
                         {admin.role === "super_admin" ? (
@@ -1051,7 +1207,8 @@ export default function AdminsClient({
                           <div className="flex flex-col gap-1">
                             {admin.role === "engineer" && (
                               <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-indigo-600 dark:text-indigo-400">
-                                <Terminal className="w-3 h-3" /> Device Approvals Authorized
+                                <Terminal className="w-3 h-3" /> Device
+                                Approvals Authorized
                               </span>
                             )}
                             <div className="flex flex-wrap gap-1">
@@ -1059,7 +1216,9 @@ export default function AdminsClient({
                                 const lvl =
                                   admin.permissions?.[mod] ||
                                   (admin.role !== "custom"
-                                    ? DEFAULT_ROLE_PERMISSIONS[admin.role]?.[mod]
+                                    ? DEFAULT_ROLE_PERMISSIONS[admin.role]?.[
+                                        mod
+                                      ]
                                     : "none") ||
                                   "none";
                                 if (lvl === "none") return null;
@@ -1122,7 +1281,10 @@ export default function AdminsClient({
 
       {/* Edit Role & Permissions Dialog */}
       {editingAdmin && (
-        <Dialog open={!!editingAdmin} onOpenChange={() => setEditingAdmin(null)}>
+        <Dialog
+          open={!!editingAdmin}
+          onOpenChange={() => setEditingAdmin(null)}
+        >
           <DialogContent className="max-w-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6">
             <DialogHeader>
               <DialogTitle className="text-lg font-bold text-slate-900 dark:text-slate-100">
@@ -1153,16 +1315,29 @@ export default function AdminsClient({
                 <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
                   Assign Role
                 </label>
-                <Select value={editRole} onValueChange={(val) => handleRoleChangeForEdit(val as AdminRole)}>
+                <Select
+                  value={editRole}
+                  onValueChange={(val) =>
+                    handleRoleChangeForEdit(val as AdminRole)
+                  }
+                >
                   <SelectTrigger className="rounded-xl border-slate-200 dark:border-slate-800 text-xs">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="rounded-xl border-slate-200 dark:border-slate-800">
                     {ROLE_OPTIONS.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                      <SelectItem
+                        key={opt.value}
+                        value={opt.value}
+                        className="text-xs"
+                      >
                         <div className="flex flex-col py-0.5">
-                          <span className="font-semibold text-slate-800 dark:text-slate-200">{opt.label}</span>
-                          <span className="text-[10px] text-slate-400">{opt.desc}</span>
+                          <span className="font-semibold text-slate-800 dark:text-slate-200">
+                            {opt.label}
+                          </span>
+                          <span className="text-[10px] text-slate-400">
+                            {opt.desc}
+                          </span>
                         </div>
                       </SelectItem>
                     ))}
@@ -1172,7 +1347,9 @@ export default function AdminsClient({
 
               {/* Real-time Role Capability Summary in Edit Modal */}
               {(() => {
-                const roleDetail = ROLE_OPTIONS.find((r) => r.value === editRole);
+                const roleDetail = ROLE_OPTIONS.find(
+                  (r) => r.value === editRole,
+                );
                 if (!roleDetail) return null;
                 return (
                   <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 space-y-2 text-xs">
@@ -1181,7 +1358,9 @@ export default function AdminsClient({
                         <Info className="w-3.5 h-3.5 text-sky-500" />
                         {roleDetail.label} Capabilities:
                       </span>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${roleDetail.bgLight} ${roleDetail.color} ${roleDetail.border}`}>
+                      <span
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${roleDetail.bgLight} ${roleDetail.color} ${roleDetail.border}`}
+                      >
                         {roleDetail.summary}
                       </span>
                     </div>
@@ -1190,13 +1369,19 @@ export default function AdminsClient({
                     </p>
                     <ul className="space-y-1 pt-1">
                       {roleDetail.canDo.map((item, idx) => (
-                        <li key={idx} className="flex items-start gap-1.5 text-[11px] text-slate-600 dark:text-slate-300">
+                        <li
+                          key={idx}
+                          className="flex items-start gap-1.5 text-[11px] text-slate-600 dark:text-slate-300"
+                        >
                           <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
                           <span>{item}</span>
                         </li>
                       ))}
                       {roleDetail.cannotDo.map((item, idx) => (
-                        <li key={idx} className="flex items-start gap-1.5 text-[11px] text-rose-500/80 dark:text-rose-400/80">
+                        <li
+                          key={idx}
+                          className="flex items-start gap-1.5 text-[11px] text-rose-500/80 dark:text-rose-400/80"
+                        >
                           <XCircle className="w-3.5 h-3.5 text-rose-400 shrink-0 mt-0.5" />
                           <span>{item}</span>
                         </li>
@@ -1209,7 +1394,9 @@ export default function AdminsClient({
               {["admin", "viewer", "custom"].includes(editRole) && (
                 <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 space-y-2">
                   <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
-                    {editRole === "viewer" ? "Viewer Section Access" : "Module Permissions Matrix"}
+                    {editRole === "viewer"
+                      ? "Viewer Section Access"
+                      : "Module Permissions Matrix"}
                   </span>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56 overflow-y-auto pr-1">
                     {ALL_APP_MODULES.map((mod) => (
@@ -1235,7 +1422,11 @@ export default function AdminsClient({
                           <SelectContent className="rounded-xl text-xs">
                             <SelectItem value="none">None</SelectItem>
                             <SelectItem value="read">Read Only</SelectItem>
-                            {editRole !== "viewer" && <SelectItem value="write">Read & Write</SelectItem>}
+                            {editRole !== "viewer" && (
+                              <SelectItem value="write">
+                                Read & Write
+                              </SelectItem>
+                            )}
                           </SelectContent>
                         </Select>
                       </div>
@@ -1245,11 +1436,14 @@ export default function AdminsClient({
               )}
 
               {/* Granular Action Permissions (Configurable by Super Admin for Engineer and Staff) */}
-              {isSuperAdmin && (
-                editRole === "super_admin" ? (
+              {isSuperAdmin &&
+                (editRole === "super_admin" ? (
                   <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-700 dark:text-amber-400 flex items-center gap-2">
                     <Crown className="w-4 h-4 shrink-0 text-amber-500" />
-                    <span>Super Administrators retain unrestricted, immutable access across all modules and actions.</span>
+                    <span>
+                      Super Administrators retain unrestricted, immutable access
+                      across all modules and actions.
+                    </span>
                   </div>
                 ) : (
                   <GranularPermissionsEditor
@@ -1258,8 +1452,7 @@ export default function AdminsClient({
                       setEditGranularPerms((prev) => ({ ...prev, [key]: val }))
                     }
                   />
-                )
-              )}
+                ))}
 
               <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
                 <Button
@@ -1269,7 +1462,8 @@ export default function AdminsClient({
                 >
                   {isLoading ? (
                     <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving Changes...
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving
+                      Changes...
                     </>
                   ) : (
                     "Save Role & Permissions"
