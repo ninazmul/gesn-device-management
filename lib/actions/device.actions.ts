@@ -1589,7 +1589,7 @@ export async function importDevicesBulk(
     );
   }
 
-  if (!rows || rows.length === 0) {
+  if (!Array.isArray(rows) || rows.length === 0) {
     throw new Error("No data rows provided for import.");
   }
 
@@ -1646,20 +1646,29 @@ export async function importDevicesBulk(
   const seenMacsInBatch = new Set<string>();
 
   for (let i = 0; i < rows.length; i++) {
-    const r = rows[i];
+    const candidate: unknown = rows[i];
     const rowNum = i + 2; // Row 1 is header in Excel, data starts at Row 2
-    const readText = (...keys: string[]) =>
-      safeParseString(getFlexibleField(r, ...keys));
-
-    // 1. Verification: Skip completely blank rows
-    const hasAnyValue = Object.values(r).some(
-      (v) => v !== null && v !== undefined && String(v).trim() !== "",
-    );
-    if (!hasAnyValue) {
-      continue;
-    }
 
     try {
+      if (
+        !candidate ||
+        typeof candidate !== "object" ||
+        Array.isArray(candidate)
+      ) {
+        errors.push(`Row ${rowNum}: Invalid row data; row skipped.`);
+        continue;
+      }
+
+      const r = candidate as Record<string, unknown>;
+      const readText = (...keys: string[]) =>
+        safeParseString(getFlexibleField(r, ...keys));
+
+      // Skip completely blank rows without affecting the rest of the batch.
+      const hasAnyValue = Object.values(r).some(
+        (value) => safeParseString(value) !== "",
+      );
+      if (!hasAnyValue) continue;
+
       // 2. Verification: Device Type (Required)
       const rawType = (
         readText("Device Type", "Type", "deviceType") ||
@@ -1716,7 +1725,6 @@ export async function importDevicesBulk(
         );
         continue;
       }
-      seenMacsInBatch.add(macAddress);
 
       // 4b. Duplicate check against existing DB records (O(1))
       const existingDevice = existingByMac.get(macAddress.toUpperCase());
@@ -1941,6 +1949,7 @@ export async function importDevicesBulk(
       });
 
       createdCount++;
+      seenMacsInBatch.add(macAddress);
     } catch (err) {
       // Individual row failure never stops the remaining batch
       const errMsg =
