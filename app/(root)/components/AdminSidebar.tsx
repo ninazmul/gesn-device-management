@@ -25,6 +25,7 @@ import {
   Settings,
   ShieldCheck,
   Boxes,
+  Archive,
   Users,
   Receipt,
   History,
@@ -93,6 +94,12 @@ const sidebarSections: SidebarSection[] = [
         title: "Pending Devices",
         url: "/devices/pending",
         icon: ClockAlert,
+        module: "devices",
+      },
+      {
+        title: "Inactive Devices",
+        url: "/devices/inactive",
+        icon: Archive,
         module: "devices",
       },
       {

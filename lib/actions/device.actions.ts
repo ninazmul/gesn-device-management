@@ -142,6 +142,7 @@ export async function getDevices(params?: GetDevicesParams) {
   const {
     deviceType,
     status,
+    statuses,
     server,
     search = "",
     sortBy = "sl_asc",
@@ -169,7 +170,12 @@ export async function getDevices(params?: GetDevicesParams) {
     query.deviceType = { $ne: "server" };
   }
 
-  if (status && status !== "all") {
+  if (statuses?.length) {
+    query.status =
+      status && status !== "all" && statuses.includes(status as DeviceStatus)
+        ? status
+        : { $in: statuses };
+  } else if (status && status !== "all") {
     query.status = status;
   } else if (!params?.submittedBy) {
     // When viewing general device inventory without a specific status filter and not in "My Submissions",

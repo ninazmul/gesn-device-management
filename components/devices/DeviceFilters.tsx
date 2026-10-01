@@ -11,7 +11,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, X, RotateCcw, SlidersHorizontal, ScanBarcode, User } from "lucide-react";
+import {
+  Search,
+  X,
+  RotateCcw,
+  SlidersHorizontal,
+  ScanBarcode,
+  User,
+} from "lucide-react";
 import { DEVICE_STATUSES, SORT_OPTIONS } from "@/lib/constants";
 import { getDeviceFilterOptions } from "@/lib/actions/device.actions";
 import { BarcodeScannerModal } from "./BarcodeScannerModal";
@@ -19,13 +26,18 @@ import { useBarcodeGun } from "@/hooks/useBarcodeGun";
 import type { ParsedBarcodeResult } from "@/lib/barcode";
 import { toast } from "react-hot-toast";
 import { usePermissions } from "@/components/providers/PermissionContext";
+import type { DeviceStatus } from "@/types";
 
 interface DeviceFiltersProps {
   currentType?: string;
   totalDevices: number;
+  statusOptions?: readonly DeviceStatus[];
 }
 
-export function DeviceFilters({ totalDevices }: DeviceFiltersProps) {
+export function DeviceFilters({
+  totalDevices,
+  statusOptions,
+}: DeviceFiltersProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -40,12 +52,15 @@ export function DeviceFilters({ totalDevices }: DeviceFiltersProps) {
   const { admin, isSuperAdmin, isEngineer, can } = usePermissions();
   const canViewServer = isSuperAdmin || isEngineer || can("server_view");
   const isMySubmissionsActive = Boolean(
-    admin?.email && currentSubmittedBy.toLowerCase() === admin.email.toLowerCase()
+    admin?.email &&
+    currentSubmittedBy.toLowerCase() === admin.email.toLowerCase(),
   );
 
   // Local state for debounced search
   const [searchTerm, setSearchTerm] = useState(currentSearch);
-  const [servers, setServers] = useState<Array<{ _id: string; deviceName: string; sl: string }>>([]);
+  const [servers, setServers] = useState<
+    Array<{ _id: string; deviceName: string; sl: string }>
+  >([]);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [scannerOpen, setScannerOpen] = useState(false);
 
@@ -160,7 +175,7 @@ export function DeviceFilters({ totalDevices }: DeviceFiltersProps) {
             </SelectTrigger>
             <SelectContent className="dark:bg-slate-900 dark:border-slate-800">
               <SelectItem value="all">All Statuses</SelectItem>
-              {DEVICE_STATUSES.map((st) => (
+              {(statusOptions ?? DEVICE_STATUSES).map((st) => (
                 <SelectItem key={st} value={st}>
                   {st}
                 </SelectItem>
@@ -219,7 +234,7 @@ export function DeviceFilters({ totalDevices }: DeviceFiltersProps) {
               onClick={() =>
                 updateQuery(
                   "submittedBy",
-                  isMySubmissionsActive ? "all" : admin.email.toLowerCase()
+                  isMySubmissionsActive ? "all" : admin.email.toLowerCase(),
                 )
               }
               className={`rounded-xl border-slate-200 dark:border-slate-800 text-xs font-semibold gap-1.5 h-10 px-3.5 transition-all ${
@@ -272,7 +287,11 @@ export function DeviceFilters({ totalDevices }: DeviceFiltersProps) {
         <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-3 animate-in fade-in-50 duration-200">
           {/* Device Count Summary */}
           <span className="text-xs text-slate-500 dark:text-slate-400">
-            Found <span className="font-bold text-slate-900 dark:text-slate-100">{totalDevices.toLocaleString()}</span> matching records
+            Found{" "}
+            <span className="font-bold text-slate-900 dark:text-slate-100">
+              {totalDevices.toLocaleString()}
+            </span>{" "}
+            matching records
           </span>
         </div>
       )}

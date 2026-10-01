@@ -117,7 +117,12 @@ export interface IServerOption {
 }
 
 export type CustomerServiceType = "CCTV" | "TV" | "Service C";
-export type PaymentMethod = "Cash" | "Bank Transfer" | "Card" | "STC Pay / Mobile" | "Other";
+export type PaymentMethod =
+  | "Cash"
+  | "Bank Transfer"
+  | "Card"
+  | "STC Pay / Mobile"
+  | "Other";
 
 export interface IPaymentRecord {
   amount: number;
@@ -227,7 +232,9 @@ export type GranularPermissionKey =
   | "report_view"
   | "setting_manage";
 
-export type GranularPermissions = Partial<Record<GranularPermissionKey, boolean>>;
+export type GranularPermissions = Partial<
+  Record<GranularPermissionKey, boolean>
+>;
 
 export interface IAdminUser {
   _id: string;
@@ -348,6 +355,7 @@ export interface DashboardStats {
 export interface GetDevicesParams {
   deviceType?: string;
   status?: string;
+  statuses?: DeviceStatus[];
   server?: string;
   submittedBy?: string;
   search?: string;
