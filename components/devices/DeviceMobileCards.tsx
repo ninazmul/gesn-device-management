@@ -27,7 +27,11 @@ import { DeviceStatusDialog } from "./DeviceStatusDialog";
 import { DeviceFormDialog } from "./DeviceFormDialog";
 import { RejectDeviceDialog } from "./RejectDeviceDialog";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
-import { deleteDevice, toggleDeviceActive, approveDevice } from "@/lib/actions/device.actions";
+import {
+  deleteDevice,
+  toggleDeviceActive,
+  approveDevice,
+} from "@/lib/actions/device.actions";
 import { formatDisplaySL } from "@/lib/utils";
 import { toast } from "react-hot-toast";
 import type { IDevice } from "@/types";
@@ -111,7 +115,14 @@ export function DeviceMobileCards({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { isSuperAdmin, isEngineer, admin, canApproveDevice, canDeleteDevice, canEditDevice } = usePermissions();
+  const {
+    isSuperAdmin,
+    isEngineer,
+    admin,
+    canApproveDevice,
+    canDeleteDevice,
+    canEditDevice,
+  } = usePermissions();
 
   const [editingDevice, setEditingDevice] = useState<IDevice | null>(null);
   const [statusDevice, setStatusDevice] = useState<IDevice | null>(null);
@@ -136,10 +147,14 @@ export function DeviceMobileCards({
     try {
       setTogglingId(deviceId);
       const res = await toggleDeviceActive(deviceId);
-      toast.success(`Device ${res.newStatus === "Active" ? "activated" : "set to Pending"}`);
+      toast.success(
+        `Device ${res.newStatus === "Active" ? "activated" : "set to Pending"}`,
+      );
       router.refresh();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to update device");
+      toast.error(
+        err instanceof Error ? err.message : "Failed to update device",
+      );
     } finally {
       setTogglingId(null);
     }
@@ -154,7 +169,9 @@ export function DeviceMobileCards({
       setDeletingDevice(null);
       router.refresh();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to delete device");
+      toast.error(
+        err instanceof Error ? err.message : "Failed to delete device",
+      );
     } finally {
       setIsDeleting(false);
     }
@@ -168,7 +185,9 @@ export function DeviceMobileCards({
       toast.success("Device approved and set to Active!");
       router.refresh();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to approve device");
+      toast.error(
+        err instanceof Error ? err.message : "Failed to approve device",
+      );
     } finally {
       setApprovingId(null);
     }
@@ -191,27 +210,32 @@ export function DeviceMobileCards({
             {/* Header: SL + Name + Status */}
             {(() => {
               const devTheme = getDeviceTypeTheme(device.deviceType);
-              const isOnline = device.status === "Active" || device.status === "Available";
-              const isPendingOrMaint = device.status === "Pending" || device.status === "Maintenance";
+              const isOnline =
+                device.status === "Active" || device.status === "Available";
+              const isPendingOrMaint =
+                device.status === "Pending" || device.status === "Maintenance";
 
               const dotColor =
                 device.status === "Active"
                   ? "bg-emerald-500"
                   : device.status === "Available"
-                  ? "bg-blue-500"
-                  : device.status === "Offline"
-                  ? "bg-rose-500"
-                  : device.status === "Pending" || device.status === "Maintenance"
-                  ? "bg-amber-500"
-                  : device.status === "Retired"
-                  ? "bg-purple-500"
-                  : "bg-slate-400";
+                    ? "bg-blue-500"
+                    : device.status === "Offline"
+                      ? "bg-rose-500"
+                      : device.status === "Pending" ||
+                          device.status === "Maintenance"
+                        ? "bg-amber-500"
+                        : device.status === "Retired"
+                          ? "bg-purple-500"
+                          : "bg-slate-400";
 
               return (
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-center gap-2.5 min-w-0">
                     <div className="relative shrink-0">
-                      <div className={`p-2 rounded-xl border shrink-0 ${devTheme.bg} ${devTheme.border} ${devTheme.text}`}>
+                      <div
+                        className={`p-2 rounded-xl border shrink-0 ${devTheme.bg} ${devTheme.border} ${devTheme.text}`}
+                      >
                         <Icon className="w-4 h-4" />
                       </div>
                       <span
@@ -221,14 +245,18 @@ export function DeviceMobileCards({
                         {isOnline && (
                           <span
                             className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
-                              device.status === "Active" ? "bg-emerald-400" : "bg-blue-400"
+                              device.status === "Active"
+                                ? "bg-emerald-400"
+                                : "bg-blue-400"
                             }`}
                           />
                         )}
                         {isPendingOrMaint && (
                           <span className="animate-pulse absolute inline-flex h-full w-full rounded-full opacity-60 bg-amber-400" />
                         )}
-                        <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${dotColor} ring-2 ring-white dark:ring-slate-900`} />
+                        <span
+                          className={`relative inline-flex rounded-full h-2.5 w-2.5 ${dotColor} ring-2 ring-white dark:ring-slate-900`}
+                        />
                       </span>
                     </div>
 
@@ -239,81 +267,109 @@ export function DeviceMobileCards({
                       >
                         {device.deviceName}
                       </Link>
-                  <div className="flex items-center gap-1.5 flex-wrap text-xs text-slate-400 font-medium">
-                    <span>
-                      <span className="capitalize">{device.deviceType}</span>
+                      <div className="flex items-center gap-1.5 flex-wrap text-xs text-slate-400 font-medium">
+                        <span>
+                          <span className="capitalize">
+                            {device.deviceType}
+                          </span>
+                        </span>
+                        {device.deviceType === "switch" &&
+                          device.totalPorts !== undefined && (
+                            <span className="inline-flex items-center px-1.5 py-0.2 rounded bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 font-semibold text-[10px]">
+                              {device.activePortsCount || 0}/{device.totalPorts}{" "}
+                              Ports
+                            </span>
+                          )}
+                        {device.deviceType === "access-point" &&
+                          device.apNumber && (
+                            <span className="inline-flex items-center px-1.5 py-0.2 rounded bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 font-semibold text-[10px]">
+                              AP: {device.apNumber}
+                            </span>
+                          )}
+                        {device.deviceType !== "server" &&
+                          device.server &&
+                          typeof device.server === "object" && (
+                            <span className="inline-flex items-center px-1.5 py-0.2 rounded bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 font-medium text-[10px]">
+                              Server: #
+                              {formatDisplaySL((device.server as IDevice).sl)}
+                            </span>
+                          )}
+                        {["antenna", "access-point", "router"].includes(
+                          device.deviceType,
+                        ) &&
+                          device.uplinkSwitch &&
+                          typeof device.uplinkSwitch === "object" && (
+                            <span className="inline-flex items-center px-1.5 py-0.2 rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:indigo-400 font-medium text-[10px]">
+                              UpLink: #
+                              {formatDisplaySL(
+                                (device.uplinkSwitch as IDevice).sl,
+                              )}
+                            </span>
+                          )}
+                        {device.submittedBy?.email &&
+                          (admin?.email &&
+                          device.submittedBy.email.toLowerCase() ===
+                            admin.email.toLowerCase() ? (
+                            <span className="inline-flex items-center px-1.5 py-0.2 rounded-full bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-sky-800 text-[10px] font-semibold">
+                              Submitted by you
+                            </span>
+                          ) : isSuperAdmin || isEngineer ? (
+                            <span
+                              className="text-[10px] text-slate-400"
+                              title={`Submitted by ${device.submittedBy.email}`}
+                            >
+                              By:{" "}
+                              {device.submittedBy.name ||
+                                device.submittedBy.email.split("@")[0]}
+                            </span>
+                          ) : null)}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col items-end gap-1.5 shrink-0">
+                    <span className="font-mono text-xs font-bold text-sky-600 dark:text-sky-400">
+                      #{displaySerial}
                     </span>
-                    {device.deviceType === "switch" && device.totalPorts !== undefined && (
-                      <span className="inline-flex items-center px-1.5 py-0.2 rounded bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 font-semibold text-[10px]">
-                        {device.activePortsCount || 0}/{device.totalPorts} Ports
-                      </span>
-                    )}
-                    {device.deviceType !== "server" && device.server && typeof device.server === "object" && (
-                      <span className="inline-flex items-center px-1.5 py-0.2 rounded bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 font-medium text-[10px]">
-                        Server: #{formatDisplaySL((device.server as IDevice).sl)}
-                      </span>
-                    )}
-                    {["antenna", "access-point", "router"].includes(device.deviceType) && device.uplinkSwitch && typeof device.uplinkSwitch === "object" && (
-                      <span className="inline-flex items-center px-1.5 py-0.2 rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:indigo-400 font-medium text-[10px]">
-                        UpLink: #{formatDisplaySL((device.uplinkSwitch as IDevice).sl)}
-                      </span>
-                    )}
-                    {device.submittedBy?.email && (
-                      admin?.email && device.submittedBy.email.toLowerCase() === admin.email.toLowerCase() ? (
-                        <span className="inline-flex items-center px-1.5 py-0.2 rounded-full bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-sky-800 text-[10px] font-semibold">
-                          Submitted by you
-                        </span>
-                      ) : (isSuperAdmin || isEngineer) ? (
-                        <span className="text-[10px] text-slate-400" title={`Submitted by ${device.submittedBy.email}`}>
-                          By: {device.submittedBy.name || device.submittedBy.email.split("@")[0]}
-                        </span>
-                      ) : null
-                    )}
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setStatusDevice(device)}
+                        className="cursor-pointer"
+                      >
+                        <DeviceStatusBadge status={device.status} size="sm" />
+                      </button>
+
+                      {isSuperAdmin && (
+                        <button
+                          type="button"
+                          disabled={togglingId === device._id}
+                          onClick={(e) => handleToggleActive(e, device._id)}
+                          className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                            device.status === "Active"
+                              ? "bg-emerald-500"
+                              : "bg-slate-200 dark:bg-slate-700"
+                          } ${togglingId === device._id ? "opacity-50 cursor-wait" : ""}`}
+                          title={
+                            device.status === "Active"
+                              ? "Super Admin: Click to deactivate (set to Pending)"
+                              : "Super Admin: Click to activate device"
+                          }
+                        >
+                          <span
+                            className={`pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
+                              device.status === "Active"
+                                ? "translate-x-3"
+                                : "translate-x-0"
+                            }`}
+                          />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-
-              <div className="flex flex-col items-end gap-1.5 shrink-0">
-                <span className="font-mono text-xs font-bold text-sky-600 dark:text-sky-400">
-                  #{displaySerial}
-                </span>
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setStatusDevice(device)}
-                    className="cursor-pointer"
-                  >
-                    <DeviceStatusBadge status={device.status} size="sm" />
-                  </button>
-
-                  {isSuperAdmin && (
-                    <button
-                      type="button"
-                      disabled={togglingId === device._id}
-                      onClick={(e) => handleToggleActive(e, device._id)}
-                      className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                        device.status === "Active"
-                          ? "bg-emerald-500"
-                          : "bg-slate-200 dark:bg-slate-700"
-                      } ${togglingId === device._id ? "opacity-50 cursor-wait" : ""}`}
-                      title={
-                        device.status === "Active"
-                          ? "Super Admin: Click to deactivate (set to Pending)"
-                          : "Super Admin: Click to activate device"
-                      }
-                    >
-                      <span
-                        className={`pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
-                          device.status === "Active" ? "translate-x-3" : "translate-x-0"
-                        }`}
-                      />
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-          );
-        })()}
+              );
+            })()}
 
             {/* Network Info Pills */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs pt-1 border-t border-slate-100 dark:border-slate-800/60">
@@ -391,15 +447,18 @@ export function DeviceMobileCards({
                   </>
                 )}
                 {/* Rejection reason for Rejected devices */}
-                {device.status === "Rejected" && (device.rejectionReason || device.rejectedBy?.reason) && (
-                  <span
-                    className="flex items-center gap-1 text-xs text-rose-500 p-2"
-                    title={`Rejected: ${device.rejectionReason || device.rejectedBy?.reason}`}
-                  >
-                    <AlertTriangle className="w-3.5 h-3.5" />
-                    <span className="truncate max-w-[120px]">{device.rejectionReason || device.rejectedBy?.reason}</span>
-                  </span>
-                )}
+                {device.status === "Rejected" &&
+                  (device.rejectionReason || device.rejectedBy?.reason) && (
+                    <span
+                      className="flex items-center gap-1 text-xs text-rose-500 p-2"
+                      title={`Rejected: ${device.rejectionReason || device.rejectedBy?.reason}`}
+                    >
+                      <AlertTriangle className="w-3.5 h-3.5" />
+                      <span className="truncate max-w-[120px]">
+                        {device.rejectionReason || device.rejectedBy?.reason}
+                      </span>
+                    </span>
+                  )}
                 <Link
                   href={`/devices/${device.deviceType}/${device._id}`}
                   className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-sky-600 p-2 rounded-xl hover:bg-sky-50 dark:hover:bg-sky-950/40"
