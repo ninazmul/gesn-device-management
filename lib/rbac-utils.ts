@@ -60,9 +60,9 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<AdminRole, ModulePermissions> = {
     settings: "none",
   },
   moderator: {
-    dashboard: "none",
+    dashboard: "read",
     devices: "write",
-    customers: "none",
+    customers: "write",
     billing: "write",
     catalog: "none",
     admins: "none",
@@ -316,6 +316,11 @@ export function resolveEffectivePermissions(
   base.admins = "none";
   if (role === "engineer") {
     base.settings = "none";
+  }
+  if (role === "moderator") {
+    base.dashboard = "read";
+    base.customers = "write";
+    base.billing = "write";
   }
   if (role === "viewer") {
     for (const mod of ALL_APP_MODULES) {

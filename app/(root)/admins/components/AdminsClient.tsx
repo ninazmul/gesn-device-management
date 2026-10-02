@@ -172,9 +172,12 @@ const ROLE_OPTIONS: RoleDetail[] = [
     color: "text-blue-600 dark:text-blue-400",
     border: "border-blue-500/30",
     bgLight: "bg-blue-500/10",
-    summary: "Device & Billing Operator",
-    desc: "Can add devices and manage billing, without other operational access.",
-    canDo: ["Add new devices", "Manage permitted billing operations"],
+    summary: "Customer & Billing Operator",
+    desc: "Can view the dashboard, add customers, add devices, and manage billing.",
+    canDo: [
+      "View the dashboard and manage customer records",
+      "Add new devices and manage permitted billing operations",
+    ],
     cannotDo: [
       "Cannot freeze or archive devices unless the Super Admin grants that action",
       "Cannot manage users, roles, permissions, or system settings",
