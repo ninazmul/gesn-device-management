@@ -14,14 +14,10 @@ import {
   Check,
   RotateCcw,
   ExternalLink,
-  User,
-  Calendar,
   Server,
   Wifi,
   Radio,
   Network,
-  MapPin,
-  Phone,
   Boxes,
   Loader2,
   ChevronLeft,
@@ -45,7 +41,7 @@ import { formatDisplaySL, formatDate } from "@/lib/utils";
 import { toast } from "react-hot-toast";
 
 interface PendingDevicesClientProps {
-  initialDevices: IDevice[];
+  initialDevices: Array<IDevice & { catalogBrand?: string }>;
   total: number;
   page: number;
   limit: number;
@@ -430,6 +426,18 @@ export function PendingDevicesClient({
             };
             const Icon = meta.icon;
             const isApproving = approvingId === device._id;
+            const serverName =
+              device.server && typeof device.server === "object"
+                ? device.server.deviceName || ""
+                : "";
+            const submittedBy = device.submittedBy?.name
+              ? `${device.submittedBy.name}${
+                  device.submittedBy.email &&
+                  device.submittedBy.email !== device.submittedBy.name
+                    ? ` (${device.submittedBy.email})`
+                    : ""
+                }`
+              : device.submittedBy?.email || "—";
 
             return (
               <div
@@ -448,7 +456,7 @@ export function PendingDevicesClient({
                     <div className="min-w-0 flex-1 space-y-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-mono text-xs font-bold text-sky-600 dark:text-sky-400">
-                          #{formatDisplaySL(device.sl)}
+                          Device #{formatDisplaySL(device.sl)}
                         </span>
                         <h3 className="font-bold text-sm sm:text-base text-slate-900 dark:text-slate-100 truncate">
                           {device.deviceName}
@@ -456,7 +464,7 @@ export function PendingDevicesClient({
                         <span
                           className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-lg border ${meta.color}`}
                         >
-                          {meta.name}
+                          Type: {meta.name}
                         </span>
                         <span
                           className={`inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full border ${
@@ -475,103 +483,117 @@ export function PendingDevicesClient({
                         </span>
                       </div>
 
-                      {/* Technical specifications row */}
-                      <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 flex-wrap">
-                        {device.macAddress && (
-                          <div className="flex items-center gap-1 font-mono font-medium text-slate-700 dark:text-slate-300">
-                            <span>MAC: {device.macAddress}</span>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                handleCopyMac(device.macAddress || "")
-                              }
-                              className="text-slate-400 hover:text-sky-600 transition-colors"
-                              title="Copy MAC Address"
-                            >
-                              {copiedMac === device.macAddress ? (
-                                <Check className="w-3 h-3 text-emerald-500" />
-                              ) : (
-                                <Copy className="w-3 h-3" />
-                              )}
-                            </button>
-                          </div>
-                        )}
-
-                        {device.ipAddress && (
-                          <span className="font-mono text-slate-700 dark:text-slate-300">
-                            IP: {device.ipAddress}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-x-4 gap-y-2 pt-2 text-xs">
+                        <div className="min-w-0">
+                          <span className="font-semibold text-slate-400">
+                            MAC:{" "}
                           </span>
-                        )}
-
-                        {device.server &&
-                          typeof device.server === "object" &&
-                          "deviceName" in device.server && (
-                            <span className="flex items-center gap-1">
-                              <Server className="w-3 h-3 text-slate-400" />
-                              <span>
-                                Server:{" "}
-                                {String(
-                                  (device.server as { deviceName?: string })
-                                    .deviceName,
+                          {device.macAddress ? (
+                            <span className="inline-flex items-center gap-1 font-mono text-slate-700 dark:text-slate-300">
+                              {device.macAddress}
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleCopyMac(device.macAddress || "")
+                                }
+                                className="text-slate-400 hover:text-sky-600 transition-colors"
+                                title="Copy MAC Address"
+                                aria-label="Copy MAC address"
+                              >
+                                {copiedMac === device.macAddress ? (
+                                  <Check className="w-3 h-3 text-emerald-500" />
+                                ) : (
+                                  <Copy className="w-3 h-3" />
                                 )}
-                              </span>
+                              </button>
                             </span>
+                          ) : (
+                            <span className="text-slate-500">—</span>
                           )}
-
-                        {device.customerName && (
-                          <span className="flex items-center gap-1">
-                            <User className="w-3 h-3 text-slate-400" />
-                            <span>Customer: {device.customerName}</span>
+                        </div>
+                        <div className="min-w-0">
+                          <span className="font-semibold text-slate-400">
+                            Server:{" "}
                           </span>
-                        )}
-
-                        {device.customerMobile && (
-                          <span className="flex items-center gap-1">
-                            <Phone className="w-3 h-3 text-slate-400" />
-                            <span>{device.customerMobile}</span>
-                          </span>
-                        )}
-
-                        {device.gpsLink && (
-                          <a
-                            href={device.gpsLink}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-1 text-sky-600 hover:underline"
-                          >
-                            <MapPin className="w-3 h-3" />
-                            <span>Location</span>
-                          </a>
-                        )}
-                      </div>
-
-                      {/* Submitter & Timestamp details */}
-                      <div className="flex items-center gap-3 text-[11px] text-slate-400 pt-1 flex-wrap">
-                        {device.submittedBy ? (
-                          <div className="flex items-center gap-1 text-slate-600 dark:text-slate-300">
-                            <User className="w-3 h-3 text-slate-400" />
-                            <span>Submitted by: </span>
-                            <span className="font-bold text-slate-800 dark:text-slate-200">
-                              {device.submittedBy.name ||
-                                device.submittedBy.email}
-                            </span>
-                            <span className="text-[10px] uppercase font-semibold px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-500">
-                              {device.submittedBy.role || "staff"}
-                            </span>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-1">
-                            <User className="w-3 h-3 text-slate-400" />
-                            <span>Staff submission</span>
-                          </div>
-                        )}
-
-                        <div className="flex items-center gap-1">
-                          <Calendar className="w-3 h-3 text-slate-400" />
-                          <span>
-                            Submitted on: {formatDate(device.createdAt)}
+                          <span className="text-slate-700 dark:text-slate-300">
+                            {serverName || "—"}
                           </span>
                         </div>
+                        <div className="min-w-0">
+                          <span className="font-semibold text-slate-400">
+                            Customer:{" "}
+                          </span>
+                          <span className="text-slate-700 dark:text-slate-300">
+                            {device.customerName || "—"}
+                          </span>
+                        </div>
+                        <div className="min-w-0">
+                          <span className="font-semibold text-slate-400">
+                            Mobile:{" "}
+                          </span>
+                          <span className="text-slate-700 dark:text-slate-300">
+                            {device.customerMobile || "—"}
+                          </span>
+                        </div>
+                        <div className="min-w-0">
+                          <span className="font-semibold text-slate-400">
+                            Location:{" "}
+                          </span>
+                          {device.gpsLink ? (
+                            <a
+                              href={device.gpsLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="break-all text-sky-600 hover:underline"
+                              title={device.gpsLink}
+                            >
+                              {device.gpsLink}
+                            </a>
+                          ) : (
+                            <span className="text-slate-500">—</span>
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <span className="font-semibold text-slate-400">
+                            Brand / Model:{" "}
+                          </span>
+                          <span className="text-slate-700 dark:text-slate-300">
+                            {device.catalogBrand
+                              ? `${device.catalogBrand} / ${device.deviceName}`
+                              : device.deviceName || "—"}
+                          </span>
+                        </div>
+                        <div className="min-w-0">
+                          <span className="font-semibold text-slate-400">
+                            Submitted by:{" "}
+                          </span>
+                          <span className="text-slate-700 dark:text-slate-300">
+                            {submittedBy}
+                          </span>
+                          {device.submittedBy?.role && (
+                            <span className="ml-1 text-[10px] uppercase font-semibold text-slate-400">
+                              ({device.submittedBy.role})
+                            </span>
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <span className="font-semibold text-slate-400">
+                            Submitted:{" "}
+                          </span>
+                          <span className="text-slate-700 dark:text-slate-300">
+                            {formatDate(device.createdAt)}
+                          </span>
+                        </div>
+                        {device.ipAddress && (
+                          <div className="min-w-0">
+                            <span className="font-semibold text-slate-400">
+                              IP:{" "}
+                            </span>
+                            <span className="font-mono text-slate-700 dark:text-slate-300">
+                              {device.ipAddress}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>

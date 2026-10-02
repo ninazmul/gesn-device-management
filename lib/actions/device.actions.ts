@@ -2,6 +2,7 @@
 
 import { connectToDatabase } from "@/lib/database";
 import Device from "@/lib/database/models/device.model";
+import DeviceModel from "@/lib/database/models/model.model";
 import DeviceType from "@/lib/database/models/deviceType.model";
 import Counter from "@/lib/database/models/counter.model";
 import Notification from "@/lib/database/models/notification.model";
@@ -1283,13 +1284,38 @@ export async function getPendingDevices(params?: {
     ]),
   ]);
 
+  const catalogModels = rawDevices.length
+    ? await DeviceModel.find({
+        name: {
+          $in: rawDevices.map((device) => device.deviceName).filter(Boolean),
+        },
+        deviceType: {
+          $in: [...new Set(rawDevices.map((device) => device.deviceType))],
+        },
+      })
+        .select("name deviceType brand")
+        .lean()
+    : [];
+  const brandByModel = new Map(
+    catalogModels.map((model) => [
+      `${model.deviceType}:${model.name.toLowerCase()}`,
+      model.brand,
+    ]),
+  );
+  const devicesWithBrand = rawDevices.map((device) => ({
+    ...device,
+    catalogBrand: brandByModel.get(
+      `${device.deviceType}:${device.deviceName.toLowerCase()}`,
+    ),
+  }));
+
   const byType: Record<string, number> = {};
   typeCountsResult.forEach((item: { _id: string; count: number }) => {
     if (item._id) byType[item._id.toLowerCase()] = item.count;
   });
 
   return {
-    devices: JSON.parse(JSON.stringify(rawDevices)) as IDevice[],
+    devices: JSON.parse(JSON.stringify(devicesWithBrand)) as IDevice[],
     total,
     page,
     limit,
