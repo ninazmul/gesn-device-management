@@ -1,4 +1,7 @@
-import { getPendingDevices } from "@/lib/actions/device.actions";
+import {
+  getDeviceFilterOptions,
+  getPendingDevices,
+} from "@/lib/actions/device.actions";
 import { PendingDevicesClient } from "./PendingDevicesClient";
 import { Metadata } from "next";
 
@@ -6,13 +9,16 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Pending Device Approvals | GESN Device Management",
-  description: "Review, approve, or reject new hardware submissions awaiting authorization.",
+  description:
+    "Review, approve, or reject new hardware submissions awaiting authorization.",
 };
 
 interface PendingDevicesPageProps {
   searchParams: Promise<{
     search?: string;
     deviceType?: string;
+    status?: string;
+    server?: string;
     sortBy?: string;
     page?: string;
   }>;
@@ -24,13 +30,18 @@ export default async function PendingDevicesPage({
   const resolvedParams = await searchParams;
   const page = resolvedParams.page ? parseInt(resolvedParams.page, 10) : 1;
 
-  const result = await getPendingDevices({
-    search: resolvedParams.search,
-    deviceType: resolvedParams.deviceType,
-    sortBy: resolvedParams.sortBy,
-    page,
-    limit: 25,
-  });
+  const [result, filterOptions] = await Promise.all([
+    getPendingDevices({
+      search: resolvedParams.search,
+      deviceType: resolvedParams.deviceType,
+      status: resolvedParams.status,
+      server: resolvedParams.server,
+      sortBy: resolvedParams.sortBy,
+      page,
+      limit: 25,
+    }),
+    getDeviceFilterOptions(),
+  ]);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-[1600px] mx-auto">
@@ -41,6 +52,7 @@ export default async function PendingDevicesPage({
         limit={result.limit}
         totalPages={result.totalPages}
         byType={result.byType}
+        servers={filterOptions.servers}
       />
     </div>
   );

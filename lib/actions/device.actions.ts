@@ -1188,6 +1188,8 @@ export async function rejectDevice(id: string, reason: string) {
 // ==========================================
 export async function getPendingDevices(params?: {
   deviceType?: string;
+  status?: string;
+  server?: string;
   search?: string;
   sortBy?: string;
   page?: number;
@@ -1205,14 +1207,20 @@ export async function getPendingDevices(params?: {
 
   const {
     deviceType,
+    status: requestedStatus = "Pending",
+    server,
     search = "",
     sortBy = "sl_asc",
     page = 1,
     limit = 25,
   } = params || {};
 
+  const status = ["Pending", "Active", "Rejected"].includes(requestedStatus)
+    ? requestedStatus
+    : "Pending";
+
   const skip = (Math.max(1, page) - 1) * limit;
-  const query: FilterQuery<typeof Device> = { status: "Pending" };
+  const query: FilterQuery<typeof Device> = { status };
 
   if (deviceType && deviceType !== "all") {
     const requestedType = deviceType.toLowerCase().trim();
@@ -1229,6 +1237,10 @@ export async function getPendingDevices(params?: {
     query.deviceType = requestedType;
   } else if (!canViewServer) {
     query.deviceType = { $ne: "server" };
+  }
+
+  if (server && server !== "all") {
+    query.server = server;
   }
 
   if (search && search.trim()) {
@@ -1264,8 +1276,8 @@ export async function getPendingDevices(params?: {
     Device.aggregate([
       {
         $match: canViewServer
-          ? { status: "Pending" }
-          : { status: "Pending", deviceType: { $ne: "server" } },
+          ? { status }
+          : { status, deviceType: { $ne: "server" } },
       },
       { $group: { _id: "$deviceType", count: { $sum: 1 } } },
     ]),

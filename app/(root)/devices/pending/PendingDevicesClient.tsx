@@ -51,6 +51,7 @@ interface PendingDevicesClientProps {
   limit: number;
   totalPages: number;
   byType: Record<string, number>;
+  servers: Array<{ _id: string; deviceName: string; sl: string }>;
 }
 
 const DEVICE_TYPE_LABELS: Record<
@@ -99,6 +100,7 @@ export function PendingDevicesClient({
   page,
   totalPages,
   byType,
+  servers,
 }: PendingDevicesClientProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -117,6 +119,19 @@ export function PendingDevicesClient({
   const [selectedSort, setSelectedSort] = useState(
     searchParams.get("sortBy") || "sl_asc",
   );
+  const statusParam = searchParams.get("status");
+  const selectedStatus = ["Pending", "Active", "Rejected"].includes(
+    statusParam || "",
+  )
+    ? statusParam!
+    : "Pending";
+  const selectedServer = searchParams.get("server") || "all";
+  const statusLabel =
+    selectedStatus === "Active"
+      ? "Approved"
+      : selectedStatus === "Rejected"
+        ? "Rejected"
+        : "Pending";
 
   // State for active device actions
   const [approvingId, setApprovingId] = useState<string | null>(null);
@@ -181,17 +196,20 @@ export function PendingDevicesClient({
           <div>
             <div className="flex items-center gap-2.5">
               <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
-                Pending Device Approvals
+                {statusLabel === "Pending"
+                  ? "Pending Device Approvals"
+                  : `${statusLabel} Devices`}
               </h1>
               {total > 0 && (
                 <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30 animate-pulse">
-                  {total} Awaiting Review
+                  {total} {statusLabel}
                 </span>
               )}
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              Review and authorize newly submitted hardware from staff members
-              before integration into the active network.
+              {selectedStatus === "Pending"
+                ? "Review and authorize newly submitted hardware from staff members before integration into the active network."
+                : `Browse devices that have been ${statusLabel.toLowerCase()}.`}
             </p>
           </div>
         </div>
@@ -219,8 +237,39 @@ export function PendingDevicesClient({
         </div>
       </div>
 
+      {/* Approval Status Tabs */}
+      <div
+        role="tablist"
+        aria-label="Device approval status"
+        className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none"
+      >
+        {[
+          { value: "Pending", label: "Pending" },
+          { value: "Active", label: "Approved" },
+          { value: "Rejected", label: "Rejected" },
+        ].map((status) => (
+          <button
+            key={status.value}
+            type="button"
+            role="tab"
+            aria-selected={selectedStatus === status.value}
+            onClick={() => updateQuery("status", status.value)}
+            className={`shrink-0 rounded-xl border px-4 py-2 text-xs font-bold transition-colors ${
+              selectedStatus === status.value
+                ? "border-sky-600 bg-sky-600 text-white"
+                : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+            }`}
+          >
+            {status.label}
+          </button>
+        ))}
+      </div>
+
       {/* Quick Type Counters Filter Tabs */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+      <div
+        aria-label="Filter by device type"
+        className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none"
+      >
         <button
           type="button"
           onClick={() => {
@@ -303,6 +352,27 @@ export function PendingDevicesClient({
           </Button>
         </form>
 
+        {canViewServer && (
+          <div className="w-full md:w-48">
+            <Select
+              value={selectedServer}
+              onValueChange={(value) => updateQuery("server", value)}
+            >
+              <SelectTrigger className="rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-xs sm:text-sm">
+                <SelectValue placeholder="All Servers" />
+              </SelectTrigger>
+              <SelectContent className="dark:bg-slate-900 dark:border-slate-800">
+                <SelectItem value="all">All Servers</SelectItem>
+                {servers.map((server) => (
+                  <SelectItem key={server._id} value={server._id}>
+                    {server.deviceName || `Server #${server.sl}`}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
         <div className="w-full md:w-48">
           <Select
             value={selectedSort}
@@ -332,11 +402,12 @@ export function PendingDevicesClient({
             <ShieldCheck className="w-7 h-7" />
           </div>
           <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
-            No Pending Devices
+            No {statusLabel} Devices
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-sm mx-auto">
-            All submitted devices have been reviewed and approved or rejected.
-            Newly submitted hardware from staff will appear here.
+            {selectedStatus === "Pending"
+              ? "All submitted devices have been reviewed and approved or rejected. Newly submitted hardware from staff will appear here."
+              : `There are no devices in the ${statusLabel.toLowerCase()} list matching these filters.`}
           </p>
           <div className="mt-5">
             <Link
@@ -387,9 +458,20 @@ export function PendingDevicesClient({
                         >
                           {meta.name}
                         </span>
-                        <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20">
-                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" />
-                          Pending Approval
+                        <span
+                          className={`inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full border ${
+                            device.status === "Pending"
+                              ? "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20"
+                              : device.status === "Active"
+                                ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20"
+                                : "bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-500/20"
+                          }`}
+                        >
+                          {device.status === "Active"
+                            ? "Approved"
+                            : device.status === "Rejected"
+                              ? "Rejected"
+                              : "Pending Approval"}
                         </span>
                       </div>
 
@@ -505,7 +587,7 @@ export function PendingDevicesClient({
                       <span>Details</span>
                     </Link>
 
-                    {canApprove ? (
+                    {canApprove && device.status === "Pending" ? (
                       <>
                         <Button
                           type="button"
@@ -533,12 +615,12 @@ export function PendingDevicesClient({
                           <span>Approve</span>
                         </Button>
                       </>
-                    ) : (
+                    ) : device.status === "Pending" ? (
                       <span className="text-xs text-slate-400 italic flex items-center gap-1">
                         <Info className="w-3.5 h-3.5 text-slate-400" />
                         Awaiting Admin review
                       </span>
-                    )}
+                    ) : null}
                   </div>
                 </div>
               </div>
@@ -559,7 +641,7 @@ export function PendingDevicesClient({
             <span className="font-bold text-slate-800 dark:text-slate-200">
               {totalPages}
             </span>{" "}
-            ({total} pending)
+            ({total} {statusLabel.toLowerCase()})
           </div>
 
           <div className="flex items-center gap-1.5">
