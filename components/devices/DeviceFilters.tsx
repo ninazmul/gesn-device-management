@@ -47,9 +47,10 @@ export function DeviceFilters({
   const currentSearch = searchParams.get("search") || "";
   const currentStatus = searchParams.get("status") || "all";
   const currentServer = searchParams.get("server") || "all";
-  const currentSort = searchParams.get("sortBy") || "sl_asc";
   const currentSubmittedBy = searchParams.get("submittedBy") || "";
   const isAccessPointTable = currentType?.toLowerCase() === "access-point";
+  const currentSort =
+    searchParams.get("sortBy") || (isAccessPointTable ? "sl_desc" : "sl_asc");
   const sortOptions = isAccessPointTable
     ? SORT_OPTIONS.map((option) =>
         option.value === "sl_asc"

@@ -157,12 +157,13 @@ export async function getDevices(params?: GetDevicesParams) {
     statuses,
     server,
     search = "",
-    sortBy = "sl_asc",
+    sortBy: requestedSortBy,
     page = 1,
     limit = 25,
   } = params || {};
   const isAccessPointQuery =
     deviceType?.toLowerCase().trim() === "access-point";
+  const sortBy = requestedSortBy || (isAccessPointQuery ? "sl_desc" : "sl_asc");
 
   const skip = (Math.max(1, page) - 1) * limit;
   const query: FilterQuery<typeof Device> = {};
