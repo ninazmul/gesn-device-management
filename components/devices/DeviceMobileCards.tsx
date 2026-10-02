@@ -421,33 +421,35 @@ export function DeviceMobileCards({
 
               <div className="flex items-center gap-1">
                 {/* Quick Approve/Reject for Pending Devices */}
-                {device.status === "Pending" && canApproveDevice && (
-                  <>
-                    <button
-                      type="button"
-                      disabled={approvingId === device._id}
-                      onClick={(e) => handleApproveDevice(e, device._id)}
-                      className="flex items-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400 p-2 rounded-xl hover:bg-emerald-50 dark:hover:bg-emerald-950/40 disabled:opacity-50"
-                      title="Approve Device"
-                    >
-                      {approvingId === device._id ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <CheckCircle2 className="w-4 h-4" />
-                      )}
-                      Approve
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setRejectingDevice(device)}
-                      className="flex items-center gap-1 text-xs font-semibold text-rose-500 dark:text-rose-400 p-2 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/40"
-                      title="Reject Device"
-                    >
-                      <XCircle className="w-4 h-4" />
-                      Reject
-                    </button>
-                  </>
-                )}
+                {device.status === "Pending" &&
+                  canApproveDevice &&
+                  (device.deviceType !== "server" || canManageServer) && (
+                    <>
+                      <button
+                        type="button"
+                        disabled={approvingId === device._id}
+                        onClick={(e) => handleApproveDevice(e, device._id)}
+                        className="flex items-center gap-1 rounded-lg border border-emerald-700 bg-emerald-700 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-800 disabled:opacity-50"
+                        title="Approve Device"
+                      >
+                        {approvingId === device._id ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <CheckCircle2 className="w-4 h-4" />
+                        )}
+                        Approve
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setRejectingDevice(device)}
+                        className="flex items-center gap-1 rounded-lg border border-rose-700 bg-rose-700 px-3 py-2 text-xs font-bold text-white hover:bg-rose-800"
+                        title="Reject Device"
+                      >
+                        <XCircle className="w-4 h-4" />
+                        Reject
+                      </button>
+                    </>
+                  )}
                 {/* Rejection reason for Rejected devices */}
                 {device.status === "Rejected" &&
                   (device.rejectionReason || device.rejectedBy?.reason) && (

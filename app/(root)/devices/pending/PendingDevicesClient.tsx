@@ -456,8 +456,13 @@ export function PendingDevicesClient({
                     <div className="min-w-0 flex-1 space-y-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-mono text-xs font-bold text-sky-600 dark:text-sky-400">
-                          Device #{formatDisplaySL(device.sl)}
+                          #{formatDisplaySL(device.sl)}
                         </span>
+                        {device.apNumber && (
+                          <span className="inline-flex items-center rounded-lg bg-sky-700 px-2.5 py-1 font-mono text-xs font-extrabold text-white shadow-sm dark:bg-sky-800">
+                            AP {device.apNumber}
+                          </span>
+                        )}
                         <h3 className="font-bold text-sm sm:text-base text-slate-900 dark:text-slate-100 truncate">
                           {device.deviceName}
                         </h3>

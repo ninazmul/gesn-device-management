@@ -570,7 +570,7 @@ export function DeviceTable({
                                   onClick={(e) =>
                                     handleApproveDevice(e, device._id)
                                   }
-                                  className="p-1.5 rounded-lg text-emerald-500 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors disabled:opacity-50"
+                                  className="inline-flex items-center gap-1 rounded-lg border border-emerald-700 bg-emerald-700 px-2.5 py-1.5 text-xs font-bold text-white hover:bg-emerald-800 transition-colors disabled:opacity-50"
                                   title="Approve Device"
                                 >
                                   {approvingId === device._id ? (
@@ -578,14 +578,16 @@ export function DeviceTable({
                                   ) : (
                                     <CheckCircle2 className="w-4 h-4" />
                                   )}
+                                  Approve
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => setRejectingDevice(device)}
-                                  className="p-1.5 rounded-lg text-rose-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                                  className="inline-flex items-center gap-1 rounded-lg border border-rose-700 bg-rose-700 px-2.5 py-1.5 text-xs font-bold text-white hover:bg-rose-800 transition-colors"
                                   title="Reject Device"
                                 >
                                   <XCircle className="w-4 h-4" />
+                                  Reject
                                 </button>
                               </>
                             )}
