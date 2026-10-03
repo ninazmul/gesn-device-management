@@ -1,4 +1,4 @@
-import { Network } from "lucide-react";
+import Image from "next/image";
 
 const Layout = ({ children }: { children: React.ReactNode }) => {
   return (
@@ -13,17 +13,19 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
         {/* Sidebar Brand info for desktop */}
         <aside className="relative hidden lg:flex lg:w-5/12 flex-col items-center justify-center border-r border-slate-200/80 dark:border-slate-800 p-8 xl:p-10 text-center bg-slate-50/50 dark:bg-slate-950/30">
           <div className="relative flex flex-col items-center space-y-6">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-500 to-blue-700 shadow-xl shadow-sky-600/25 text-white">
-              <Network className="w-8 h-8" strokeWidth={2.5} />
-            </div>
+            <Image
+              src="/assets/images/logo.png"
+              alt="GESN Device Management"
+              width={260}
+              height={104}
+              className="h-auto w-52 xl:w-60 object-contain drop-shadow-sm"
+              priority
+            />
 
             <div className="space-y-2">
               <span className="inline-flex items-center rounded-full border border-sky-200 dark:border-sky-800/80 bg-sky-50/80 dark:bg-sky-950/50 px-3.5 py-1 text-[11px] font-bold uppercase tracking-wider text-sky-700 dark:text-sky-300">
                 Enterprise Infrastructure
               </span>
-              <h1 className="text-2xl xl:text-3xl font-extrabold leading-tight text-slate-900 dark:text-white tracking-tight">
-                GESN Device Management
-              </h1>
               <p className="max-w-xs text-xs xl:text-sm text-slate-500 dark:text-slate-400">
                 Centralized network inventory, real-time monitoring, and hardware lifecycle control.
               </p>
@@ -34,19 +36,16 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
         {/* Form Container */}
         <main className="relative flex w-full lg:w-7/12 flex-col justify-center items-center p-4 sm:p-8 md:p-10 overflow-y-auto">
           {/* Mobile Header */}
-          <div className="flex flex-col lg:hidden mb-4 sm:mb-6 text-center w-full max-w-sm">
-            <div className="mb-2 flex justify-center items-center gap-2">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-sky-500 to-blue-700 text-white shadow-md shadow-sky-600/20">
-                <Network className="w-4.5 h-4.5" strokeWidth={2.5} />
-              </div>
-              <span className="font-extrabold text-base text-slate-900 dark:text-white">
-                GESN
-              </span>
-            </div>
-            <h1 className="text-lg sm:text-xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-              Device Management
-            </h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+          <div className="flex flex-col items-center lg:hidden mb-4 sm:mb-6 text-center w-full max-w-sm">
+            <Image
+              src="/assets/images/logo.png"
+              alt="GESN Device Management"
+              width={200}
+              height={80}
+              className="h-10 w-auto object-contain mb-2"
+              priority
+            />
+            <p className="text-xs text-slate-500 dark:text-slate-400">
               Enterprise network & device administration
             </p>
           </div>

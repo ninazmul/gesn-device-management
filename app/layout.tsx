@@ -25,7 +25,7 @@ export const metadata: Metadata = {
   description:
     "Enterprise infrastructure and network device management platform.",
   icons: {
-    icon: "/favicon.ico",
+    icon: "/assets/images/logo.png",
   },
   openGraph: {
     type: "website",

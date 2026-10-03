@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { usePermissions } from "@/components/providers/PermissionContext";
 import { AppModule } from "@/types";
@@ -232,20 +233,24 @@ const AppSidebar = () => {
     >
       {/* Brand Header */}
       <SidebarHeader className="p-0">
-        <div className="px-4 py-4 mb-1 flex items-center border-b border-slate-100 dark:border-slate-800 group-data-[collapsible=icon]:hidden">
-          <div className="flex items-center gap-3 w-full">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-sky-500 to-blue-700 shadow-md shadow-sky-900/15 shrink-0">
-              <Network className="w-4.5 h-4.5 text-white" strokeWidth={2.5} />
+        <div className="px-4 py-3.5 mb-1 flex items-center border-b border-slate-100 dark:border-slate-800 group-data-[collapsible=icon]:hidden">
+          <Link href="/" className="flex items-center">
+            <Image
+              src="/assets/images/logo.png"
+              alt="GESN Device Management"
+              width={160}
+              height={64}
+              className="h-8 w-auto object-contain"
+              priority
+            />
+          </Link>
+        </div>
+        <div className="hidden group-data-[collapsible=icon]:flex items-center justify-center py-3 mb-1 border-b border-slate-100 dark:border-slate-800">
+          <Link href="/" className="flex items-center justify-center">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-sky-500 to-blue-700 shadow-sm text-white">
+              <Network className="w-4 h-4" strokeWidth={2.5} />
             </div>
-            <div className="flex flex-col transition-all duration-200">
-              <span className="font-extrabold text-sm tracking-tight text-slate-900 dark:text-slate-100">
-                GESN
-              </span>
-              <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 tracking-widest uppercase">
-                Device Mgmt
-              </span>
-            </div>
-          </div>
+          </Link>
         </div>
       </SidebarHeader>
 

@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
+import Link from "next/link";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { ThemeToggle } from "@/components/shared/ThemeToggle";
 import { GlobalSearchModal } from "@/components/shared/GlobalSearchModal";
@@ -28,14 +30,19 @@ export function Header() {
   return (
     <>
       <header className="sticky top-0 z-20 flex justify-between items-center px-4 sm:px-6 py-3 w-full border-b border-slate-200/80 dark:border-slate-800 bg-white/80 dark:bg-[#0a0e1a]/80 backdrop-blur-md transition-colors">
-        {/* Left: Sidebar toggle + Title */}
+        {/* Left: Sidebar toggle + Logo */}
         <div className="flex items-center gap-3">
           <SidebarTrigger className="h-9 w-9 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/60 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all" />
-          <div className="hidden sm:flex items-center gap-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
-              GESN Device Management
-            </span>
-          </div>
+          <Link href="/" className="flex items-center">
+            <Image
+              src="/assets/images/logo.png"
+              alt="GESN Device Management"
+              width={160}
+              height={64}
+              className="h-7 sm:h-8 w-auto object-contain"
+              priority
+            />
+          </Link>
         </div>
 
         {/* Center/Right: Search, device approvals, notifications, theme, and profile */}

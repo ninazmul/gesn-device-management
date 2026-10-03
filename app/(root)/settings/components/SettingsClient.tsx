@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import {
   Card,
   CardContent,
@@ -129,13 +130,19 @@ export default function SettingsClient() {
           </CardHeader>
           <CardContent className="pt-2">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
-              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 space-y-1">
+              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 space-y-1.5">
                 <span className="text-slate-400 block font-medium">
                   Application
                 </span>
-                <span className="font-bold text-slate-900 dark:text-slate-100 text-sm block">
-                  GESN Device Management
-                </span>
+                <div className="py-0.5">
+                  <Image
+                    src="/assets/images/logo.png"
+                    alt="GESN Device Management"
+                    width={140}
+                    height={56}
+                    className="h-6 w-auto object-contain"
+                  />
+                </div>
                 <span className="text-[11px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1 font-semibold">
                   <CheckCircle2 className="w-3 h-3" /> v0.1.0 Enterprise
                 </span>
