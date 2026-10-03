@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Dialog,
@@ -26,6 +26,10 @@ import {
 } from "@/lib/actions/device.actions";
 import { DeviceStatusBadge } from "./DeviceStatusBadge";
 import type { IDevice } from "@/types";
+import {
+  getStorageDeviceCategoryName,
+  STORAGE_DEVICE_CATEGORIES,
+} from "@/lib/constants";
 
 interface ReturnToStorageDialogProps {
   open: boolean;
@@ -42,15 +46,28 @@ export function ReturnToStorageDialog({
 }: ReturnToStorageDialogProps) {
   const router = useRouter();
   const [identifier, setIdentifier] = useState(initialMac);
+  const [deviceCategory, setDeviceCategory] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [foundDevice, setFoundDevice] = useState<IDevice | null>(null);
   const [searchError, setSearchError] = useState("");
 
+  useEffect(() => {
+    if (!open) return;
+    setIdentifier(initialMac);
+    setDeviceCategory("");
+    setFoundDevice(null);
+    setSearchError("");
+  }, [open, initialMac]);
+
   const handleLookup = async () => {
     const query = identifier.trim();
     if (!query) {
-      toast.error("Please enter a MAC address or Serial Number");
+      toast.error("Please enter a MAC address");
+      return;
+    }
+    if (!deviceCategory) {
+      toast.error("Please select a Device Category");
       return;
     }
 
@@ -83,7 +100,10 @@ export function ReturnToStorageDialog({
 
     setIsSubmitting(true);
     try {
-      const res = await returnDeviceToStorage({ id: foundDevice._id });
+      const res = await returnDeviceToStorage({
+        macAddress: identifier,
+        deviceCategory,
+      });
       if (res.success) {
         toast.success(res.message || "Device returned to storage!");
         onOpenChange(false);
@@ -95,6 +115,7 @@ export function ReturnToStorageDialog({
     } catch (err: unknown) {
       const msg =
         err instanceof Error ? err.message : "Failed to return device to storage";
+      setSearchError(msg);
       toast.error(msg);
     } finally {
       setIsSubmitting(false);
@@ -103,9 +124,17 @@ export function ReturnToStorageDialog({
 
   const handleReset = () => {
     setIdentifier("");
+    setDeviceCategory("");
     setFoundDevice(null);
     setSearchError("");
   };
+
+  const categoryMismatch =
+    foundDevice &&
+    deviceCategory &&
+    foundDevice.deviceType !== deviceCategory
+      ? `Device category mismatch. This MAC belongs to ${getStorageDeviceCategoryName(foundDevice.deviceType)}, not ${getStorageDeviceCategoryName(deviceCategory)}.`
+      : "";
 
   return (
     <Dialog
@@ -126,7 +155,7 @@ export function ReturnToStorageDialog({
                 Return to Storage
               </DialogTitle>
               <DialogDescription className="text-xs text-slate-500 dark:text-slate-400">
-                Return an active or offline device back to storage inventory.
+                Return a device to Storage using its MAC address and category.
               </DialogDescription>
             </div>
           </div>
@@ -135,18 +164,19 @@ export function ReturnToStorageDialog({
         {/* Lookup input */}
         <div className="space-y-2">
           <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-            Device MAC Address or Serial (SL)
+            MAC Address <span className="text-rose-500">*</span>
           </Label>
           <div className="flex items-center gap-2">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <Input
                 type="text"
-                placeholder="AA:BB:CC:DD:EE:FF or SL"
+                placeholder="AA:BB:CC:DD:EE:FF"
                 value={identifier}
                 onChange={(e) => {
                   setIdentifier(e.target.value);
                   setSearchError("");
+                  setFoundDevice(null);
                 }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
@@ -157,20 +187,50 @@ export function ReturnToStorageDialog({
                 className="pl-9 font-mono text-xs sm:text-sm uppercase rounded-xl border-slate-200 dark:border-slate-800"
               />
             </div>
-            <Button
-              type="button"
-              onClick={handleLookup}
-              disabled={isSearching || !identifier.trim()}
-              className="bg-[#0066ff] hover:bg-[#0055e0] text-white font-bold text-xs sm:text-sm px-4 rounded-xl shrink-0"
-            >
-              {isSearching ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                "Lookup"
-              )}
-            </Button>
           </div>
         </div>
+
+        <div className="space-y-2">
+          <Label
+            htmlFor="storage-return-category"
+            className="text-xs font-semibold text-slate-700 dark:text-slate-300"
+          >
+            Device Category <span className="text-rose-500">*</span>
+          </Label>
+          <select
+            id="storage-return-category"
+            required
+            value={deviceCategory}
+            onChange={(e) => {
+              setDeviceCategory(e.target.value);
+              setSearchError("");
+            }}
+            disabled={isSearching || isSubmitting}
+            className="w-full h-10 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[#0066ff]/20 focus:border-[#0066ff] disabled:opacity-60"
+          >
+            <option value="" disabled>
+              Select Device Category
+            </option>
+            {STORAGE_DEVICE_CATEGORIES.map((category) => (
+              <option key={category.slug} value={category.slug}>
+                {category.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <Button
+          type="button"
+          onClick={handleLookup}
+          disabled={isSearching || !identifier.trim() || !deviceCategory}
+          className="w-full bg-[#0066ff] hover:bg-[#0055e0] text-white font-bold text-xs sm:text-sm py-2.5 rounded-xl"
+        >
+          {isSearching ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            "Lookup"
+          )}
+        </Button>
 
         {/* Error message */}
         {searchError && (
@@ -186,7 +246,7 @@ export function ReturnToStorageDialog({
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
                 <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 block">
-                  {foundDevice.deviceType} • #{foundDevice.sl}
+                  {getStorageDeviceCategoryName(foundDevice.deviceType)} • #{foundDevice.sl}
                 </span>
                 <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100 truncate">
                   {foundDevice.deviceName || foundDevice.deviceType}
@@ -218,7 +278,12 @@ export function ReturnToStorageDialog({
               )}
             </div>
 
-            {foundDevice.status === "Available" ? (
+            {categoryMismatch ? (
+              <div className="p-2.5 rounded-lg bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 flex items-start gap-2 text-xs text-rose-700 dark:text-rose-400 font-medium">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                <span>{categoryMismatch}</span>
+              </div>
+            ) : foundDevice.status === "Available" ? (
               <div className="p-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/50 flex items-center gap-2 text-xs text-emerald-700 dark:text-emerald-400 font-medium">
                 <CheckCircle2 className="w-4 h-4 shrink-0" />
                 <span>This device is already in Storage (Available).</span>
@@ -227,7 +292,7 @@ export function ReturnToStorageDialog({
               <Button
                 type="button"
                 onClick={handleConfirmReturn}
-                disabled={isSubmitting}
+                disabled={isSubmitting || !deviceCategory}
                 className="w-full bg-[#0066ff] hover:bg-[#0055e0] text-white font-bold text-xs sm:text-sm py-2.5 rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all"
               >
                 {isSubmitting ? (
@@ -238,7 +303,7 @@ export function ReturnToStorageDialog({
                 ) : (
                   <>
                     <RotateCcw className="w-4 h-4" />
-                    <span>Confirm Return to Storage</span>
+                    <span>Return to Storage</span>
                   </>
                 )}
               </Button>

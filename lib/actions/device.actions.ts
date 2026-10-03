@@ -12,6 +12,8 @@ import {
   DEVICE_REJECTION_REASONS,
   DEVICE_STATUSES,
   PRIMARY_DEVICE_TYPES,
+  STORAGE_DEVICE_CATEGORIES,
+  getStorageDeviceCategoryName,
 } from "@/lib/constants";
 import {
   getFlexibleField,
@@ -39,6 +41,43 @@ function safeRevalidatePath(path: string) {
     revalidatePath(path);
   } catch {
     // Gracefully ignore when executed outside Next.js request context (e.g. scripts/tests)
+  }
+}
+
+function canSelectConnectedServer(
+  actor: Awaited<ReturnType<typeof getCurrentAdminProfile>>,
+) {
+  if (!actor) return false;
+  return (
+    actor.role === "super_admin" ||
+    actor.role === "engineer" ||
+    Boolean(actor.granularPermissions?.server_view) ||
+    (actor.permissions?.devices === "write" &&
+      Boolean(actor.granularPermissions?.device_add))
+  );
+}
+
+const SELECTABLE_SERVER_STATUSES = ["Retired", "Pending", "Rejected"] as const;
+
+async function validateConnectedServer(
+  actor: NonNullable<Awaited<ReturnType<typeof getCurrentAdminProfile>>>,
+  serverId: string,
+) {
+  if (!canSelectConnectedServer(actor)) {
+    throw new Error(
+      "Forbidden: You do not have permission to select a Connected Server.",
+    );
+  }
+
+  const serverExists = await Device.exists({
+    _id: serverId,
+    deviceType: "server",
+    status: { $nin: SELECTABLE_SERVER_STATUSES },
+  });
+  if (!serverExists) {
+    throw new Error(
+      "The selected Connected Server is unavailable or you do not have access to it.",
+    );
   }
 }
 
@@ -119,17 +158,11 @@ export async function getAvailableServers(): Promise<IServerOption[]> {
   const actor = await requirePermission("devices", "read");
   await connectToDatabase();
 
-  const isSuperAdmin = actor.role === "super_admin";
-  const isEngineer = actor.role === "engineer";
-  const canViewServer =
-    isSuperAdmin ||
-    isEngineer ||
-    Boolean(actor.granularPermissions?.server_view);
-  if (!canViewServer) return [];
+  if (!canSelectConnectedServer(actor)) return [];
 
   const servers = await Device.find({
     deviceType: "server",
-    status: { $nin: ["Retired", "Pending", "Rejected"] },
+    status: { $nin: SELECTABLE_SERVER_STATUSES },
   })
     .select("sl deviceName ipAddress status")
     .sort({ deviceName: 1 })
@@ -537,6 +570,10 @@ export async function createDevice(data: {
       throw new Error("Location / GPS Link is required for Antenna");
     if (!data.description?.trim())
       throw new Error("Description is required for Antenna");
+  }
+
+  if (data.server && type !== "server") {
+    await validateConnectedServer(actor, data.server);
   }
 
   // IP Address is optional
@@ -1624,17 +1661,11 @@ export async function checkDeviceByMac(macInput: string) {
   }
 
   const normalized = normalizeMAC(trimmed);
-  // Match by normalized MAC or fallback regex on raw macAddress, sl
-  const query: FilterQuery<typeof Device> = normalized
-    ? { macAddress: normalized }
-    : {
-        $or: [
-          { macAddress: new RegExp(trimmed.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i") },
-          { sl: new RegExp(trimmed.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i") },
-        ],
-      };
+  if (!normalized) {
+    throw new Error("Invalid MAC Address format. Example: AA:BB:CC:DD:EE:FF");
+  }
 
-  const device = (await Device.findOne(query)
+  const device = (await Device.findOne({ macAddress: normalized })
     .populate("server", "deviceName sl")
     .populate("uplinkSwitch", "deviceName sl")
     .lean()) as IDevice | null;
@@ -1665,32 +1696,43 @@ export async function checkDeviceByMac(macInput: string) {
 // RETURN DEVICE TO STORAGE
 // ==========================================
 export async function returnDeviceToStorage(params: {
-  id?: string;
-  macAddress?: string;
+  macAddress: string;
+  deviceCategory: string;
 }) {
   const actor = await requirePermission("devices", "write");
   await connectToDatabase();
 
   const isSuperAdmin = actor.role === "super_admin";
-  if (!isSuperAdmin && !actor.granularPermissions?.device_edit) {
+  if (
+    !isSuperAdmin &&
+    !actor.granularPermissions?.device_edit &&
+    !actor.granularPermissions?.device_add
+  ) {
     throw new Error(
       "Forbidden: You do not have permission to return devices to storage.",
     );
   }
 
-  let device;
-  if (params.id) {
-    device = await Device.findById(params.id);
-  } else if (params.macAddress) {
-    const raw = params.macAddress.trim();
-    const normalized = normalizeMAC(raw) || raw.toUpperCase();
-    device = await Device.findOne({
-      $or: [{ macAddress: normalized }, { sl: raw }],
-    });
+  const normalizedMac = normalizeMAC(params.macAddress || "");
+  if (!normalizedMac) {
+    throw new Error("Invalid MAC Address format. Example: AA:BB:CC:DD:EE:FF");
   }
 
+  const device = await Device.findOne({ macAddress: normalizedMac });
   if (!device) {
-    throw new Error("Device not found.");
+    throw new Error(`Device not found for MAC address ${normalizedMac}.`);
+  }
+
+  const selectedCategory = STORAGE_DEVICE_CATEGORIES.find(
+    (category) => category.slug === params.deviceCategory,
+  );
+  if (!selectedCategory) {
+    throw new Error("A valid Device Category is required.");
+  }
+  if (selectedCategory.slug !== device.deviceType) {
+    throw new Error(
+      `Device category mismatch. This MAC belongs to ${getStorageDeviceCategoryName(device.deviceType)}, not ${selectedCategory.name}.`,
+    );
   }
 
   if (device.status === "Available") {
@@ -2270,9 +2312,12 @@ function defaultType(input?: string): string {
 }
 
 // ==========================================
-// ADD DEVICE TO STORAGE (MAC-only form)
+// ADD DEVICE TO STORAGE
 // ==========================================
-export async function addDeviceToStorage(macAddress: string): Promise<{
+export async function addDeviceToStorage(
+  macAddress: string,
+  deviceCategory: string,
+): Promise<{
   success: boolean;
   message: string;
   device?: IDevice;
@@ -2288,7 +2333,6 @@ export async function addDeviceToStorage(macAddress: string): Promise<{
     await connectToDatabase();
 
     const isSuperAdmin = actor.role === "super_admin";
-    const isEngineer = actor.role === "engineer";
     const canAdd =
       isSuperAdmin || Boolean(actor.granularPermissions?.device_add);
     if (!canAdd) {
@@ -2309,6 +2353,16 @@ export async function addDeviceToStorage(macAddress: string): Promise<{
         success: false,
         message:
           "Invalid MAC Address format. Please use a valid format such as AA:BB:CC:DD:EE:FF.",
+      };
+    }
+
+    const category = STORAGE_DEVICE_CATEGORIES.find(
+      (item) => item.slug === deviceCategory,
+    );
+    if (!category) {
+      return {
+        success: false,
+        message: "Please select a valid Device Category.",
       };
     }
 
@@ -2343,19 +2397,9 @@ export async function addDeviceToStorage(macAddress: string): Promise<{
     // Create device as Available (in storage)
     const sl = await getNextSL();
     const deviceName = `STORAGE ${normalized.slice(-5)}`;
-    const canDirectlyActivate = isSuperAdmin || isEngineer;
-
-    if (!canDirectlyActivate) {
-      return {
-        success: false,
-        message:
-          "Only Super Admins and Engineers can directly add devices to storage.",
-      };
-    }
-
     const device = await Device.create({
       sl,
-      deviceType: "antenna", // default type for storage-only devices
+      deviceType: category.slug,
       deviceName,
       macAddress: normalized,
       status: "Available",
@@ -2374,7 +2418,7 @@ export async function addDeviceToStorage(macAddress: string): Promise<{
       module: "devices",
       resourceId: sl,
       resourceName: `Storage Device (${sl})`,
-      details: `Added device with MAC: ${normalized} directly to Storage (SL: ${sl}).`,
+      details: `Added ${category.name} device with MAC: ${normalized} directly to Storage (SL: ${sl}).`,
       link: `/devices`,
     });
 
@@ -2395,4 +2439,3 @@ export async function addDeviceToStorage(macAddress: string): Promise<{
     };
   }
 }
-

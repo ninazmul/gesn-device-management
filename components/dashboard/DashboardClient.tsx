@@ -36,13 +36,16 @@ import { DeviceStatusBadge } from "@/components/devices/DeviceStatusBadge";
 import { GlobalSearchModal } from "@/components/shared/GlobalSearchModal";
 import {
   checkDeviceByMac,
-  returnDeviceToStorage,
   addDeviceToStorage,
 } from "@/lib/actions/device.actions";
 import type { DashboardStats, IDevice } from "@/types";
 import { usePermissions } from "@/components/providers/PermissionContext";
 import { formatDisplaySL, formatCurrency, formatDate } from "@/lib/utils";
-import { CUSTOMER_SERVICE_TYPE_CONFIG } from "@/lib/constants";
+import {
+  CUSTOMER_SERVICE_TYPE_CONFIG,
+  getStorageDeviceCategoryName,
+  STORAGE_DEVICE_CATEGORIES,
+} from "@/lib/constants";
 
 type AwaitingCollectionCustomer = NonNullable<
   DashboardStats["awaitingCollectionCustomers"]
@@ -232,6 +235,7 @@ export function DashboardClient({ stats }: DashboardClientProps) {
 
   // Storage & check device states
   const [returnToStorageOpen, setReturnToStorageOpen] = useState(false);
+  const [returnInitialMac, setReturnInitialMac] = useState("");
   const [isCheckDeviceOpen, setIsCheckDeviceOpen] = useState(true);
   const [checkMacInput, setCheckMacInput] = useState("");
   const [isCheckingDevice, setIsCheckingDevice] = useState(false);
@@ -242,12 +246,11 @@ export function DashboardClient({ stats }: DashboardClientProps) {
     device?: IDevice;
     message?: string;
   } | null>(null);
-  const [isQuickReturning, setIsQuickReturning] = useState(false);
-  const [createInitialMac, setCreateInitialMac] = useState("");
 
   // Storage Add modal states
   const [storageAddOpen, setStorageAddOpen] = useState(false);
   const [storageAddMac, setStorageAddMac] = useState("");
+  const [storageAddCategory, setStorageAddCategory] = useState("");
   const [isAddingToStorage, setIsAddingToStorage] = useState(false);
   const [storageAddResult, setStorageAddResult] = useState<{
     success: boolean;
@@ -261,14 +264,19 @@ export function DashboardClient({ stats }: DashboardClientProps) {
       toast.error("Please enter a MAC address");
       return;
     }
+    if (!storageAddCategory) {
+      toast.error("Please select a Device Category");
+      return;
+    }
     setIsAddingToStorage(true);
     setStorageAddResult(null);
     try {
-      const res = await addDeviceToStorage(mac);
+      const res = await addDeviceToStorage(mac, storageAddCategory);
       setStorageAddResult(res);
       if (res.success) {
         toast.success(res.message);
         setStorageAddMac("");
+        setStorageAddCategory("");
         router.refresh();
       } else {
         toast.error(res.message);
@@ -296,6 +304,11 @@ export function DashboardClient({ stats }: DashboardClientProps) {
     setCreateDialogOpen(true);
   };
 
+  const openReturnToStorage = (macAddress = "") => {
+    setReturnInitialMac(macAddress);
+    setReturnToStorageOpen(true);
+  };
+
   const handleCheckDevice = async () => {
     const term = checkMacInput.trim();
     if (!term) {
@@ -321,27 +334,6 @@ export function DashboardClient({ stats }: DashboardClientProps) {
       toast.error(msg);
     } finally {
       setIsCheckingDevice(false);
-    }
-  };
-
-  const handleQuickReturn = async (deviceId: string) => {
-    setIsQuickReturning(true);
-    try {
-      const res = await returnDeviceToStorage({ id: deviceId });
-      if (res.success) {
-        toast.success(res.message || "Device returned to storage!");
-        router.refresh();
-        if (checkMacInput) {
-          const updated = await checkDeviceByMac(checkMacInput);
-          setCheckResult(updated);
-        }
-      }
-    } catch (err: unknown) {
-      const msg =
-        err instanceof Error ? err.message : "Failed to return device to storage";
-      toast.error(msg);
-    } finally {
-      setIsQuickReturning(false);
     }
   };
 
@@ -635,6 +627,7 @@ export function DashboardClient({ stats }: DashboardClientProps) {
                 id="storage-add-btn"
                 onClick={() => {
                   setStorageAddMac("");
+                  setStorageAddCategory("");
                   setStorageAddResult(null);
                   setStorageAddOpen(true);
                 }}
@@ -650,7 +643,7 @@ export function DashboardClient({ stats }: DashboardClientProps) {
               <button
                 type="button"
                 id="storage-return-btn"
-                onClick={() => setReturnToStorageOpen(true)}
+                onClick={() => openReturnToStorage()}
                 className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg font-bold text-xs border border-[#0066ff] text-[#0066ff] hover:bg-blue-50/60 dark:hover:bg-blue-950/40 active:scale-[0.97] transition-all shrink-0 whitespace-nowrap"
               >
                 <RotateCcw className="w-3 h-3" />
@@ -688,7 +681,7 @@ export function DashboardClient({ stats }: DashboardClientProps) {
                   </div>
                   <button
                     type="button"
-                    onClick={() => { setStorageAddOpen(false); setStorageAddResult(null); }}
+                    onClick={() => { setStorageAddOpen(false); setStorageAddResult(null); setStorageAddCategory(""); }}
                     className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                   >
                     <X className="w-4 h-4" />
@@ -712,6 +705,35 @@ export function DashboardClient({ stats }: DashboardClientProps) {
                     autoFocus
                   />
                   <p className="text-[11px] text-slate-400 dark:text-slate-500">Enter the MAC address of the device to add to storage.</p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label
+                    htmlFor="storage-add-category"
+                    className="text-xs font-semibold text-slate-700 dark:text-slate-300 block"
+                  >
+                    Device Category <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    id="storage-add-category"
+                    required
+                    value={storageAddCategory}
+                    onChange={(e) => {
+                      setStorageAddCategory(e.target.value);
+                      setStorageAddResult(null);
+                    }}
+                    disabled={isAddingToStorage}
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0066ff]/20 focus:border-[#0066ff] transition-all disabled:opacity-60"
+                  >
+                    <option value="" disabled>
+                      Select Device Category
+                    </option>
+                    {STORAGE_DEVICE_CATEGORIES.map((category) => (
+                      <option key={category.slug} value={category.slug}>
+                        {category.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 {/* Result feedback */}
@@ -743,7 +765,7 @@ export function DashboardClient({ stats }: DashboardClientProps) {
                   type="button"
                   id="storage-add-submit-btn"
                   onClick={handleStorageAdd}
-                  disabled={isAddingToStorage || !storageAddMac.trim()}
+                  disabled={isAddingToStorage || !storageAddMac.trim() || !storageAddCategory}
                   className="w-full py-2.5 rounded-xl bg-[#0066ff] hover:bg-[#0055e0] active:scale-[0.99] text-white font-bold text-sm shadow-xs transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isAddingToStorage ? (
@@ -776,7 +798,7 @@ export function DashboardClient({ stats }: DashboardClientProps) {
 
               <div>
                 <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1.5">
-                  MAC Address
+                  MAC Address <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -814,7 +836,7 @@ export function DashboardClient({ stats }: DashboardClientProps) {
               </button>
 
               <p className="text-xs text-slate-400 dark:text-slate-500 text-center">
-                Enter a MAC address to check if it is already in storage.
+                Enter a MAC address to check the device category and current status.
               </p>
 
               {/* Result display */}
@@ -832,22 +854,16 @@ export function DashboardClient({ stats }: DashboardClientProps) {
                         </div>
                         <div className="grid grid-cols-2 gap-2 text-xs text-slate-700 dark:text-slate-300 pt-1 border-t border-emerald-200/60 dark:border-emerald-800/40">
                           <div>
-                            <span className="text-slate-400 block text-[10px]">Device:</span>
-                            <span className="font-semibold text-slate-900 dark:text-slate-100">
-                              {checkResult.device.deviceName || checkResult.device.deviceType} (#{checkResult.device.sl})
-                            </span>
-                          </div>
-                          <div>
-                            <span className="text-slate-400 block text-[10px]">Type:</span>
-                            <span className="capitalize font-medium">{checkResult.device.deviceType}</span>
+                            <span className="text-slate-400 block text-[10px]">Category:</span>
+                            <span className="font-medium">{getStorageDeviceCategoryName(checkResult.device.deviceType)}</span>
                           </div>
                           <div>
                             <span className="text-slate-400 block text-[10px]">MAC Address:</span>
                             <span className="font-mono text-[11px]">{checkResult.device.macAddress}</span>
                           </div>
-                          <div>
-                            <span className="text-slate-400 block text-[10px]">IP Address:</span>
-                            <span className="font-mono text-[11px]">{checkResult.device.ipAddress || "—"}</span>
+                          <div className="col-span-2">
+                            <span className="text-slate-400 block text-[10px]">Status:</span>
+                            <span className="font-semibold text-emerald-700 dark:text-emerald-300">In Storage</span>
                           </div>
                         </div>
                         <div className="pt-1 flex justify-end">
@@ -865,7 +881,7 @@ export function DashboardClient({ stats }: DashboardClientProps) {
                         <div className="flex items-center justify-between gap-2">
                           <div className="flex items-center gap-2 text-amber-900 dark:text-amber-200 font-bold text-xs sm:text-sm">
                             <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
-                            <span>Device is NOT in Storage (Currently {checkResult.device.status})</span>
+                            <span>Device is not in Storage</span>
                           </div>
                           <DeviceStatusBadge status={checkResult.device.status} />
                         </div>
@@ -877,8 +893,16 @@ export function DashboardClient({ stats }: DashboardClientProps) {
                             </span>
                           </div>
                           <div>
-                            <span className="text-slate-400 block text-[10px]">Type:</span>
-                            <span className="capitalize font-medium">{checkResult.device.deviceType}</span>
+                            <span className="text-slate-400 block text-[10px]">Category:</span>
+                            <span className="font-medium">{getStorageDeviceCategoryName(checkResult.device.deviceType)}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400 block text-[10px]">MAC Address:</span>
+                            <span className="font-mono text-[11px]">{checkResult.device.macAddress}</span>
+                          </div>
+                          <div className="col-span-2">
+                            <span className="text-slate-400 block text-[10px]">Status:</span>
+                            <span className="font-semibold">{checkResult.device.status}</span>
                           </div>
                           {checkResult.device.customerName && (
                             <div className="col-span-2">
@@ -889,22 +913,23 @@ export function DashboardClient({ stats }: DashboardClientProps) {
                             </div>
                           )}
                         </div>
-                        {canWriteDevices && (
+                        {canWriteDevices &&
+                          STORAGE_DEVICE_CATEGORIES.some(
+                            (category) =>
+                              category.slug === checkResult.device?.deviceType,
+                          ) && (
                           <div className="pt-2 flex items-center justify-between gap-2 flex-wrap border-t border-amber-200/60 dark:border-amber-800/40">
                             <span className="text-[11px] text-amber-800 dark:text-amber-300">
                               Need to return this device to inventory?
                             </span>
                             <button
                               type="button"
-                              onClick={() => handleQuickReturn(checkResult.device!._id)}
-                              disabled={isQuickReturning}
+                              onClick={() =>
+                                openReturnToStorage(checkResult.device!.macAddress || "")
+                              }
                               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0066ff] hover:bg-[#0055e0] text-white font-bold text-xs transition-colors"
                             >
-                              {isQuickReturning ? (
-                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                              ) : (
-                                <RotateCcw className="w-3.5 h-3.5" />
-                              )}
+                              <RotateCcw className="w-3.5 h-3.5" />
                               <span>Return to Storage</span>
                             </button>
                           </div>
@@ -915,7 +940,7 @@ export function DashboardClient({ stats }: DashboardClientProps) {
                     <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-2.5">
                       <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300 font-bold text-xs sm:text-sm">
                         <AlertCircle className="w-4 h-4 text-slate-400 shrink-0" />
-                        <span>Device Not Found</span>
+                        <span>Device not found</span>
                       </div>
                       <p className="text-xs text-slate-500 dark:text-slate-400">
                         No device registered with MAC address: <span className="font-mono font-bold text-slate-700 dark:text-slate-200">{checkResult.searchedMac || checkMacInput}</span>. It is not currently in storage.
@@ -925,8 +950,10 @@ export function DashboardClient({ stats }: DashboardClientProps) {
                           <button
                             type="button"
                             onClick={() => {
-                              setCreateInitialMac(checkMacInput);
-                              openCreateFor("antenna");
+                              setStorageAddMac(checkResult.searchedMac || checkMacInput);
+                              setStorageAddCategory("");
+                              setStorageAddResult(null);
+                              setStorageAddOpen(true);
                             }}
                             className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#0066ff] hover:bg-[#0055e0] text-white font-bold text-xs transition-colors"
                           >
@@ -1487,14 +1514,11 @@ export function DashboardClient({ stats }: DashboardClientProps) {
         open={createDialogOpen}
         onOpenChange={(v) => {
           setCreateDialogOpen(v);
-          if (!v) setCreateInitialMac("");
         }}
         defaultDeviceType={createType}
-        initialMacAddress={createInitialMac}
         hideDeviceType={false}
         onSuccess={() => {
           setCreateDialogOpen(false);
-          setCreateInitialMac("");
           router.refresh();
         }}
       />
@@ -1502,9 +1526,24 @@ export function DashboardClient({ stats }: DashboardClientProps) {
       {/* Return To Storage Dialog */}
       <ReturnToStorageDialog
         open={returnToStorageOpen}
-        onOpenChange={setReturnToStorageOpen}
+        initialMac={returnInitialMac}
+        onOpenChange={(open) => {
+          setReturnToStorageOpen(open);
+          if (!open) setReturnInitialMac("");
+        }}
         onSuccess={() => {
           router.refresh();
+          if (returnInitialMac) {
+            checkDeviceByMac(returnInitialMac)
+              .then(setCheckResult)
+              .catch((err: unknown) => {
+                toast.error(
+                  err instanceof Error
+                    ? err.message
+                    : "Failed to refresh the device check",
+                );
+              });
+          }
         }}
       />
 

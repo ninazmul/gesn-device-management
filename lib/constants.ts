@@ -11,6 +11,23 @@ export const PRIMARY_DEVICE_TYPES = [
   { slug: "router", name: "Router", isProtected: true, icon: "Router" },
 ] as const;
 
+export const STORAGE_DEVICE_CATEGORIES = [
+  { slug: "antenna", name: "Antenna" },
+  { slug: "router", name: "Router" },
+  { slug: "access-point", name: "Access Point" },
+  { slug: "switch", name: "Switch" },
+] as const;
+
+export type StorageDeviceCategory =
+  (typeof STORAGE_DEVICE_CATEGORIES)[number]["slug"];
+
+export function getStorageDeviceCategoryName(deviceType: string): string {
+  return (
+    STORAGE_DEVICE_CATEGORIES.find((category) => category.slug === deviceType)
+      ?.name || deviceType
+  );
+}
+
 export const DEVICE_STATUSES = [
   "Pending",
   "Active",
