@@ -369,6 +369,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       : 0,
     inactiveDevices: canReadDevices ? statusCountsMap["Inactive"] || 0 : 0,
     retiredDevices: canReadDevices ? statusCountsMap["Retired"] || 0 : 0,
+    rejectedDevices: canReadDevices ? statusCountsMap["Rejected"] || 0 : 0,
     pendingDevices: canReadDevices
       ? devFacet.pendingCount?.[0]?.total || statusCountsMap["Pending"] || 0
       : 0,

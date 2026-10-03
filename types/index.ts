@@ -297,6 +297,7 @@ export interface DashboardStats {
   maintenanceDevices: number;
   inactiveDevices: number;
   retiredDevices: number;
+  rejectedDevices: number;
   pendingDevices: number;
   byType: Array<{
     type: string;

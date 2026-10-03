@@ -391,7 +391,8 @@ export function DashboardClient({ stats }: DashboardClientProps) {
   const totalServers = stats.serverStats?.totalServers ?? 0;
   const activeServers = stats.serverStats?.activeServers ?? (totalServers || 0);
   const routersCount = stats.serverStats?.routersCount ?? routerCount;
-  const frozenDevices = stats.inactiveDevices ?? 0;
+  const frozenDevices =
+    (stats.inactiveDevices ?? 0) + (stats.rejectedDevices ?? 0);
   const archivedDevices = stats.retiredDevices ?? 0;
 
   // Customer & Billing actual DB stats
@@ -676,7 +677,7 @@ export function DashboardClient({ stats }: DashboardClientProps) {
                 </div>
               </div>
               <Link
-                href="/devices/inactive?status=Inactive"
+                href="/devices/inactive"
                 className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-bold text-[#0066ff] hover:text-[#0055e0] transition-colors shrink-0 group"
               >
                 <span>View Devices</span>
