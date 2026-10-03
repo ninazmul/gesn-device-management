@@ -791,10 +791,7 @@ export async function updateDevice(
       date: new Date(),
     };
   } else if (data.status) {
-    const canApprove =
-      isSuperAdmin ||
-      isEngineer ||
-      Boolean(actor.granularPermissions?.device_approve);
+    const canApprove = isSuperAdmin || isEngineer;
     if (
       (data.status === "Active" || data.status === "Rejected") &&
       !canApprove &&
@@ -913,10 +910,7 @@ export async function approveDevice(id: string) {
 
   const isSuperAdmin = actor.role === "super_admin";
   const isEngineer = actor.role === "engineer";
-  const canApprove =
-    isSuperAdmin ||
-    isEngineer ||
-    Boolean(actor.granularPermissions?.device_approve);
+  const canApprove = isSuperAdmin || isEngineer;
 
   if (!canApprove) {
     throw new Error(
@@ -1049,10 +1043,7 @@ export async function rejectDevice(id: string, reason: string) {
 
   const isSuperAdmin = actor.role === "super_admin";
   const isEngineer = actor.role === "engineer";
-  const canApprove =
-    isSuperAdmin ||
-    isEngineer ||
-    Boolean(actor.granularPermissions?.device_approve);
+  const canApprove = isSuperAdmin || isEngineer;
 
   if (!canApprove) {
     throw new Error(
@@ -1358,10 +1349,7 @@ export async function updateDeviceStatus(
 
   const isSuperAdmin = actor.role === "super_admin";
   const isEngineer = actor.role === "engineer";
-  const canApprove =
-    isSuperAdmin ||
-    isEngineer ||
-    Boolean(actor.granularPermissions?.device_approve);
+  const canApprove = isSuperAdmin || isEngineer;
 
   if ((status === "Active" || status === "Rejected") && !canApprove) {
     throw new Error(
@@ -1462,10 +1450,7 @@ export async function toggleDeviceActive(id: string) {
 
   const isSuperAdmin = actor.role === "super_admin";
   const isEngineer = actor.role === "engineer";
-  const canApprove =
-    isSuperAdmin ||
-    isEngineer ||
-    Boolean(actor.granularPermissions?.device_approve);
+  const canApprove = isSuperAdmin || isEngineer;
 
   if (!canApprove) {
     throw new Error(
