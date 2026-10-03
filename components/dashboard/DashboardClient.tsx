@@ -4,7 +4,6 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  Wifi,
   Network,
   ChevronRight,
   Search,
@@ -38,6 +37,7 @@ import { GlobalSearchModal } from "@/components/shared/GlobalSearchModal";
 import {
   checkDeviceByMac,
   returnDeviceToStorage,
+  addDeviceToStorage,
 } from "@/lib/actions/device.actions";
 import type { DashboardStats, IDevice } from "@/types";
 import { usePermissions } from "@/components/providers/PermissionContext";
@@ -65,75 +65,82 @@ type CollectBill = Pick<
 >;
 
 // ==========================================
-// CUSTOM ICONS TAILORED TO DASHBOARD THEME
+// DEVICE ICONS — Realistic hardware-style
 // ==========================================
+
+/** Dish antenna icon (LiteBeam / dish-style) */
 function AntennaIcon({ className }: { className?: string }) {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className || "w-5 h-5"}
-    >
-      <path d="M12 2v20" />
-      <path d="m8 6 8-4" />
-      <path d="m8 18 8-4" />
-      <path d="M4 10a12 12 0 0 1 0 4" />
-      <path d="M20 10a12 12 0 0 0 0 4" />
-      <circle cx="12" cy="12" r="2" />
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className || "w-5 h-5"}>
+      {/* dish */}
+      <ellipse cx="12" cy="13" rx="9" ry="5" fill="currentColor" opacity="0.15" />
+      <path d="M3 13 Q12 4 21 13" stroke="currentColor" strokeWidth="2" fill="none" />
+      {/* feed arm */}
+      <line x1="12" y1="13" x2="12" y2="8" stroke="currentColor" strokeWidth="2" />
+      {/* mast */}
+      <line x1="12" y1="13" x2="12" y2="21" stroke="currentColor" strokeWidth="2" />
+      <circle cx="12" cy="8" r="1.5" fill="currentColor" />
+      {/* base */}
+      <line x1="9" y1="21" x2="15" y2="21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
     </svg>
   );
 }
 
+/** Round ceiling Access Point (Grandstream-style) */
 function AccessPointIcon({ className }: { className?: string }) {
-  return <Wifi className={className || "w-5 h-5"} />;
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className || "w-5 h-5"}>
+      {/* outer ring */}
+      <circle cx="12" cy="12" r="10" fill="currentColor" opacity="0.1" />
+      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.5" fill="none" />
+      {/* inner ring */}
+      <circle cx="12" cy="12" r="6" stroke="currentColor" strokeWidth="1.5" fill="none" opacity="0.6" />
+      {/* center dot */}
+      <circle cx="12" cy="12" r="2.5" fill="currentColor" />
+      {/* mount point */}
+      <line x1="12" y1="2" x2="12" y2="4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
 }
 
+/** TP-Link style router with 3 antennas */
 function CustomRouterIcon({ className }: { className?: string }) {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className || "w-5 h-5"}
-    >
-      <rect width="20" height="8" x="2" y="14" rx="2" />
-      <path d="M6 18h.01" />
-      <path d="M10 18h.01" />
-      <path d="M15 10v4" />
-      <path d="M17.8 7.2a4 4 0 0 0-5.6 0" />
-      <path d="M20.6 4.4a8 8 0 0 0-11.2 0" />
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className || "w-5 h-5"}>
+      {/* antennas */}
+      <line x1="7" y1="11" x2="5" y2="4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <line x1="12" y1="11" x2="12" y2="3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <line x1="17" y1="11" x2="19" y2="4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      {/* body */}
+      <rect x="3" y="11" width="18" height="8" rx="2.5" fill="currentColor" />
+      {/* LEDs */}
+      <circle cx="7" cy="15" r="1" fill="white" />
+      <circle cx="10.5" cy="15" r="1" fill="white" />
+      <circle cx="14" cy="15" r="1" fill="white" />
+      {/* WAN port indicator */}
+      <rect x="16" y="13" width="3" height="4" rx="0.5" fill="white" opacity="0.5" />
     </svg>
   );
 }
 
+/** Network switch — front-facing port view */
 function SwitchIcon({ className }: { className?: string }) {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className || "w-5 h-5"}
-    >
-      <rect x="2" y="4" width="20" height="7" rx="2" />
-      <rect x="2" y="15" width="20" height="7" rx="2" />
-      <circle cx="6" cy="7.5" r="1" fill="currentColor" />
-      <circle cx="10" cy="7.5" r="1" fill="currentColor" />
-      <circle cx="14" cy="7.5" r="1" fill="currentColor" />
-      <circle cx="18" cy="7.5" r="1" fill="currentColor" />
-      <circle cx="6" cy="18.5" r="1" fill="currentColor" />
-      <circle cx="10" cy="18.5" r="1" fill="currentColor" />
-      <circle cx="14" cy="18.5" r="1" fill="currentColor" />
-      <circle cx="18" cy="18.5" r="1" fill="currentColor" />
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className || "w-5 h-5"}>
+      {/* chassis */}
+      <rect x="1" y="7" width="22" height="10" rx="2" fill="currentColor" />
+      {/* ports row 1 */}
+      <rect x="3.5" y="9.5" width="2.5" height="3" rx="0.4" fill="white" opacity="0.9" />
+      <rect x="7" y="9.5" width="2.5" height="3" rx="0.4" fill="white" opacity="0.9" />
+      <rect x="10.5" y="9.5" width="2.5" height="3" rx="0.4" fill="white" opacity="0.9" />
+      <rect x="14" y="9.5" width="2.5" height="3" rx="0.4" fill="white" opacity="0.9" />
+      <rect x="17.5" y="9.5" width="2.5" height="3" rx="0.4" fill="white" opacity="0.9" />
+      {/* ports row 2 */}
+      <rect x="3.5" y="13.5" width="2.5" height="2" rx="0.4" fill="white" opacity="0.5" />
+      <rect x="7" y="13.5" width="2.5" height="2" rx="0.4" fill="white" opacity="0.5" />
+      <rect x="10.5" y="13.5" width="2.5" height="2" rx="0.4" fill="white" opacity="0.5" />
+      <rect x="14" y="13.5" width="2.5" height="2" rx="0.4" fill="white" opacity="0.5" />
+      <rect x="17.5" y="13.5" width="2.5" height="2" rx="0.4" fill="white" opacity="0.5" />
     </svg>
   );
 }
@@ -159,71 +166,6 @@ function ServerStackIcon({ className }: { className?: string }) {
   );
 }
 
-function AntennaTowerCardIcon({ className = "w-7 h-7 text-[#00bcd4]" }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <path d="M8.5 20l3.5-13 3.5 13" />
-      <path d="M9.5 15h5" />
-      <circle cx="12" cy="6" r="1.5" fill="currentColor" />
-      <path d="M5 9a7 7 0 0 0 0 6" />
-      <path d="M2.5 7a10 10 0 0 0 0 10" />
-      <path d="M19 9a7 7 0 0 1 0 6" />
-      <path d="M21.5 7a10 10 0 0 1 0 10" />
-    </svg>
-  );
-}
-
-function RouterCardIcon({ className = "w-7 h-7 text-[#0066ff]" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
-      <rect x="6" y="4" width="2" height="7" rx="1" />
-      <rect x="16" y="4" width="2" height="7" rx="1" />
-      <rect x="2" y="11" width="20" height="9" rx="3" />
-      <circle cx="7" cy="15.5" r="1" fill="white" />
-      <circle cx="12" cy="15.5" r="1" fill="white" />
-      <circle cx="17" cy="15.5" r="1" fill="white" />
-    </svg>
-  );
-}
-
-function SwitchCardIcon({ className = "w-7 h-7 text-[#10b981]" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
-      <rect x="2" y="7" width="20" height="10" rx="3" />
-      <rect x="5" y="11" width="2.5" height="2" rx="0.5" fill="white" />
-      <rect x="9.5" y="11" width="2.5" height="2" rx="0.5" fill="white" />
-      <rect x="14" y="11" width="2.5" height="2" rx="0.5" fill="white" />
-      <rect x="18.5" y="11" width="2.5" height="2" rx="0.5" fill="white" />
-    </svg>
-  );
-}
-
-function StorageWarehouseIcon({ className = "w-7 h-7 text-[#0066ff]" }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <path d="M3 9.5 12 4l9 5.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5Z" />
-      <path d="M8 21v-7a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v7" />
-      <path d="M10 16h4v4h-4z" />
-    </svg>
-  );
-}
-
 function StorageBoxIcon({ className = "w-4 h-4 text-[#0066ff]" }: { className?: string }) {
   return (
     <svg
@@ -242,7 +184,7 @@ function StorageBoxIcon({ className = "w-4 h-4 text-[#0066ff]" }: { className?: 
   );
 }
 
-function ArchivedBoxCardIcon({ className = "w-6 h-6 text-[#a855f7]" }: { className?: string }) {
+function ArchivedBoxCardIcon({ className = "w-5 h-5 text-[#a855f7]" }: { className?: string }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -288,7 +230,7 @@ export function DashboardClient({ stats }: DashboardClientProps) {
   const [createType, setCreateType] = useState("antenna");
   const [searchModalOpen, setSearchModalOpen] = useState(false);
 
-  // New storage & check device states
+  // Storage & check device states
   const [returnToStorageOpen, setReturnToStorageOpen] = useState(false);
   const [isCheckDeviceOpen, setIsCheckDeviceOpen] = useState(true);
   const [checkMacInput, setCheckMacInput] = useState("");
@@ -302,6 +244,43 @@ export function DashboardClient({ stats }: DashboardClientProps) {
   } | null>(null);
   const [isQuickReturning, setIsQuickReturning] = useState(false);
   const [createInitialMac, setCreateInitialMac] = useState("");
+
+  // Storage Add modal states
+  const [storageAddOpen, setStorageAddOpen] = useState(false);
+  const [storageAddMac, setStorageAddMac] = useState("");
+  const [isAddingToStorage, setIsAddingToStorage] = useState(false);
+  const [storageAddResult, setStorageAddResult] = useState<{
+    success: boolean;
+    message: string;
+    existingDevice?: { sl: string; deviceName: string; status: string; deviceType: string };
+  } | null>(null);
+
+  const handleStorageAdd = async () => {
+    const mac = storageAddMac.trim();
+    if (!mac) {
+      toast.error("Please enter a MAC address");
+      return;
+    }
+    setIsAddingToStorage(true);
+    setStorageAddResult(null);
+    try {
+      const res = await addDeviceToStorage(mac);
+      setStorageAddResult(res);
+      if (res.success) {
+        toast.success(res.message);
+        setStorageAddMac("");
+        router.refresh();
+      } else {
+        toast.error(res.message);
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to add device";
+      toast.error(msg);
+      setStorageAddResult({ success: false, message: msg });
+    } finally {
+      setIsAddingToStorage(false);
+    }
+  };
 
   const handleOpenCollectFor = (
     customer?: CollectCustomer,
@@ -489,281 +468,294 @@ export function DashboardClient({ stats }: DashboardClientProps) {
       {/* SECTION 2: DEVICE OVERVIEW                                                */}
       {/* ========================================================================= */}
       {canReadDevices && (
-        <section className="space-y-3.5 sm:space-y-4">
-          <div className="flex items-center justify-between gap-2">
-            <h2 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100">
+        <section className="space-y-2.5">
+          {/* Header row with column labels */}
+          <div className="flex items-center gap-2">
+            <h2 className="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-slate-100 flex-1">
               Device Overview
             </h2>
+            {/* Column headers — aligned with the data columns below */}
+            <div className="flex items-center shrink-0" style={{ minWidth: 0 }}>
+              <span className="w-16 sm:w-20 text-center text-[10px] sm:text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wide">Online</span>
+              <span className="w-16 sm:w-20 text-center text-[10px] sm:text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wide">Storage</span>
+              <span className="w-12 sm:w-14" />
+            </div>
           </div>
 
-          {/* 2x2 Device Overview Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-            {/* Antenna Card */}
-            <Link
-              href="/devices/antenna"
-              className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 flex items-center gap-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-md hover:border-sky-300 dark:hover:border-sky-700 transition-all duration-150 group"
-            >
-              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-[#e2f7fc] dark:bg-sky-950/60 flex items-center justify-center shrink-0">
-                <AntennaTowerCardIcon className="w-7 h-7 sm:w-8 sm:h-8 text-[#00bcd4] dark:text-sky-400" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100 group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors">
-                  Antenna
-                </h3>
-                <div className="flex items-center gap-6 sm:gap-8 mt-1.5">
-                  <div>
-                    <span className="text-[11px] sm:text-xs text-slate-400 dark:text-slate-500 font-medium block">
-                      Online
-                    </span>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className="w-2.5 h-2.5 rounded-full bg-[#10b981] shrink-0" />
-                      <span className="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight leading-none">
-                        {antennaOnline.toLocaleString()}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="h-8 w-px bg-slate-100 dark:bg-slate-800" />
-                  <div>
-                    <span className="text-[11px] sm:text-xs text-slate-400 dark:text-slate-500 font-medium block">
-                      Storage
-                    </span>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      <StorageBoxIcon className="w-4 h-4 text-[#0066ff] shrink-0" />
-                      <span className="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight leading-none">
-                        {antennaStorage.toLocaleString()}
-                      </span>
-                    </div>
-                  </div>
+          {/* Compact Device List */}
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-[0_1px_3px_rgba(0,0,0,0.04)] divide-y divide-slate-100 dark:divide-slate-800 overflow-hidden">
+            {[
+              {
+                href: "/devices/antenna",
+                label: "Antenna",
+                online: antennaOnline,
+                storage: antennaStorage,
+                iconBg: "bg-[#e2f7fc] dark:bg-sky-950/60",
+                iconColor: "text-[#00bcd4] dark:text-sky-400",
+                hoverBorder: "hover:bg-sky-50/40 dark:hover:bg-sky-950/20",
+                viewColor: "text-[#00bcd4] dark:text-sky-400",
+                Icon: AntennaIcon,
+              },
+              {
+                href: "/devices/access-point",
+                label: "Access Point",
+                online: apOnline,
+                storage: apStorage,
+                iconBg: "bg-[#f5eefc] dark:bg-purple-950/60",
+                iconColor: "text-[#9333ea] dark:text-purple-400",
+                hoverBorder: "hover:bg-purple-50/40 dark:hover:bg-purple-950/20",
+                viewColor: "text-[#9333ea] dark:text-purple-400",
+                Icon: AccessPointIcon,
+              },
+              {
+                href: "/devices/router",
+                label: "Router",
+                online: routerOnline,
+                storage: routerStorage,
+                iconBg: "bg-[#eaf4fd] dark:bg-blue-950/60",
+                iconColor: "text-[#0066ff] dark:text-blue-400",
+                hoverBorder: "hover:bg-blue-50/40 dark:hover:bg-blue-950/20",
+                viewColor: "text-[#0066ff] dark:text-blue-400",
+                Icon: CustomRouterIcon,
+              },
+              {
+                href: "/devices/switch",
+                label: "Switch",
+                online: switchOnline,
+                storage: switchStorage,
+                iconBg: "bg-[#e8f8f0] dark:bg-emerald-950/60",
+                iconColor: "text-[#10b981] dark:text-emerald-400",
+                hoverBorder: "hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20",
+                viewColor: "text-[#10b981] dark:text-emerald-400",
+                Icon: SwitchIcon,
+              },
+            ].map(({ href, label, online, storage, iconBg, iconColor, hoverBorder, viewColor, Icon }) => (
+              <div
+                key={href}
+                className={`flex items-center gap-2 px-3 py-2.5 sm:py-3 sm:px-4 ${hoverBorder} transition-colors`}
+              >
+                {/* Icon */}
+                <div className={`w-8 h-8 sm:w-9 sm:h-9 rounded-xl ${iconBg} flex items-center justify-center shrink-0`}>
+                  <Icon className={`w-4 h-4 sm:w-4.5 sm:h-4.5 ${iconColor}`} />
                 </div>
-              </div>
-            </Link>
 
-            {/* Access Point Card */}
-            <Link
-              href="/devices/access-point"
-              className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 flex items-center gap-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-md hover:border-purple-300 dark:hover:border-purple-700 transition-all duration-150 group"
-            >
-              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-[#f5eefc] dark:bg-purple-950/60 flex items-center justify-center shrink-0">
-                <Wifi className="w-7 h-7 sm:w-8 sm:h-8 text-[#9333ea] dark:text-purple-400" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
-                  Access Point
-                </h3>
-                <div className="flex items-center gap-6 sm:gap-8 mt-1.5">
-                  <div>
-                    <span className="text-[11px] sm:text-xs text-slate-400 dark:text-slate-500 font-medium block">
-                      Online
-                    </span>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className="w-2.5 h-2.5 rounded-full bg-[#10b981] shrink-0" />
-                      <span className="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight leading-none">
-                        {apOnline.toLocaleString()}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="h-8 w-px bg-slate-100 dark:bg-slate-800" />
-                  <div>
-                    <span className="text-[11px] sm:text-xs text-slate-400 dark:text-slate-500 font-medium block">
-                      Storage
-                    </span>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      <StorageBoxIcon className="w-4 h-4 text-[#0066ff] shrink-0" />
-                      <span className="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight leading-none">
-                        {apStorage.toLocaleString()}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </Link>
+                {/* Name — takes flexible space */}
+                <span className="flex-1 min-w-0 text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
+                  {label}
+                </span>
 
-            {/* Router Card */}
-            <Link
-              href="/devices/router"
-              className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 flex items-center gap-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-md hover:border-blue-300 dark:hover:border-blue-700 transition-all duration-150 group"
-            >
-              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-[#eaf4fd] dark:bg-blue-950/60 flex items-center justify-center shrink-0">
-                <RouterCardIcon className="w-7 h-7 sm:w-8 sm:h-8 text-[#0066ff] dark:text-blue-400" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                  Router
-                </h3>
-                <div className="flex items-center gap-6 sm:gap-8 mt-1.5">
-                  <div>
-                    <span className="text-[11px] sm:text-xs text-slate-400 dark:text-slate-500 font-medium block">
-                      Online
-                    </span>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className="w-2.5 h-2.5 rounded-full bg-[#10b981] shrink-0" />
-                      <span className="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight leading-none">
-                        {routerOnline.toLocaleString()}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="h-8 w-px bg-slate-100 dark:bg-slate-800" />
-                  <div>
-                    <span className="text-[11px] sm:text-xs text-slate-400 dark:text-slate-500 font-medium block">
-                      Storage
-                    </span>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      <StorageBoxIcon className="w-4 h-4 text-[#0066ff] shrink-0" />
-                      <span className="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight leading-none">
-                        {routerStorage.toLocaleString()}
-                      </span>
-                    </div>
-                  </div>
+                {/* Online count — fixed width, centered */}
+                <div className="w-16 sm:w-20 flex items-center justify-center gap-1 shrink-0">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#10b981] shrink-0" />
+                  <span className="text-sm sm:text-base font-black text-slate-900 dark:text-slate-100 tabular-nums">
+                    {online.toLocaleString()}
+                  </span>
                 </div>
-              </div>
-            </Link>
 
-            {/* Switch Card */}
-            <Link
-              href="/devices/switch"
-              className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 flex items-center gap-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-md hover:border-emerald-300 dark:hover:border-emerald-700 transition-all duration-150 group"
-            >
-              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-[#e8f8f0] dark:bg-emerald-950/60 flex items-center justify-center shrink-0">
-                <SwitchCardIcon className="w-7 h-7 sm:w-8 sm:h-8 text-[#10b981] dark:text-emerald-400" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
-                  Switch
-                </h3>
-                <div className="flex items-center gap-6 sm:gap-8 mt-1.5">
-                  <div>
-                    <span className="text-[11px] sm:text-xs text-slate-400 dark:text-slate-500 font-medium block">
-                      Online
-                    </span>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className="w-2.5 h-2.5 rounded-full bg-[#10b981] shrink-0" />
-                      <span className="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight leading-none">
-                        {switchOnline.toLocaleString()}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="h-8 w-px bg-slate-100 dark:bg-slate-800" />
-                  <div>
-                    <span className="text-[11px] sm:text-xs text-slate-400 dark:text-slate-500 font-medium block">
-                      Storage
-                    </span>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      <StorageBoxIcon className="w-4 h-4 text-[#0066ff] shrink-0" />
-                      <span className="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight leading-none">
-                        {switchStorage.toLocaleString()}
-                      </span>
-                    </div>
-                  </div>
+                {/* Storage count — fixed width, centered */}
+                <div className="w-16 sm:w-20 flex items-center justify-center gap-1 shrink-0">
+                  <StorageBoxIcon className="w-3 h-3 text-[#0066ff] shrink-0" />
+                  <span className="text-sm sm:text-base font-black text-slate-900 dark:text-slate-100 tabular-nums">
+                    {storage.toLocaleString()}
+                  </span>
                 </div>
+
+                {/* View button — fixed width */}
+                <Link
+                  href={`${href}?status=Active`}
+                  className={`w-12 sm:w-14 text-center text-xs font-bold ${viewColor} hover:underline shrink-0 flex items-center justify-end gap-0.5`}
+                >
+                  View
+                  <ArrowRight className="w-3 h-3" />
+                </Link>
               </div>
-            </Link>
+            ))}
           </div>
 
           {/* Frozen & Archived Devices Row */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+          <div className="grid grid-cols-2 gap-2 sm:gap-3">
             {/* Frozen Devices */}
-            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 flex items-center justify-between gap-3 shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-md transition-all">
-              <div className="flex items-center gap-3.5 min-w-0">
-                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-[#e0f4ff] dark:bg-sky-950/60 flex items-center justify-center text-[#007aff] dark:text-sky-400 shrink-0">
-                  <Snowflake className="w-6 h-6 text-[#007aff] dark:text-sky-400" />
+            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800 px-3 py-2.5 sm:px-4 sm:py-3 flex items-center justify-between gap-2 shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-sm transition-all">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-8 h-8 rounded-xl bg-[#e0f4ff] dark:bg-sky-950/60 flex items-center justify-center shrink-0">
+                  <Snowflake className="w-4 h-4 text-[#007aff] dark:text-sky-400" />
                 </div>
                 <div className="min-w-0">
-                  <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100 truncate">
-                    Frozen Devices
-                  </h3>
-                  <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight leading-none mt-0.5">
+                  <div className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium truncate">Frozen</div>
+                  <div className="text-lg sm:text-xl font-black text-slate-900 dark:text-slate-100 leading-none">
                     {frozenDevices.toLocaleString()}
                   </div>
                 </div>
               </div>
               <Link
                 href="/devices/inactive"
-                className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-bold text-[#0066ff] hover:text-[#0055e0] transition-colors shrink-0 group"
+                className="inline-flex items-center gap-0.5 text-[10px] sm:text-xs font-bold text-[#0066ff] hover:text-[#0055e0] transition-colors shrink-0"
               >
-                <span>View Devices</span>
-                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
+                View<ArrowRight className="w-3 h-3" />
               </Link>
             </div>
 
             {/* Archived Devices */}
-            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 flex items-center justify-between gap-3 shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-md transition-all">
-              <div className="flex items-center gap-3.5 min-w-0">
-                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-[#f8edfb] dark:bg-purple-950/60 flex items-center justify-center text-[#a855f7] dark:text-purple-400 shrink-0">
-                  <ArchivedBoxCardIcon className="w-6 h-6 text-[#a855f7] dark:text-purple-400" />
+            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800 px-3 py-2.5 sm:px-4 sm:py-3 flex items-center justify-between gap-2 shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-sm transition-all">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-8 h-8 rounded-xl bg-[#f8edfb] dark:bg-purple-950/60 flex items-center justify-center shrink-0">
+                  <ArchivedBoxCardIcon className="w-4 h-4 text-[#a855f7] dark:text-purple-400" />
                 </div>
                 <div className="min-w-0">
-                  <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100 truncate">
-                    Archived Devices
-                  </h3>
-                  <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight leading-none mt-0.5">
+                  <div className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium truncate">Archived</div>
+                  <div className="text-lg sm:text-xl font-black text-slate-900 dark:text-slate-100 leading-none">
                     {archivedDevices.toLocaleString()}
                   </div>
                 </div>
               </div>
               <Link
                 href="/devices/inactive?status=Retired"
-                className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-bold text-[#0066ff] hover:text-[#0055e0] transition-colors shrink-0 group"
+                className="inline-flex items-center gap-0.5 text-[10px] sm:text-xs font-bold text-[#0066ff] hover:text-[#0055e0] transition-colors shrink-0"
               >
-                <span>View Devices</span>
-                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
+                View<ArrowRight className="w-3 h-3" />
               </Link>
             </div>
           </div>
 
-          {/* Action Bar (Storage Counter & Buttons) */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-3 sm:p-3.5 flex flex-wrap items-center justify-between gap-3 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
-            <div className="flex items-center gap-3">
-              <StorageWarehouseIcon className="w-7 h-7 sm:w-8 sm:h-8 text-[#0066ff] shrink-0" />
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-sm sm:text-base font-bold text-slate-800 dark:text-slate-200">
-                  Storage:
-                </span>
-                <span className="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100">
-                  {totalStorage.toLocaleString()}
-                </span>
-              </div>
+          {/* Action Bar — single line: Storage: N [Add] [Return] [Check] */}
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800 px-3 py-2 sm:px-3.5 sm:py-2.5 flex items-center gap-2 shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-x-auto">
+            {/* Storage count */}
+            <div className="flex items-center gap-1.5 shrink-0 mr-1">
+              <StorageBoxIcon className="w-4 h-4 text-[#0066ff] shrink-0" />
+              <span className="text-xs font-bold text-slate-600 dark:text-slate-300 whitespace-nowrap">Storage:</span>
+              <span className="text-sm font-black text-slate-900 dark:text-slate-100 tabular-nums">{totalStorage.toLocaleString()}</span>
             </div>
 
-            <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
-              {canWriteDevices && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCreateInitialMac("");
-                    openCreateFor("antenna");
-                  }}
-                  className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm bg-[#0066ff] hover:bg-[#0055e0] active:scale-[0.98] text-white shadow-xs transition-all"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Add Device</span>
-                </button>
-              )}
+            <div className="flex-1" />
 
-              {canWriteDevices && (
-                <button
-                  type="button"
-                  onClick={() => setReturnToStorageOpen(true)}
-                  className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm border border-[#0066ff] text-[#0066ff] hover:bg-blue-50/60 dark:hover:bg-blue-950/40 active:scale-[0.98] transition-all"
-                >
-                  <RotateCcw className="w-4 h-4" />
-                  <span>Return to Storage</span>
-                </button>
-              )}
-
+            {/* Add button */}
+            {canWriteDevices && (
               <button
                 type="button"
-                onClick={() => setIsCheckDeviceOpen((prev) => !prev)}
-                className={`inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm border border-[#0066ff] text-[#0066ff] ${
-                  isCheckDeviceOpen
-                    ? "bg-blue-50 dark:bg-blue-950/40 ring-2 ring-[#0066ff]/20"
-                    : "hover:bg-blue-50/60 dark:hover:bg-blue-950/40"
-                } active:scale-[0.98] transition-all`}
+                id="storage-add-btn"
+                onClick={() => {
+                  setStorageAddMac("");
+                  setStorageAddResult(null);
+                  setStorageAddOpen(true);
+                }}
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg font-bold text-xs bg-[#0066ff] hover:bg-[#0055e0] active:scale-[0.97] text-white shadow-xs transition-all shrink-0 whitespace-nowrap"
               >
-                <Search className="w-4 h-4" />
-                <span>Check Device</span>
+                <Plus className="w-3 h-3" />
+                Add
               </button>
-            </div>
+            )}
+
+            {/* Return button */}
+            {canWriteDevices && (
+              <button
+                type="button"
+                id="storage-return-btn"
+                onClick={() => setReturnToStorageOpen(true)}
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg font-bold text-xs border border-[#0066ff] text-[#0066ff] hover:bg-blue-50/60 dark:hover:bg-blue-950/40 active:scale-[0.97] transition-all shrink-0 whitespace-nowrap"
+              >
+                <RotateCcw className="w-3 h-3" />
+                Return
+              </button>
+            )}
+
+            {/* Check button */}
+            <button
+              type="button"
+              id="storage-check-btn"
+              onClick={() => setIsCheckDeviceOpen((prev) => !prev)}
+              className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg font-bold text-xs border border-[#0066ff] text-[#0066ff] ${
+                isCheckDeviceOpen
+                  ? "bg-blue-50 dark:bg-blue-950/40"
+                  : "hover:bg-blue-50/60 dark:hover:bg-blue-950/40"
+              } active:scale-[0.97] transition-all shrink-0 whitespace-nowrap`}
+            >
+              <Search className="w-3 h-3" />
+              Check
+            </button>
           </div>
+
+          {/* Storage Add Modal */}
+          {storageAddOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget) { setStorageAddOpen(false); setStorageAddResult(null); } }}>
+              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl w-full max-w-sm p-5 space-y-4">
+                {/* Header */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/40 flex items-center justify-center">
+                      <Plus className="w-4 h-4 text-[#0066ff]" />
+                    </div>
+                    <h3 className="text-sm font-black text-slate-900 dark:text-slate-100">Add to Storage</h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { setStorageAddOpen(false); setStorageAddResult(null); }}
+                    className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* MAC Address Input */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block">
+                    MAC Address <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="storage-add-mac-input"
+                    placeholder="AA:BB:CC:DD:EE:FF"
+                    value={storageAddMac}
+                    onChange={(e) => { setStorageAddMac(e.target.value); setStorageAddResult(null); }}
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleStorageAdd(); } }}
+                    disabled={isAddingToStorage}
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-mono uppercase text-slate-900 dark:text-slate-100 placeholder:text-slate-400 placeholder:normal-case focus:outline-none focus:ring-2 focus:ring-[#0066ff]/20 focus:border-[#0066ff] transition-all disabled:opacity-60"
+                    autoFocus
+                  />
+                  <p className="text-[11px] text-slate-400 dark:text-slate-500">Enter the MAC address of the device to add to storage.</p>
+                </div>
+
+                {/* Result feedback */}
+                {storageAddResult && (
+                  <div className={`p-3 rounded-xl text-xs font-medium ${
+                    storageAddResult.success
+                      ? "bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300"
+                      : "bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-300"
+                  }`}>
+                    <div className="flex items-start gap-2">
+                      {storageAddResult.success
+                        ? <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
+                        : <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                      }
+                      <span>{storageAddResult.message}</span>
+                    </div>
+                    {storageAddResult.existingDevice && (
+                      <div className="mt-2 pt-2 border-t border-current/20 text-[10px] space-y-0.5 opacity-80">
+                        <div>SL: #{storageAddResult.existingDevice.sl}</div>
+                        <div>Name: {storageAddResult.existingDevice.deviceName}</div>
+                        <div>Status: {storageAddResult.existingDevice.status}</div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Submit button */}
+                <button
+                  type="button"
+                  id="storage-add-submit-btn"
+                  onClick={handleStorageAdd}
+                  disabled={isAddingToStorage || !storageAddMac.trim()}
+                  className="w-full py-2.5 rounded-xl bg-[#0066ff] hover:bg-[#0055e0] active:scale-[0.99] text-white font-bold text-sm shadow-xs transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isAddingToStorage ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Plus className="w-4 h-4" />
+                  )}
+                  Add to Storage
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Check Device Card */}
           {isCheckDeviceOpen && (

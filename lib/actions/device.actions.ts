@@ -2268,3 +2268,131 @@ function defaultType(input?: string): string {
   if (!input || input === "all") return "antenna";
   return input;
 }
+
+// ==========================================
+// ADD DEVICE TO STORAGE (MAC-only form)
+// ==========================================
+export async function addDeviceToStorage(macAddress: string): Promise<{
+  success: boolean;
+  message: string;
+  device?: IDevice;
+  existingDevice?: {
+    sl: string;
+    deviceName: string;
+    status: string;
+    deviceType: string;
+  };
+}> {
+  try {
+    const actor = await requirePermission("devices", "write");
+    await connectToDatabase();
+
+    const isSuperAdmin = actor.role === "super_admin";
+    const isEngineer = actor.role === "engineer";
+    const canAdd =
+      isSuperAdmin || Boolean(actor.granularPermissions?.device_add);
+    if (!canAdd) {
+      return {
+        success: false,
+        message: "Forbidden: You do not have permission to add devices.",
+      };
+    }
+
+    const raw = macAddress?.trim() || "";
+    if (!raw) {
+      return { success: false, message: "MAC Address is required." };
+    }
+
+    const normalized = normalizeMAC(raw);
+    if (!normalized) {
+      return {
+        success: false,
+        message:
+          "Invalid MAC Address format. Please use a valid format such as AA:BB:CC:DD:EE:FF.",
+      };
+    }
+
+    // Check for existing device with this MAC
+    const existing = await Device.findOne({ macAddress: normalized });
+    if (existing) {
+      if (existing.status === "Available") {
+        return {
+          success: false,
+          message: `This device (MAC: ${normalized}) is already in Storage.`,
+          existingDevice: {
+            sl: existing.sl,
+            deviceName: existing.deviceName || existing.deviceType,
+            status: existing.status,
+            deviceType: existing.deviceType,
+          },
+        };
+      }
+      // Device exists in active use or another state
+      return {
+        success: false,
+        message: `A device with MAC address ${normalized} already exists in the system (SL: #${existing.sl}, Status: ${existing.status}). Use the "Return" button to move it to Storage if needed.`,
+        existingDevice: {
+          sl: existing.sl,
+          deviceName: existing.deviceName || existing.deviceType,
+          status: existing.status,
+          deviceType: existing.deviceType,
+        },
+      };
+    }
+
+    // Create device as Available (in storage)
+    const sl = await getNextSL();
+    const deviceName = `STORAGE ${normalized.slice(-5)}`;
+    const canDirectlyActivate = isSuperAdmin || isEngineer;
+
+    if (!canDirectlyActivate) {
+      return {
+        success: false,
+        message:
+          "Only Super Admins and Engineers can directly add devices to storage.",
+      };
+    }
+
+    const device = await Device.create({
+      sl,
+      deviceType: "antenna", // default type for storage-only devices
+      deviceName,
+      macAddress: normalized,
+      status: "Available",
+      submittedBy: {
+        email: actor.email,
+        name: actor.name || actor.email.split("@")[0],
+        role: actor.role,
+        userId: actor._id,
+        date: new Date(),
+      },
+    });
+
+    await logActivityAndNotify({
+      actor,
+      action: "CREATE_DEVICE",
+      module: "devices",
+      resourceId: sl,
+      resourceName: `Storage Device (${sl})`,
+      details: `Added device with MAC: ${normalized} directly to Storage (SL: ${sl}).`,
+      link: `/devices`,
+    });
+
+    safeRevalidatePath("/");
+    safeRevalidatePath("/devices");
+
+    return {
+      success: true,
+      message: `Device added to Storage successfully! (SL: #${sl}, MAC: ${normalized})`,
+      device: JSON.parse(JSON.stringify(device)) as IDevice,
+    };
+  } catch (error) {
+    console.error("addDeviceToStorage error:", error);
+    return {
+      success: false,
+      message:
+        error instanceof Error ? error.message : "Failed to add device to storage.",
+    };
+  }
+}
+
