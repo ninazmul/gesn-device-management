@@ -1545,20 +1545,19 @@ export async function toggleDeviceActive(id: string) {
 // ==========================================
 // DELETE DEVICE
 // ==========================================
-export async function deleteDevice(id: string) {
-  const actor = await requirePermission("devices", "write");
+async function deleteDeviceRecord(
+  id: string,
+  actor: NonNullable<Awaited<ReturnType<typeof getCurrentAdminProfile>>>,
+  storageOnly = false,
+) {
   await connectToDatabase();
-
   const isSuperAdmin = actor.role === "super_admin";
-  const canDelete =
-    isSuperAdmin || Boolean(actor.granularPermissions?.device_delete);
-  if (!canDelete) {
-    throw new Error("Forbidden: You do not have permission to delete devices.");
-  }
-
   const device = await Device.findById(id);
   if (!device) {
     throw new Error("Device not found");
+  }
+  if (storageOnly && device.status !== "Available") {
+    throw new Error("This device is no longer in Storage.");
   }
 
   if (device.deviceType === "server") {
@@ -1590,7 +1589,14 @@ export async function deleteDevice(id: string) {
     );
   }
 
-  await Device.findByIdAndDelete(id);
+  const deletedDevice = storageOnly
+    ? await Device.findOneAndDelete({ _id: id, status: "Available" })
+    : await Device.findByIdAndDelete(id);
+  if (!deletedDevice) {
+    throw new Error(
+      storageOnly ? "This device is no longer in Storage." : "Device not found",
+    );
+  }
 
   await logActivityAndNotify({
     actor,
@@ -1598,15 +1604,39 @@ export async function deleteDevice(id: string) {
     module: "devices",
     resourceId: device.sl,
     resourceName: `${device.deviceName} (${device.sl})`,
-    details: `Deleted ${device.deviceType} device: ${device.deviceName} (SL: ${device.sl})`,
+    details: `Deleted ${device.deviceType} device: ${device.deviceName} (SL: ${device.sl})${storageOnly ? " from Storage" : ""}`,
     link: "/devices",
   });
 
   safeRevalidatePath("/");
   safeRevalidatePath("/devices");
+  safeRevalidatePath("/devices/storage");
   safeRevalidatePath(`/devices/${device.deviceType.toLowerCase().trim()}`);
 
   return { success: true };
+}
+
+export async function deleteDevice(id: string) {
+  const actor = await requirePermission("devices", "write");
+  const isSuperAdmin = actor.role === "super_admin";
+  const canDelete =
+    isSuperAdmin || Boolean(actor.granularPermissions?.device_delete);
+  if (!canDelete) {
+    throw new Error("Forbidden: You do not have permission to delete devices.");
+  }
+
+  return deleteDeviceRecord(id, actor);
+}
+
+export async function deleteStoredDevice(id: string) {
+  const actor = await requirePermission("devices", "write");
+  if (actor.role !== "super_admin" && actor.role !== "engineer") {
+    throw new Error(
+      "Forbidden: Only Super Admins and Engineers can delete stored devices.",
+    );
+  }
+
+  return deleteDeviceRecord(id, actor, true);
 }
 
 // ==========================================

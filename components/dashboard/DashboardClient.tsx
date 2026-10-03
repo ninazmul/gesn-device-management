@@ -479,6 +479,7 @@ export function DashboardClient({ stats }: DashboardClientProps) {
             {[
               {
                 href: "/devices/antenna",
+                storageHref: "/devices/storage?type=antenna",
                 label: "Antenna",
                 online: antennaOnline,
                 storage: antennaStorage,
@@ -490,6 +491,7 @@ export function DashboardClient({ stats }: DashboardClientProps) {
               },
               {
                 href: "/devices/access-point",
+                storageHref: "/devices/storage?type=access-point",
                 label: "Access Point",
                 online: apOnline,
                 storage: apStorage,
@@ -501,6 +503,7 @@ export function DashboardClient({ stats }: DashboardClientProps) {
               },
               {
                 href: "/devices/router",
+                storageHref: "/devices/storage?type=router",
                 label: "Router",
                 online: routerOnline,
                 storage: routerStorage,
@@ -512,6 +515,7 @@ export function DashboardClient({ stats }: DashboardClientProps) {
               },
               {
                 href: "/devices/switch",
+                storageHref: "/devices/storage?type=switch",
                 label: "Switch",
                 online: switchOnline,
                 storage: switchStorage,
@@ -521,7 +525,7 @@ export function DashboardClient({ stats }: DashboardClientProps) {
                 viewColor: "text-[#10b981] dark:text-emerald-400",
                 Icon: SwitchIcon,
               },
-            ].map(({ href, label, online, storage, iconBg, iconColor, hoverBorder, viewColor, Icon }) => (
+            ].map(({ href, storageHref, label, online, storage, iconBg, iconColor, hoverBorder, viewColor, Icon }) => (
               <div
                 key={href}
                 className={`flex items-center gap-2 px-3 py-2.5 sm:py-3 sm:px-4 ${hoverBorder} transition-colors`}
@@ -545,12 +549,16 @@ export function DashboardClient({ stats }: DashboardClientProps) {
                 </div>
 
                 {/* Storage count — fixed width, centered */}
-                <div className="w-16 sm:w-20 flex items-center justify-center gap-1 shrink-0">
+                <Link
+                  href={storageHref}
+                  aria-label={`View ${storage.toLocaleString()} ${label} devices in storage`}
+                  className="w-16 sm:w-20 flex items-center justify-center gap-1 shrink-0 rounded-md hover:bg-blue-50 dark:hover:bg-blue-950/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0066ff]"
+                >
                   <StorageBoxIcon className="w-3 h-3 text-[#0066ff] shrink-0" />
                   <span className="text-sm sm:text-base font-black text-slate-900 dark:text-slate-100 tabular-nums">
                     {storage.toLocaleString()}
                   </span>
-                </div>
+                </Link>
 
                 {/* View button — fixed width */}
                 <Link
@@ -612,11 +620,15 @@ export function DashboardClient({ stats }: DashboardClientProps) {
           {/* Action Bar — single line: Storage: N [Add] [Return] [Check] */}
           <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800 px-3 py-2 sm:px-3.5 sm:py-2.5 flex items-center gap-2 shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-x-auto">
             {/* Storage count */}
-            <div className="flex items-center gap-1.5 shrink-0 mr-1">
+            <Link
+              href="/devices/storage"
+              aria-label={`View ${totalStorage.toLocaleString()} devices in storage`}
+              className="flex items-center gap-1.5 shrink-0 mr-1 rounded-md hover:bg-blue-50 dark:hover:bg-blue-950/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0066ff]"
+            >
               <StorageBoxIcon className="w-4 h-4 text-[#0066ff] shrink-0" />
               <span className="text-xs font-bold text-slate-600 dark:text-slate-300 whitespace-nowrap">Storage:</span>
               <span className="text-sm font-black text-slate-900 dark:text-slate-100 tabular-nums">{totalStorage.toLocaleString()}</span>
-            </div>
+            </Link>
 
             <div className="flex-1" />
 

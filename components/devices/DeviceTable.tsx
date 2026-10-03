@@ -38,6 +38,7 @@ import { RejectDeviceDialog } from "./RejectDeviceDialog";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import {
   deleteDevice,
+  deleteStoredDevice,
   toggleDeviceActive,
   approveDevice,
 } from "@/lib/actions/device.actions";
@@ -112,6 +113,7 @@ interface DeviceTableProps {
   limit: number;
   currentType?: string;
   typeName?: string;
+  storageMode?: boolean;
 }
 
 export function DeviceTable({
@@ -122,6 +124,7 @@ export function DeviceTable({
   limit,
   currentType,
   typeName = "Device",
+  storageMode = false,
 }: DeviceTableProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -137,6 +140,9 @@ export function DeviceTable({
     canArchiveDevice,
   } = usePermissions();
   const canManageServer = isSuperAdmin || isEngineer || can("server_manage");
+  const canRemoveDevice = storageMode
+    ? isSuperAdmin || isEngineer
+    : canDeleteDevice;
   const isAccessPointTable = currentType?.toLowerCase() === "access-point";
 
   // Modals state
@@ -181,7 +187,11 @@ export function DeviceTable({
     if (!deletingDevice) return;
     try {
       setIsDeleting(true);
-      await deleteDevice(deletingDevice._id);
+      if (storageMode) {
+        await deleteStoredDevice(deletingDevice._id);
+      } else {
+        await deleteDevice(deletingDevice._id);
+      }
       toast.success(`Device #${deletingDevice.sl} deleted successfully`);
       setDeletingDevice(null);
       router.refresh();
@@ -627,7 +637,7 @@ export function DeviceTable({
                                 <Pencil className="w-4 h-4" />
                               </button>
                             )}
-                          {canDeleteDevice &&
+                          {canRemoveDevice &&
                             (device.deviceType !== "server" ||
                               canManageServer) && (
                               <button
@@ -744,7 +754,7 @@ export function DeviceTable({
         open={Boolean(deletingDevice)}
         onOpenChange={(open) => !open && setDeletingDevice(null)}
         title={`Delete Device #${deletingDevice?.sl}?`}
-        description={`Are you sure you want to delete ${deletingDevice?.deviceName}? This action cannot be undone.`}
+        description={`Are you sure you want to delete ${deletingDevice?.deviceName}${storageMode ? " from Storage" : ""}? This action cannot be undone.`}
         onConfirm={handleDeleteConfirm}
         isLoading={isDeleting}
       />
