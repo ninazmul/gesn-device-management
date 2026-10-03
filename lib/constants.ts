@@ -23,15 +23,15 @@ export const DEVICE_STATUSES = [
 ] as const;
 
 export const DEVICE_REJECTION_REASONS = [
-  "Incorrect MAC Address — ভুল MAC",
-  "Duplicate Device — একই ডিভাইস আগে থেকেই আছে",
-  "Incorrect AP Number — ভুল AP নম্বর",
-  "Wrong Server — ভুল সার্ভার",
-  "Incorrect Customer Details — ভুল কাস্টমার তথ্য",
-  "Incorrect Location — ভুল লোকেশন",
-  "Incorrect Brand / Model — ভুল ব্র্যান্ড বা মডেল",
-  "Missing Required Information — প্রয়োজনীয় তথ্য অসম্পূর্ণ",
-  "Device Not Verified — ডিভাইস যাচাই হয়নি",
+  "Incorrect MAC Address",
+  "Duplicate Device",
+  "Incorrect AP Number",
+  "Wrong Server",
+  "Incorrect Customer Details",
+  "Incorrect Location",
+  "Incorrect Brand / Model",
+  "Missing Required Information",
+  "Device Not Verified",
 ] as const;
 
 export const CUSTOMER_STATUSES = ["Active", "Inactive", "Suspended"] as const;
