@@ -66,6 +66,7 @@ interface DeviceFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   defaultDeviceType?: string;
+  initialMacAddress?: string;
   deviceToEdit?: IDevice | null;
   onSuccess?: () => void;
   hideDeviceType?: boolean;
@@ -77,6 +78,7 @@ export function DeviceFormDialog({
   open,
   onOpenChange,
   defaultDeviceType = "antenna",
+  initialMacAddress = "",
   deviceToEdit,
   onSuccess,
   hideDeviceType = false,
@@ -94,7 +96,9 @@ export function DeviceFormDialog({
   const [deviceType, setDeviceType] = useState(initialType);
 
   // Main Form Fields (Required based on deviceType)
-  const [macAddress, setMacAddress] = useState(deviceToEdit?.macAddress || "");
+  const [macAddress, setMacAddress] = useState(
+    deviceToEdit?.macAddress || initialMacAddress || "",
+  );
   const [apNumber, setApNumber] = useState(deviceToEdit?.apNumber || "");
   const [server, setServer] = useState<string>(
     typeof deviceToEdit?.server === "object" && deviceToEdit.server
@@ -304,7 +308,7 @@ export function DeviceFormDialog({
       setShowMore(false); // Collapsed by default
     } else {
       setDeviceType(defaultDeviceType);
-      setMacAddress("");
+      setMacAddress(initialMacAddress || "");
       setApNumber("");
       setServer("");
       setCustomerName("");
@@ -321,7 +325,7 @@ export function DeviceFormDialog({
       setStatus("Pending");
       setShowMore(false); // Collapsed by default
     }
-  }, [deviceToEdit, defaultDeviceType, open]);
+  }, [deviceToEdit, defaultDeviceType, initialMacAddress, open]);
 
   // Load available types, servers, and switches on open
   useEffect(() => {

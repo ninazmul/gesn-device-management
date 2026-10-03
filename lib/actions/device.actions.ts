@@ -1612,6 +1612,117 @@ export async function searchGlobalDevices(searchTerm: string) {
 }
 
 // ==========================================
+// CHECK DEVICE BY MAC (Storage Check)
+// ==========================================
+export async function checkDeviceByMac(macInput: string) {
+  await requirePermission("devices", "read");
+  await connectToDatabase();
+
+  const trimmed = macInput?.trim() || "";
+  if (!trimmed) {
+    throw new Error("Please enter a MAC address to check.");
+  }
+
+  const normalized = normalizeMAC(trimmed);
+  // Match by normalized MAC or fallback regex on raw macAddress, sl
+  const query: FilterQuery<typeof Device> = normalized
+    ? { macAddress: normalized }
+    : {
+        $or: [
+          { macAddress: new RegExp(trimmed.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i") },
+          { sl: new RegExp(trimmed.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i") },
+        ],
+      };
+
+  const device = (await Device.findOne(query)
+    .populate("server", "deviceName sl")
+    .populate("uplinkSwitch", "deviceName sl")
+    .lean()) as IDevice | null;
+
+  if (!device) {
+    return {
+      found: false,
+      isInStorage: false,
+      searchedMac: normalized || trimmed.toUpperCase(),
+      message: `No device found with MAC address: ${normalized || trimmed.toUpperCase()}`,
+    };
+  }
+
+  const isInStorage = device.status === "Available";
+
+  return {
+    found: true,
+    isInStorage,
+    searchedMac: normalized || trimmed.toUpperCase(),
+    device: JSON.parse(JSON.stringify(device)) as IDevice,
+    message: isInStorage
+      ? "Device is in Storage (Available)"
+      : `Device is currently ${device.status}`,
+  };
+}
+
+// ==========================================
+// RETURN DEVICE TO STORAGE
+// ==========================================
+export async function returnDeviceToStorage(params: {
+  id?: string;
+  macAddress?: string;
+}) {
+  const actor = await requirePermission("devices", "write");
+  await connectToDatabase();
+
+  const isSuperAdmin = actor.role === "super_admin";
+  if (!isSuperAdmin && !actor.granularPermissions?.device_edit) {
+    throw new Error(
+      "Forbidden: You do not have permission to return devices to storage.",
+    );
+  }
+
+  let device;
+  if (params.id) {
+    device = await Device.findById(params.id);
+  } else if (params.macAddress) {
+    const raw = params.macAddress.trim();
+    const normalized = normalizeMAC(raw) || raw.toUpperCase();
+    device = await Device.findOne({
+      $or: [{ macAddress: normalized }, { sl: raw }],
+    });
+  }
+
+  if (!device) {
+    throw new Error("Device not found.");
+  }
+
+  if (device.status === "Available") {
+    throw new Error(`Device (${device.sl}) is already in Storage.`);
+  }
+
+  const previousStatus = device.status;
+  device.status = "Available";
+  await device.save();
+
+  await logActivityAndNotify({
+    actor,
+    action: "STATUS_CHANGE",
+    module: "devices",
+    resourceId: device.sl,
+    resourceName: `${device.deviceName || device.deviceType} (${device.sl})`,
+    details: `Returned ${device.deviceType} (${device.sl}, MAC: ${device.macAddress || "N/A"}) to storage (status changed from ${previousStatus} to Available).`,
+    link: `/devices/${device.deviceType.toLowerCase().trim()}/${device._id}`,
+  });
+
+  safeRevalidatePath("/");
+  safeRevalidatePath("/devices");
+  safeRevalidatePath(`/devices/${device.deviceType.toLowerCase().trim()}`);
+
+  return {
+    success: true,
+    device: JSON.parse(JSON.stringify(device)),
+    message: `Device ${device.deviceName || device.sl} has been returned to storage successfully.`,
+  };
+}
+
+// ==========================================
 // GET FILTER OPTIONS
 // ==========================================
 export async function getDeviceFilterOptions() {
