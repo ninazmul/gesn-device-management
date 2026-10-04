@@ -123,7 +123,7 @@ server_view, server_manage, customer_view, user_manage, report_view, setting_man
 1. Any authorized user calls `createDevice(data)`.
 2. Backend validates MAC, type-specific required fields, and IP format.
 3. **Non-super-admins**: status forced to `"Pending"`, `submittedBy` recorded.
-4. **Super Admins**: can set status directly (defaults to `"Active"`).
+4. **Super Admins**: can set status directly (defaults to `"Online"`).
 5. On `Pending` submission, a `Notification` is created targeting Super Admin + Engineer.
 
 ### 4.2 Required Fields by Device Type (Backend Enforced)
@@ -138,16 +138,18 @@ server_view, server_manage, customer_view, user_manage, report_view, setting_man
 
 ### 4.3 Approval / Rejection
 
-- `approveDevice(id)`: Sets status to `"Active"`, records `approvedBy`, clears rejection.
-- `rejectDevice(id, reason)`: Sets status to `"Rejected"`, records `rejectedBy` + `rejectionReason`.
+- `approveDevice(id)`: Sets status to `"Online"`, records `approvedBy`, clears rejection reason.
+- `rejectDevice(id, reason)`: Sets status to `"Frozen"`, records `rejectedBy` + `rejectionReason`.
 - Both are **idempotent** (no error if already in target state).
 - Authorized for: `super_admin`, `engineer`, or anyone with `device_approve` granular permission.
 
 ### 4.4 Device Statuses
 
 ```
-"Pending" | "Active" | "Available" | "Offline" | "Maintenance" | "Inactive" | "Retired" | "Rejected"
+"Pending" | "Online" | "Storage" | "Frozen" | "Lost" | "Maintenance"
 ```
+
+Run `npm run migrate:device-statuses` with `MONGODB_URI` set before deploying to migrate existing device records (`Active` → `Online`, `Available` → `Storage`, and `Offline`, `Inactive`, `Retired`, and `Rejected` → `Frozen`). Rejection details remain on the device record.
 
 ---
 
@@ -178,7 +180,7 @@ Notable fields beyond basic device data:
 - **Main form**: type-specific required fields only.
 - **"More (Optional)"**: collapsible section with IP, Uplink Switch, etc.
 - Collapsed by default; toggling preserves field data.
-- Status selector filtered: non-super-admins cannot select `"Active"` directly.
+- Status selector filtered: non-super-admins cannot select `"Online"` directly.
 
 ### DeviceTable / DeviceMobileCards
 
@@ -308,10 +310,10 @@ importDevicesBulk(rows: Record<string, unknown>[], defaultDeviceType?: string)
 | `getDeviceById(id)`              | `devices:read`            | Single device with populated refs                          |
 | `createDevice(data)`             | `devices:write`           | Create + type validation + submittedBy                     |
 | `updateDevice(id, data)`         | `devices:write`           | Update fields, re-validate MAC/IP                          |
-| `approveDevice(id)`              | `device_approve` granular | Pending → Active, idempotent                               |
-| `rejectDevice(id, reason)`       | `device_approve` granular | Pending → Rejected, idempotent                             |
-| `updateDeviceStatus(id, status)` | `devices:write`           | General status change (approval-gated for Active/Rejected) |
-| `toggleDeviceActive(id)`         | `devices:write`           | Toggle Active ↔ Inactive                                   |
+| `approveDevice(id)`              | `device_approve` granular | Pending → Online, idempotent                                |
+| `rejectDevice(id, reason)`       | `device_approve` granular | Pending → Frozen, reason retained                            |
+| `updateDeviceStatus(id, status)` | `devices:write`           | General status change (approval-gated for Online)           |
+| `toggleDeviceActive(id)`         | `devices:write`           | Toggle Pending ↔ Online                                     |
 | `deleteDevice(id)`               | `device_delete` granular  | Hard delete (blocks if has connected children)             |
 | `searchGlobalDevices(q)`         | `devices:read`            | Global search across all types                             |
 | `getDeviceFilterOptions(type?)`  | `devices:read`            | Filter options (e.g. server list) for dropdowns            |

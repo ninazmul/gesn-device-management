@@ -34,7 +34,7 @@ export async function getServerOptions() {
   await connectToDatabase();
   const servers = await Device.find({
     deviceType: "server",
-    status: { $nin: ["Rejected", "Retired"] },
+    status: { $nin: ["Frozen", "Lost"] },
   })
     .select("sl deviceName ipAddress status")
     .sort({ deviceName: 1 })

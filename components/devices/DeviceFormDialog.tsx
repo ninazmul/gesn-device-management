@@ -1287,7 +1287,7 @@ export function DeviceFormDialog({
                       <SelectContent className="dark:bg-slate-900 dark:border-slate-800">
                         {DEVICE_STATUSES.filter(
                           (st) =>
-                            isSuperAdmin || canApproveDevice || st !== "Active",
+                            isSuperAdmin || canApproveDevice || st !== "Online",
                         ).map((st) => (
                           <SelectItem key={st} value={st}>
                             {st}
@@ -1588,7 +1588,7 @@ export function DeviceFormDialog({
                   <SelectContent className="dark:bg-slate-900 dark:border-slate-800">
                     {DEVICE_STATUSES.filter(
                       (st) =>
-                        isSuperAdmin || canApproveDevice || st !== "Active",
+                        isSuperAdmin || canApproveDevice || st !== "Online",
                     ).map((st) => (
                       <SelectItem key={st} value={st}>
                         {st}
@@ -1627,7 +1627,9 @@ export function DeviceFormDialog({
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...
                 </>
               ) : isEditing ? (
-                deviceToEdit?.status === "Rejected" ? (
+                deviceToEdit?.status === "Frozen" &&
+                (deviceToEdit.rejectionReason ||
+                  deviceToEdit.rejectedBy?.reason) ? (
                   "Update & Resubmit"
                 ) : (
                   "Save Changes"

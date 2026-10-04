@@ -74,8 +74,8 @@ export function DeviceStatusDialog({
           {DEVICE_STATUSES.map((status) => {
             const isSelected = selectedStatus === status;
             const config = STATUS_CONFIG[status];
-            const isApprovalStatus = status === "Active" || status === "Rejected";
-            const isArchiveStatus = status === "Inactive" || status === "Retired";
+            const isApprovalStatus = status === "Online";
+            const isArchiveStatus = status === "Frozen" || status === "Lost";
             const isRestricted =
               (isApprovalStatus && !canApproveDevice) ||
               (isArchiveStatus && !canArchiveDevice) ||

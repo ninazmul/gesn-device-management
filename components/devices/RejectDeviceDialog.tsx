@@ -56,7 +56,9 @@ export function RejectDeviceDialog({
     try {
       setIsSubmitting(true);
       await rejectDevice(device._id, reason.trim());
-      toast.success(`Device #${formatDisplaySL(device.sl)} has been rejected.`);
+      toast.success(
+        `Device #${formatDisplaySL(device.sl)} was rejected and set to Frozen.`,
+      );
       setReason("");
       onOpenChange(false);
       if (onSuccess) onSuccess();

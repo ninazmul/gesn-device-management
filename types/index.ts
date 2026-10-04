@@ -1,12 +1,10 @@
 export type DeviceStatus =
   | "Pending"
-  | "Active"
-  | "Available"
-  | "Offline"
+  | "Online"
+  | "Storage"
+  | "Frozen"
   | "Maintenance"
-  | "Inactive"
-  | "Retired"
-  | "Rejected";
+  | "Lost";
 
 export type CustomerStatus = "Active" | "Inactive" | "Suspended";
 
@@ -291,29 +289,24 @@ export interface GetActivityLogsParams {
 
 export interface DashboardStats {
   totalDevices: number;
-  activeDevices: number;
-  availableDevices: number;
-  offlineDevices: number;
+  onlineDevices: number;
+  storageDevices: number;
+  frozenDevices: number;
   maintenanceDevices: number;
-  inactiveDevices: number;
-  retiredDevices: number;
-  rejectedDevices: number;
+  lostDevices: number;
   pendingDevices: number;
   byType: Array<{
     type: string;
     label: string;
     count: number;
-    active: number;
-    offline: number;
-    maintenance: number;
-    available: number;
-    inactive: number;
+    online: number;
+    storage: number;
   }>;
   recentDevices: IDevice[];
   // Server & Core Infrastructure Summary
   serverStats: {
     totalServers: number;
-    activeServers: number;
+    onlineServers: number;
     locations: number;
     routersCount: number;
   };

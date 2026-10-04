@@ -93,8 +93,8 @@ export function ReturnToStorageDialog({
   const handleConfirmReturn = async () => {
     if (!foundDevice) return;
 
-    if (foundDevice.status === "Available") {
-      toast.error("This device is already in Storage (Available).");
+    if (foundDevice.status === "Storage") {
+      toast.error("This device is already in Storage.");
       return;
     }
 
@@ -283,10 +283,10 @@ export function ReturnToStorageDialog({
                 <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
                 <span>{categoryMismatch}</span>
               </div>
-            ) : foundDevice.status === "Available" ? (
+            ) : foundDevice.status === "Storage" ? (
               <div className="p-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/50 flex items-center gap-2 text-xs text-emerald-700 dark:text-emerald-400 font-medium">
                 <CheckCircle2 className="w-4 h-4 shrink-0" />
-                <span>This device is already in Storage (Available).</span>
+                <span>This device is already in Storage.</span>
               </div>
             ) : (
               <Button

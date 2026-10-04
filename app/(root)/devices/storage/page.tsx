@@ -22,7 +22,7 @@ export default async function StoragePage({ searchParams }: StoragePageProps) {
 
   const { devices, total, totalPages, limit } = await getDevices({
     deviceType: params.type,
-    status: "Available",
+    status: "Storage",
     page,
     limit: 25,
   });

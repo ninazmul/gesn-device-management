@@ -9,7 +9,7 @@ Track implementation progress for DMS device forms, engineer role, approval syst
   - [x] Existing roles and RBAC utils reviewed
 - [x] Database & Types Update
   - [x] Add `engineer` to `AdminRole` in types
-  - [x] Add `Rejected` to `DeviceStatus` and `DEVICE_STATUSES`
+  - [x] Use the canonical device statuses: Pending, Online, Storage, Frozen, Lost, and Maintenance
   - [x] Add `submittedBy`, `approvedBy`, `rejectedBy`, `rejectionReason` to `IDeviceDoc` and `DeviceSchema`
   - [x] Add `granularPermissions` to `IAdminUser` and `AdminSchema`
   - [x] Define granular permission keys in `types/index.ts` and `lib/rbac-utils.ts`

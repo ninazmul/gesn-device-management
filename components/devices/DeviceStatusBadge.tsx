@@ -12,7 +12,7 @@ export function DeviceStatusBadge({
   className = "",
   size = "md",
 }: DeviceStatusBadgeProps) {
-  const config = STATUS_CONFIG[status] || STATUS_CONFIG["Active"];
+  const config = STATUS_CONFIG[status] || STATUS_CONFIG["Online"];
 
   const sizeClasses = {
     sm: "px-2 py-0.5 text-[11px] gap-1.5",
@@ -26,7 +26,7 @@ export function DeviceStatusBadge({
     lg: "w-2.5 h-2.5",
   }[size];
 
-  const isOnline = status === "Active" || status === "Available";
+  const isOnline = status === "Online";
   const isPending = status === "Pending" || status === "Maintenance";
 
   return (
@@ -37,7 +37,7 @@ export function DeviceStatusBadge({
         {isOnline && (
           <span
             className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
-              status === "Active" ? "bg-emerald-400" : "bg-blue-400"
+              status === "Online" ? "bg-emerald-400" : "bg-blue-400"
             }`}
           />
         )}
@@ -50,4 +50,3 @@ export function DeviceStatusBadge({
     </span>
   );
 }
-

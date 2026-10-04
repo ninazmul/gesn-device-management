@@ -57,7 +57,11 @@ function canSelectConnectedServer(
   );
 }
 
-const SELECTABLE_SERVER_STATUSES = ["Retired", "Pending", "Rejected"] as const;
+const SELECTABLE_SERVER_STATUSES = [
+  "Pending",
+  "Frozen",
+  "Lost",
+] as const;
 
 async function validateConnectedServer(
   actor: NonNullable<Awaited<ReturnType<typeof getCurrentAdminProfile>>>,
@@ -100,7 +104,7 @@ export async function getAvailableSwitches(): Promise<ISwitchOption[]> {
 
   const switches = await Device.find({
     deviceType: "switch",
-    status: { $nin: ["Retired", "Pending", "Rejected"] },
+    status: { $nin: SELECTABLE_SERVER_STATUSES },
   })
     .select("sl deviceName ipAddress status totalPorts")
     .sort({ deviceName: 1 })
@@ -115,7 +119,7 @@ export async function getAvailableSwitches(): Promise<ISwitchOption[]> {
     {
       $match: {
         uplinkSwitch: { $in: switchIds },
-        status: { $nin: ["Retired", "Pending", "Rejected"] },
+        status: { $nin: SELECTABLE_SERVER_STATUSES },
       },
     },
     {
@@ -227,9 +231,8 @@ export async function getDevices(params?: GetDevicesParams) {
   } else if (status && status !== "all") {
     query.status = status;
   } else if (!params?.submittedBy) {
-    // When viewing general device inventory without a specific status filter and not in "My Submissions",
-    // exclude Pending and Rejected devices so unapproved hardware never appears in operational lists.
-    query.status = { $nin: ["Pending", "Rejected"] };
+    // Pending devices are isolated to the approval queue.
+    query.status = { $ne: "Pending" };
   }
 
   if (server && server !== "all") {
@@ -349,7 +352,7 @@ export async function getDevices(params?: GetDevicesParams) {
       {
         $match: {
           uplinkSwitch: { $in: switchIds },
-          status: { $nin: ["Retired"] },
+          status: { $nin: ["Frozen", "Lost"] },
         },
       },
       {
@@ -408,7 +411,7 @@ export async function getDeviceById(id: string) {
 
     const totalPorts = device.totalPorts || 0;
     const activePortsCount = connectedDevices.filter(
-      (d) => d.status !== "Retired",
+      (d) => d.status !== "Frozen" && d.status !== "Lost",
     ).length;
     const availablePorts = Math.max(0, totalPorts - activePortsCount);
 
@@ -521,7 +524,10 @@ export async function createDevice(data: {
         `A device with MAC address ${normalizedMAC} has already been submitted and is currently Pending Approval (SL: #${existingDevice.sl}, Name: ${existingDevice.deviceName}).`,
       );
     }
-    if (existingDevice.status === "Rejected") {
+    if (
+      existingDevice.status === "Frozen" &&
+      (existingDevice.rejectionReason || existingDevice.rejectedBy?.reason)
+    ) {
       throw new Error(
         `A device with MAC address ${normalizedMAC} was previously rejected (SL: #${existingDevice.sl}, Reason: ${existingDevice.rejectionReason || "N/A"}). Please review existing records or consult an administrator.`,
       );
@@ -590,7 +596,7 @@ export async function createDevice(data: {
   // Non-super-admins and non-engineers cannot activate devices directly; status is forced to "Pending"
   const canDirectlyActivate = isSuperAdmin || isEngineer;
   const finalStatus: DeviceStatus = canDirectlyActivate
-    ? data.status || "Active"
+    ? data.status || "Online"
     : "Pending";
 
   const device = await Device.create({
@@ -616,10 +622,8 @@ export async function createDevice(data: {
     gpsLink: data.gpsLink?.trim() || "",
     status: finalStatus,
     rejectionReason:
-      finalStatus === "Rejected"
-        ? data.rejectionReason?.trim() || "Imported as rejected"
-        : "",
-    ...(finalStatus === "Rejected"
+      finalStatus === "Frozen" ? data.rejectionReason?.trim() || "" : "",
+    ...(finalStatus === "Frozen" && data.rejectionReason?.trim()
       ? {
           rejectedBy: {
             email: actor.email,
@@ -627,7 +631,7 @@ export async function createDevice(data: {
             role: actor.role,
             userId: actor._id,
             date: new Date(),
-            reason: data.rejectionReason?.trim() || "Imported as rejected",
+            reason: data.rejectionReason.trim(),
           },
         }
       : {}),
@@ -733,7 +737,9 @@ export async function updateDevice(
   const isSuperAdmin = actor.role === "super_admin";
   const isEngineer = actor.role === "engineer";
   const canResubmitRejected =
-    device.status === "Rejected" && actor.role === "editor";
+    device.status === "Frozen" &&
+    Boolean(device.rejectedBy?.reason || device.rejectionReason) &&
+    actor.role === "editor";
   const canEdit =
     isSuperAdmin ||
     Boolean(actor.granularPermissions?.device_edit) ||
@@ -816,7 +822,9 @@ export async function updateDevice(
     updatePayload.customerMobile = data.customerMobile.trim();
   if (data.gpsLink !== undefined) updatePayload.gpsLink = data.gpsLink.trim();
 
-  const isResubmission = device.status === "Rejected";
+  const isResubmission =
+    device.status === "Frozen" &&
+    Boolean(device.rejectedBy?.reason || device.rejectionReason);
   if (isResubmission) {
     updatePayload.status = "Pending";
     updatePayload.rejectionReason = "";
@@ -830,16 +838,16 @@ export async function updateDevice(
   } else if (data.status) {
     const canApprove = isSuperAdmin || isEngineer;
     if (
-      (data.status === "Active" || data.status === "Rejected") &&
+      data.status === "Online" &&
       !canApprove &&
       device.status !== data.status
     ) {
       throw new Error(
-        "Only Super Admins and Engineers can approve or reject devices.",
+        "Only Super Admins and Engineers can approve devices.",
       );
     }
     if (
-      ["Inactive", "Retired"].includes(data.status) &&
+      ["Frozen", "Lost"].includes(data.status) &&
       !isSuperAdmin &&
       !actor.granularPermissions?.device_archive
     ) {
@@ -848,7 +856,7 @@ export async function updateDevice(
       );
     }
     updatePayload.status = data.status;
-    if (data.status === "Active" && device.status !== "Active") {
+    if (data.status === "Online" && device.status !== "Online") {
       updatePayload.approvedBy = {
         email: actor.email,
         name: actor.name || actor.email.split("@")[0],
@@ -861,7 +869,7 @@ export async function updateDevice(
   }
 
   const updatedDevice = await Device.findOneAndUpdate(
-    isResubmission ? { _id: id, status: "Rejected" } : { _id: id },
+    isResubmission ? { _id: id, status: "Frozen" } : { _id: id },
     updatePayload,
     { new: true, runValidators: true },
   );
@@ -899,13 +907,11 @@ export async function updateDevice(
     });
   } else {
     const action =
-      updatePayload.status === "Active"
+      updatePayload.status === "Online"
         ? "DEVICE_APPROVAL"
-        : updatePayload.status === "Rejected"
-          ? "DEVICE_REJECTION"
-          : updatePayload.status === "Pending"
-            ? "DEVICE_SUBMISSION"
-            : "UPDATE_DEVICE";
+        : updatePayload.status === "Pending"
+          ? "DEVICE_SUBMISSION"
+          : "UPDATE_DEVICE";
     await logActivityAndNotify({
       actor,
       action,
@@ -970,13 +976,14 @@ export async function approveDevice(id: string) {
     }
   }
 
-  if (device.status === "Active") {
-    throw new Error("Device has already been approved and is Active.");
+  if (device.status === "Online") {
+    throw new Error("Device has already been approved and is Online.");
   }
-  if (device.status === "Rejected") {
-    throw new Error(
-      "Device has already been rejected and cannot be approved directly.",
-    );
+  if (
+    device.status === "Frozen" &&
+    (device.rejectionReason || device.rejectedBy?.reason)
+  ) {
+    throw new Error("Frozen rejected devices must be resubmitted before approval.");
   }
   if (device.status !== "Pending") {
     throw new Error(
@@ -989,7 +996,7 @@ export async function approveDevice(id: string) {
     { _id: id, status: "Pending" },
     {
       $set: {
-        status: "Active",
+        status: "Online",
         approvedBy: {
           email: actor.email,
           name: actor.name || actor.email.split("@")[0],
@@ -1016,7 +1023,7 @@ export async function approveDevice(id: string) {
     module: "devices",
     resourceId: updatedDevice.sl,
     resourceName: `${updatedDevice.deviceName} (${updatedDevice.sl})`,
-    details: `${actor.name || actor.email} (${actor.role}) approved device #${updatedDevice.sl} (${updatedDevice.deviceName}) - Status is now Active / Online`,
+    details: `${actor.name || actor.email} (${actor.role}) approved device #${updatedDevice.sl} (${updatedDevice.deviceName}) - Status is now Online`,
     metadata: {
       deviceId: String(updatedDevice._id),
       sl: updatedDevice.sl,
@@ -1048,7 +1055,7 @@ export async function approveDevice(id: string) {
     action: "DEVICE_APPROVAL",
     module: "devices",
     title: `Device Approved: ${updatedDevice.deviceName}`,
-    message: `Device #${updatedDevice.sl} (${updatedDevice.deviceName}, ${updatedDevice.deviceType.toUpperCase()}) was approved by ${actor.name || actor.email} (${actor.role}). Status is now Active.`,
+    message: `Device #${updatedDevice.sl} (${updatedDevice.deviceName}, ${updatedDevice.deviceType.toUpperCase()}) was approved by ${actor.name || actor.email} (${actor.role}). Status is now Online.`,
     link: `/devices/${updatedDevice.deviceType.toLowerCase().trim()}/${updatedDevice._id}`,
     readBy: [actor.email.toLowerCase()],
   });
@@ -1113,11 +1120,11 @@ export async function rejectDevice(id: string, reason: string) {
     throw new Error("Please select a valid rejection reason.");
   }
 
-  if (device.status === "Active") {
+  if (device.status === "Online") {
     throw new Error("Device has already been approved and cannot be rejected.");
   }
-  if (device.status === "Rejected") {
-    throw new Error("Device has already been rejected.");
+  if (device.status === "Frozen" && device.rejectedBy?.reason) {
+    throw new Error("Device has already been rejected and frozen.");
   }
   if (device.status !== "Pending") {
     throw new Error(
@@ -1130,7 +1137,7 @@ export async function rejectDevice(id: string, reason: string) {
     { _id: id, status: "Pending" },
     {
       $set: {
-        status: "Rejected",
+        status: "Frozen",
         rejectedBy: {
           email: actor.email,
           name: actor.name || actor.email.split("@")[0],
@@ -1147,7 +1154,7 @@ export async function rejectDevice(id: string, reason: string) {
 
   if (!updatedDevice) {
     throw new Error(
-      "Device could not be rejected. It may have already been processed by another administrator.",
+      "Device could not be rejected and frozen. It may have already been processed by another administrator.",
     );
   }
 
@@ -1158,7 +1165,7 @@ export async function rejectDevice(id: string, reason: string) {
     module: "devices",
     resourceId: updatedDevice.sl,
     resourceName: `${updatedDevice.deviceName} (${updatedDevice.sl})`,
-    details: `${actor.name || actor.email} (${actor.role}) rejected device #${updatedDevice.sl} (${updatedDevice.deviceName}). Reason: ${cleanReason}`,
+    details: `${actor.name || actor.email} (${actor.role}) rejected and froze device #${updatedDevice.sl} (${updatedDevice.deviceName}). Reason: ${cleanReason}`,
     metadata: {
       deviceId: String(updatedDevice._id),
       sl: updatedDevice.sl,
@@ -1184,14 +1191,14 @@ export async function rejectDevice(id: string, reason: string) {
     { $addToSet: { readBy: actor.email.toLowerCase() } },
   );
 
-  // Send rejection notification
+  // Send notification that the rejected device was frozen.
   await Notification.create({
     actorEmail: actor.email,
     actorRole: actor.role,
     action: "DEVICE_REJECTION",
     module: "devices",
-    title: `Device Rejected: ${updatedDevice.deviceName}`,
-    message: `Device #${updatedDevice.sl} (${updatedDevice.deviceName}, ${updatedDevice.deviceType.toUpperCase()}) was rejected by ${actor.name || actor.email} (${actor.role}). Reason: ${cleanReason}`,
+    title: `Device Frozen: ${updatedDevice.deviceName}`,
+    message: `Device #${updatedDevice.sl} (${updatedDevice.deviceName}, ${updatedDevice.deviceType.toUpperCase()}) was rejected and frozen by ${actor.name || actor.email} (${actor.role}). Reason: ${cleanReason}`,
     link: `/devices/${updatedDevice.deviceType.toLowerCase().trim()}/${updatedDevice._id}`,
     recipientEmails: updatedDevice.submittedBy?.email
       ? [updatedDevice.submittedBy.email.toLowerCase()]
@@ -1244,7 +1251,7 @@ export async function getPendingDevices(params?: {
     limit = 25,
   } = params || {};
 
-  const status = ["Pending", "Active", "Rejected"].includes(requestedStatus)
+  const status = ["Pending", "Online", "Frozen"].includes(requestedStatus)
     ? requestedStatus
     : "Pending";
 
@@ -1379,7 +1386,6 @@ export async function getPendingDevicesCount(): Promise<number> {
 export async function updateDeviceStatus(
   id: string,
   status: DeviceStatus,
-  rejectionReason?: string,
 ) {
   const actor = await requirePermission("devices", "write");
   await connectToDatabase();
@@ -1388,13 +1394,13 @@ export async function updateDeviceStatus(
   const isEngineer = actor.role === "engineer";
   const canApprove = isSuperAdmin || isEngineer;
 
-  if ((status === "Active" || status === "Rejected") && !canApprove) {
+  if (status === "Online" && !canApprove) {
     throw new Error(
-      "Only Super Admins and Engineers can approve or reject devices.",
+      "Only Super Admins and Engineers can approve devices.",
     );
   }
   if (
-    ["Inactive", "Retired"].includes(status) &&
+    ["Frozen", "Lost"].includes(status) &&
     !isSuperAdmin &&
     !actor.granularPermissions?.device_archive
   ) {
@@ -1403,7 +1409,7 @@ export async function updateDeviceStatus(
     );
   }
   if (
-    !["Active", "Rejected", "Inactive", "Retired"].includes(status) &&
+    !["Online", "Frozen", "Lost"].includes(status) &&
     !isSuperAdmin &&
     !actor.granularPermissions?.device_edit
   ) {
@@ -1428,7 +1434,7 @@ export async function updateDeviceStatus(
   }
 
   const updateFields: Record<string, unknown> = { status };
-  if (status === "Active") {
+  if (status === "Online") {
     updateFields.approvedBy = {
       email: actor.email,
       name: actor.name || actor.email.split("@")[0],
@@ -1437,18 +1443,6 @@ export async function updateDeviceStatus(
       date: new Date(),
     };
     updateFields.rejectionReason = "";
-  } else if (status === "Rejected") {
-    const cleanReason =
-      rejectionReason?.trim() || "No specific reason provided.";
-    updateFields.rejectedBy = {
-      email: actor.email,
-      name: actor.name || actor.email.split("@")[0],
-      role: actor.role,
-      userId: actor._id,
-      date: new Date(),
-      reason: cleanReason,
-    };
-    updateFields.rejectionReason = cleanReason;
   }
 
   const device = (await Device.findByIdAndUpdate(id, updateFields, {
@@ -1459,11 +1453,9 @@ export async function updateDeviceStatus(
   await logActivityAndNotify({
     actor,
     action:
-      status === "Active"
+      status === "Online"
         ? "DEVICE_APPROVAL"
-        : status === "Rejected"
-          ? "DEVICE_REJECTION"
-          : "STATUS_CHANGE",
+        : "STATUS_CHANGE",
     module: "devices",
     resourceId: device.sl,
     resourceName: `${device.deviceName} (${device.sl})`,
@@ -1511,9 +1503,9 @@ export async function toggleDeviceActive(id: string) {
   }
 
   const newStatus: DeviceStatus =
-    device.status === "Active" ? "Pending" : "Active";
+    device.status === "Online" ? "Pending" : "Online";
   device.status = newStatus;
-  if (newStatus === "Active") {
+  if (newStatus === "Online") {
     device.approvedBy = {
       email: actor.email,
       name: actor.name || actor.email.split("@")[0],
@@ -1527,7 +1519,7 @@ export async function toggleDeviceActive(id: string) {
 
   await logActivityAndNotify({
     actor,
-    action: newStatus === "Active" ? "DEVICE_APPROVAL" : "DEVICE_SUBMISSION",
+    action: newStatus === "Online" ? "DEVICE_APPROVAL" : "DEVICE_SUBMISSION",
     module: "devices",
     resourceId: device.sl,
     resourceName: `${device.deviceName} (${device.sl})`,
@@ -1556,7 +1548,7 @@ async function deleteDeviceRecord(
   if (!device) {
     throw new Error("Device not found");
   }
-  if (storageOnly && device.status !== "Available") {
+  if (storageOnly && device.status !== "Storage") {
     throw new Error("This device is no longer in Storage.");
   }
 
@@ -1590,7 +1582,7 @@ async function deleteDeviceRecord(
   }
 
   const deletedDevice = storageOnly
-    ? await Device.findOneAndDelete({ _id: id, status: "Available" })
+    ? await Device.findOneAndDelete({ _id: id, status: "Storage" })
     : await Device.findByIdAndDelete(id);
   if (!deletedDevice) {
     throw new Error(
@@ -1709,7 +1701,7 @@ export async function checkDeviceByMac(macInput: string) {
     };
   }
 
-  const isInStorage = device.status === "Available";
+  const isInStorage = device.status === "Storage";
 
   return {
     found: true,
@@ -1717,7 +1709,7 @@ export async function checkDeviceByMac(macInput: string) {
     searchedMac: normalized || trimmed.toUpperCase(),
     device: JSON.parse(JSON.stringify(device)) as IDevice,
     message: isInStorage
-      ? "Device is in Storage (Available)"
+      ? "Device is in Storage"
       : `Device is currently ${device.status}`,
   };
 }
@@ -1765,12 +1757,12 @@ export async function returnDeviceToStorage(params: {
     );
   }
 
-  if (device.status === "Available") {
+  if (device.status === "Storage") {
     throw new Error(`Device (${device.sl}) is already in Storage.`);
   }
 
   const previousStatus = device.status;
-  device.status = "Available";
+  device.status = "Storage";
   await device.save();
 
   await logActivityAndNotify({
@@ -1779,7 +1771,7 @@ export async function returnDeviceToStorage(params: {
     module: "devices",
     resourceId: device.sl,
     resourceName: `${device.deviceName || device.deviceType} (${device.sl})`,
-    details: `Returned ${device.deviceType} (${device.sl}, MAC: ${device.macAddress || "N/A"}) to storage (status changed from ${previousStatus} to Available).`,
+    details: `Returned ${device.deviceType} (${device.sl}, MAC: ${device.macAddress || "N/A"}) to storage (status changed from ${previousStatus} to Storage).`,
     link: `/devices/${device.deviceType.toLowerCase().trim()}/${device._id}`,
   });
 
@@ -1814,7 +1806,7 @@ export async function getDeviceFilterOptions() {
 
   const servers = await Device.find({
     deviceType: "server",
-    status: { $nin: ["Retired", "Rejected"] },
+    status: { $nin: ["Frozen", "Lost"] },
   })
     .select("deviceName sl")
     .sort({ deviceName: 1, sl: 1 })
@@ -1863,7 +1855,7 @@ export async function getAllDevicesForExport(params?: {
   if (params?.status && params.status !== "all") {
     query.status = params.status;
   } else {
-    query.status = { $nin: ["Pending", "Rejected"] };
+    query.status = { $ne: "Pending" };
   }
   if (params?.server && params.server !== "all") {
     query.server = params.server;
@@ -1931,14 +1923,14 @@ export async function importDevicesBulk(
       Device.find(
         {
           deviceType: "server",
-          status: { $nin: ["Retired", "Pending", "Rejected"] },
+          status: { $nin: SELECTABLE_SERVER_STATUSES },
         },
         { _id: 1, sl: 1, deviceName: 1 },
       ).lean(),
       Device.find(
         {
           deviceType: "switch",
-          status: { $nin: ["Retired", "Pending", "Rejected"] },
+          status: { $nin: SELECTABLE_SERVER_STATUSES },
         },
         { _id: 1, sl: 1, deviceName: 1 },
       ).lean(),
@@ -2122,7 +2114,7 @@ export async function importDevicesBulk(
         status =
           DEVICE_STATUSES.find(
             (candidate) => candidate.toLowerCase() === rawStatus.toLowerCase(),
-          ) || "Active";
+          ) || "Online";
       }
 
       // 9. Verification: Server lookup
@@ -2399,7 +2391,7 @@ export async function addDeviceToStorage(
     // Check for existing device with this MAC
     const existing = await Device.findOne({ macAddress: normalized });
     if (existing) {
-      if (existing.status === "Available") {
+      if (existing.status === "Storage") {
         return {
           success: false,
           message: `This device (MAC: ${normalized}) is already in Storage.`,
@@ -2432,7 +2424,7 @@ export async function addDeviceToStorage(
       deviceType: category.slug,
       deviceName,
       macAddress: normalized,
-      status: "Available",
+      status: "Storage",
       submittedBy: {
         email: actor.email,
         name: actor.name || actor.email.split("@")[0],

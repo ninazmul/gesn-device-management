@@ -133,7 +133,7 @@ export function createDeviceImportSample(
     "Device Type": deviceType,
     "MAC Address": "48:8F:5A:11:22:33",
     "IP Address": "192.168.1.10",
-    Status: "Active",
+    Status: "Online",
     Server: "",
     "Uplink Switch": "",
     "Total Ports": deviceType === "switch" ? 24 : "",

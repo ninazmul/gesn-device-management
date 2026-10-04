@@ -30,13 +30,11 @@ export function getStorageDeviceCategoryName(deviceType: string): string {
 
 export const DEVICE_STATUSES = [
   "Pending",
-  "Active",
-  "Available",
-  "Offline",
+  "Online",
+  "Storage",
+  "Frozen",
+  "Lost",
   "Maintenance",
-  "Inactive",
-  "Retired",
-  "Rejected",
 ] as const;
 
 export const DEVICE_REJECTION_REASONS = [
@@ -120,29 +118,21 @@ export const STATUS_CONFIG: Record<
     border: "border-amber-200 dark:border-amber-800/50",
     darkBg: "dark:bg-amber-950/40",
   },
-  Active: {
-    label: "Active",
+  Online: {
+    label: "Online",
     bg: "bg-emerald-50 text-emerald-700 border-emerald-200",
     text: "text-emerald-700 dark:text-emerald-400",
     dot: "bg-emerald-500",
     border: "border-emerald-200 dark:border-emerald-800/50",
     darkBg: "dark:bg-emerald-950/40",
   },
-  Available: {
-    label: "Available",
+  Storage: {
+    label: "Storage",
     bg: "bg-blue-50 text-blue-700 border-blue-200",
     text: "text-blue-700 dark:text-blue-400",
     dot: "bg-blue-500",
     border: "border-blue-200 dark:border-blue-800/50",
     darkBg: "dark:bg-blue-950/40",
-  },
-  Offline: {
-    label: "Offline",
-    bg: "bg-rose-50 text-rose-700 border-rose-200",
-    text: "text-rose-700 dark:text-rose-400",
-    dot: "bg-rose-500",
-    border: "border-rose-200 dark:border-rose-800/50",
-    darkBg: "dark:bg-rose-950/40",
   },
   Maintenance: {
     label: "Maintenance",
@@ -152,24 +142,16 @@ export const STATUS_CONFIG: Record<
     border: "border-amber-200 dark:border-amber-800/50",
     darkBg: "dark:bg-amber-950/40",
   },
-  Inactive: {
-    label: "Inactive",
+  Frozen: {
+    label: "Frozen",
     bg: "bg-slate-100 text-slate-700 border-slate-200",
     text: "text-slate-700 dark:text-slate-400",
     dot: "bg-slate-400",
     border: "border-slate-200 dark:border-slate-700",
     darkBg: "dark:bg-slate-900/60",
   },
-  Retired: {
-    label: "Retired",
-    bg: "bg-purple-50 text-purple-700 border-purple-200",
-    text: "text-purple-700 dark:text-purple-400",
-    dot: "bg-purple-500",
-    border: "border-purple-200 dark:border-purple-800/50",
-    darkBg: "dark:bg-purple-950/40",
-  },
-  Rejected: {
-    label: "Rejected",
+  Lost: {
+    label: "Lost",
     bg: "bg-rose-50 text-rose-700 border-rose-200",
     text: "text-rose-700 dark:text-rose-400",
     dot: "bg-rose-500",

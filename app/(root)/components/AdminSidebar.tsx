@@ -98,7 +98,7 @@ const sidebarSections: SidebarSection[] = [
         module: "devices",
       },
       {
-        title: "Inactive Devices",
+        title: "Frozen & Lost Devices",
         url: "/devices/inactive",
         icon: Archive,
         module: "devices",

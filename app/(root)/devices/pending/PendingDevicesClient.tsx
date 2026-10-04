@@ -116,18 +116,13 @@ export function PendingDevicesClient({
     searchParams.get("sortBy") || "sl_asc",
   );
   const statusParam = searchParams.get("status");
-  const selectedStatus = ["Pending", "Active", "Rejected"].includes(
+  const selectedStatus = ["Pending", "Online", "Frozen"].includes(
     statusParam || "",
   )
     ? statusParam!
     : "Pending";
   const selectedServer = searchParams.get("server") || "all";
-  const statusLabel =
-    selectedStatus === "Active"
-      ? "Approved"
-      : selectedStatus === "Rejected"
-        ? "Rejected"
-        : "Pending";
+  const statusLabel = selectedStatus;
 
   // State for active device actions
   const [approvingId, setApprovingId] = useState<string | null>(null);
@@ -167,7 +162,7 @@ export function PendingDevicesClient({
       setApprovingId(device._id);
       await approveDevice(device._id);
       toast.success(
-        `Approved #${formatDisplaySL(device.sl)} (${device.deviceName})! Device is now Active.`,
+        `Approved #${formatDisplaySL(device.sl)} (${device.deviceName})! Device is now Online.`,
       );
       startTransition(() => {
         router.refresh();
@@ -241,8 +236,8 @@ export function PendingDevicesClient({
       >
         {[
           { value: "Pending", label: "Pending" },
-          { value: "Active", label: "Approved" },
-          { value: "Rejected", label: "Rejected" },
+          { value: "Online", label: "Online" },
+          { value: "Frozen", label: "Frozen" },
         ].map((status) => (
           <button
             key={status.value}
@@ -475,16 +470,14 @@ export function PendingDevicesClient({
                           className={`inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full border ${
                             device.status === "Pending"
                               ? "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20"
-                              : device.status === "Active"
+                              : device.status === "Online"
                                 ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20"
                                 : "bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-500/20"
                           }`}
                         >
-                          {device.status === "Active"
-                            ? "Approved"
-                            : device.status === "Rejected"
-                              ? "Rejected"
-                              : "Pending Approval"}
+                          {device.status === "Pending"
+                            ? "Pending Approval"
+                            : device.status}
                         </span>
                       </div>
 

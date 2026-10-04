@@ -62,7 +62,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
           typeCounts: [
             {
               $match: {
-                status: { $nin: ["Pending", "Rejected"] },
+                status: { $ne: "Pending" },
               },
             },
             {
@@ -75,7 +75,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
           typeStatusCounts: [
             {
               $match: {
-                status: { $nin: ["Pending", "Rejected"] },
+                status: { $ne: "Pending" },
               },
             },
             {
@@ -89,7 +89,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
             {
               $match: {
                 deviceType: "server",
-                status: { $nin: ["Pending", "Rejected"] },
+                status: { $ne: "Pending" },
               },
             },
             {
@@ -113,7 +113,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
           totalCount: [
             {
               $match: {
-                status: { $nin: ["Pending", "Rejected"] },
+                status: { $ne: "Pending" },
               },
             },
             {
@@ -133,7 +133,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
           recent: [
             {
               $match: {
-                status: { $nin: ["Pending", "Rejected"] },
+                status: { $ne: "Pending" },
               },
             },
             { $sort: { createdAt: -1 } },
@@ -245,7 +245,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
 
   const totalDevices = devFacet.totalCount?.[0]?.total || 0;
 
-  // Build per-type status lookup: { "antenna": { "Active": 5, "Offline": 1, ... }, ... }
+  // Build per-type status lookup from the canonical device statuses.
   const typeStatusMap: Record<string, Record<string, number>> = {};
   (devFacet.typeStatusCounts || []).forEach(
     (item: { _id: { type: string; status: string }; count: number }) => {
@@ -257,7 +257,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   );
 
   const totalServers = typeCountsMap["server"] || 0;
-  const activeServers = typeStatusMap["server"]?.["Active"] || 0;
+  const onlineServers = typeStatusMap["server"]?.["Online"] || 0;
   const serverLocationsCount =
     devFacet.serverLocations?.[0]?.total || totalServers;
   const routersCount = typeCountsMap["router"] || 0;
@@ -267,11 +267,8 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     type: string;
     label: string;
     count: number;
-    active: number;
-    offline: number;
-    maintenance: number;
-    available: number;
-    inactive: number;
+    online: number;
+    storage: number;
   }> = [];
 
   for (const core of PRIMARY_DEVICE_TYPES) {
@@ -282,11 +279,8 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       type: core.slug,
       label: core.name,
       count: typeCountsMap[core.slug] || 0,
-      active: sm["Active"] || 0,
-      offline: sm["Offline"] || 0,
-      maintenance: sm["Maintenance"] || 0,
-      available: sm["Available"] || 0,
-      inactive: (sm["Inactive"] || 0) + (sm["Retired"] || 0),
+      online: sm["Online"] || 0,
+      storage: sm["Storage"] || 0,
     });
   }
 
@@ -299,11 +293,8 @@ export async function getDashboardStats(): Promise<DashboardStats> {
         type: t.slug,
         label: t.name,
         count: typeCountsMap[t.slug] || 0,
-        active: sm["Active"] || 0,
-        offline: sm["Offline"] || 0,
-        maintenance: sm["Maintenance"] || 0,
-        available: sm["Available"] || 0,
-        inactive: (sm["Inactive"] || 0) + (sm["Retired"] || 0),
+        online: sm["Online"] || 0,
+        storage: sm["Storage"] || 0,
       });
     }
   }
@@ -361,15 +352,13 @@ export async function getDashboardStats(): Promise<DashboardStats> {
 
   return {
     totalDevices: canReadDevices ? totalDevices : 0,
-    activeDevices: canReadDevices ? statusCountsMap["Active"] || 0 : 0,
-    availableDevices: canReadDevices ? statusCountsMap["Available"] || 0 : 0,
-    offlineDevices: canReadDevices ? statusCountsMap["Offline"] || 0 : 0,
+    onlineDevices: canReadDevices ? statusCountsMap["Online"] || 0 : 0,
+    storageDevices: canReadDevices ? statusCountsMap["Storage"] || 0 : 0,
+    frozenDevices: canReadDevices ? statusCountsMap["Frozen"] || 0 : 0,
     maintenanceDevices: canReadDevices
       ? statusCountsMap["Maintenance"] || 0
       : 0,
-    inactiveDevices: canReadDevices ? statusCountsMap["Inactive"] || 0 : 0,
-    retiredDevices: canReadDevices ? statusCountsMap["Retired"] || 0 : 0,
-    rejectedDevices: canReadDevices ? statusCountsMap["Rejected"] || 0 : 0,
+    lostDevices: canReadDevices ? statusCountsMap["Lost"] || 0 : 0,
     pendingDevices: canReadDevices
       ? devFacet.pendingCount?.[0]?.total || statusCountsMap["Pending"] || 0
       : 0,
@@ -386,7 +375,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       : [],
     serverStats: {
       totalServers: canViewServer ? totalServers : 0,
-      activeServers: canViewServer ? activeServers : 0,
+      onlineServers: canViewServer ? onlineServers : 0,
       locations: canViewServer ? serverLocationsCount : 0,
       routersCount: canReadDevices ? routersCount : 0,
     },

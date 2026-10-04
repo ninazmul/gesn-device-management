@@ -156,7 +156,7 @@ export function DeviceMobileCards({
       setTogglingId(deviceId);
       const res = await toggleDeviceActive(deviceId);
       toast.success(
-        `Device ${res.newStatus === "Active" ? "activated" : "set to Pending"}`,
+        `Device ${res.newStatus === "Online" ? "set online" : "set to Pending"}`,
       );
       router.refresh();
     } catch (err) {
@@ -194,7 +194,7 @@ export function DeviceMobileCards({
     try {
       setApprovingId(deviceId);
       await approveDevice(deviceId);
-      toast.success("Device approved and set to Active!");
+      toast.success("Device approved and set to Online!");
       router.refresh();
     } catch (err) {
       toast.error(
@@ -222,23 +222,22 @@ export function DeviceMobileCards({
             {/* Header: SL + Name + Status */}
             {(() => {
               const devTheme = getDeviceTypeTheme(device.deviceType);
-              const isOnline =
-                device.status === "Active" || device.status === "Available";
+              const isOnline = device.status === "Online";
               const isPendingOrMaint =
                 device.status === "Pending" || device.status === "Maintenance";
 
               const dotColor =
-                device.status === "Active"
+                device.status === "Online"
                   ? "bg-emerald-500"
-                  : device.status === "Available"
+                  : device.status === "Storage"
                     ? "bg-blue-500"
-                    : device.status === "Offline"
+                    : device.status === "Lost"
                       ? "bg-rose-500"
                       : device.status === "Pending" ||
                           device.status === "Maintenance"
                         ? "bg-amber-500"
-                        : device.status === "Retired"
-                          ? "bg-purple-500"
+                        : device.status === "Frozen"
+                          ? "bg-slate-400"
                           : "bg-slate-400";
 
               return (
@@ -257,7 +256,7 @@ export function DeviceMobileCards({
                         {isOnline && (
                           <span
                             className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
-                              device.status === "Active"
+                              device.status === "Online"
                                 ? "bg-emerald-400"
                                 : "bg-blue-400"
                             }`}
@@ -358,19 +357,19 @@ export function DeviceMobileCards({
                           disabled={togglingId === device._id}
                           onClick={(e) => handleToggleActive(e, device._id)}
                           className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                            device.status === "Active"
+                            device.status === "Online"
                               ? "bg-emerald-500"
                               : "bg-slate-200 dark:bg-slate-700"
                           } ${togglingId === device._id ? "opacity-50 cursor-wait" : ""}`}
                           title={
-                            device.status === "Active"
-                              ? "Super Admin: Click to deactivate (set to Pending)"
-                              : "Super Admin: Click to activate device"
+                            device.status === "Online"
+                              ? "Super Admin: Click to set to Pending"
+                              : "Super Admin: Click to set Online"
                           }
                         >
                           <span
                             className={`pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
-                              device.status === "Active"
+                              device.status === "Online"
                                 ? "translate-x-3"
                                 : "translate-x-0"
                             }`}
@@ -460,12 +459,12 @@ export function DeviceMobileCards({
                       </button>
                     </>
                   )}
-                {/* Rejection reason for Rejected devices */}
-                {device.status === "Rejected" &&
+                {/* Preserve registration rejection details for Frozen devices */}
+                {device.status === "Frozen" &&
                   (device.rejectionReason || device.rejectedBy?.reason) && (
                     <span
                       className="flex items-center gap-1 text-xs text-rose-500 p-2"
-                      title={`Rejected: ${device.rejectionReason || device.rejectedBy?.reason}`}
+                      title={`Frozen after rejection: ${device.rejectionReason || device.rejectedBy?.reason}`}
                     >
                       <AlertTriangle className="w-3.5 h-3.5" />
                       <span className="truncate max-w-[120px]">
@@ -480,7 +479,8 @@ export function DeviceMobileCards({
                   <Eye className="w-4 h-4" /> Details
                 </Link>
                 {(canEditDevice ||
-                  (device.status === "Rejected" &&
+                  (device.status === "Frozen" &&
+                    Boolean(device.rejectedBy?.reason || device.rejectionReason) &&
                     admin?.role === "editor" &&
                     (device.deviceType !== "server" || canManageServer))) && (
                   <button
@@ -488,7 +488,8 @@ export function DeviceMobileCards({
                     onClick={() => setEditingDevice(device)}
                     className="p-2 rounded-xl text-slate-500 dark:text-slate-400 hover:text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-950/40"
                     title={
-                      device.status === "Rejected"
+                      device.status === "Frozen" &&
+                      Boolean(device.rejectedBy?.reason || device.rejectionReason)
                         ? "Update & Resubmit"
                         : "Edit Device"
                     }

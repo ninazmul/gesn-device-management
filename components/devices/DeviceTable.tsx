@@ -171,7 +171,7 @@ export function DeviceTable({
       setTogglingId(deviceId);
       const res = await toggleDeviceActive(deviceId);
       toast.success(
-        `Device ${res.newStatus === "Active" ? "activated" : "set to Pending"}`,
+        `Device ${res.newStatus === "Online" ? "set online" : "set to Pending"}`,
       );
       router.refresh();
     } catch (err) {
@@ -209,7 +209,7 @@ export function DeviceTable({
     try {
       setApprovingId(deviceId);
       await approveDevice(deviceId);
-      toast.success("Device approved and set to Active!");
+      toast.success("Device approved and set to Online!");
       router.refresh();
     } catch (err) {
       toast.error(
@@ -336,32 +336,28 @@ export function DeviceTable({
                           const devTheme = getDeviceTypeTheme(
                             device.deviceType,
                           );
-                          const isOnline =
-                            device.status === "Active" ||
-                            device.status === "Available";
+                          const isOnline = device.status === "Online";
                           const isPendingOrMaint =
                             device.status === "Pending" ||
                             device.status === "Maintenance";
 
                           const dotColor =
-                            device.status === "Active"
+                            device.status === "Online"
                               ? "bg-emerald-500"
-                              : device.status === "Available"
+                              : device.status === "Storage"
                                 ? "bg-blue-500"
-                                : device.status === "Offline"
+                                : device.status === "Lost"
                                   ? "bg-rose-500"
-                                  : device.status === "Pending" ||
-                                      device.status === "Maintenance"
-                                    ? "bg-amber-500"
-                                    : device.status === "Retired"
-                                      ? "bg-purple-500"
-                                      : device.status === "Rejected"
-                                        ? "bg-rose-600"
-                                        : "bg-slate-400";
+                                    : device.status === "Pending" ||
+                                    device.status === "Maintenance"
+                                  ? "bg-amber-500"
+                                  : device.status === "Frozen"
+                                    ? "bg-slate-400"
+                                    : "bg-slate-400";
 
                           return (
                             <div className="flex items-center gap-3">
-                              {/* Device Icon Avatar with Online/Offline Beacon */}
+                              {/* Device icon avatar with an online beacon */}
                               <div className="relative shrink-0">
                                 <div
                                   className={`p-2 rounded-xl border shrink-0 ${devTheme.bg} ${devTheme.border} ${devTheme.text}`}
@@ -375,7 +371,7 @@ export function DeviceTable({
                                   {isOnline && (
                                     <span
                                       className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
-                                        device.status === "Active"
+                                        device.status === "Online"
                                           ? "bg-emerald-400"
                                           : "bg-blue-400"
                                       }`}
@@ -543,19 +539,19 @@ export function DeviceTable({
                                   handleToggleActive(e, device._id)
                                 }
                                 className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                                  device.status === "Active"
+                                  device.status === "Online"
                                     ? "bg-emerald-500"
                                     : "bg-slate-200 dark:bg-slate-700"
                                 } ${togglingId === device._id ? "opacity-50 cursor-wait" : ""}`}
                                 title={
-                                  device.status === "Active"
-                                    ? "Super Admin: Click to deactivate (set to Pending)"
-                                    : "Super Admin: Click to activate device"
+                                  device.status === "Online"
+                                    ? "Super Admin: Click to set to Pending"
+                                    : "Super Admin: Click to set Online"
                                 }
                               >
                                 <span
                                   className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
-                                    device.status === "Active"
+                                    device.status === "Online"
                                       ? "translate-x-4"
                                       : "translate-x-0"
                                   }`}
@@ -601,13 +597,13 @@ export function DeviceTable({
                                 </button>
                               </>
                             )}
-                          {/* Rejection reason tooltip for Rejected devices */}
-                          {device.status === "Rejected" &&
+                          {/* Rejection reason tooltip for Frozen devices */}
+                          {device.status === "Frozen" &&
                             (device.rejectionReason ||
                               device.rejectedBy?.reason) && (
                               <span
                                 className="p-1.5 rounded-lg text-rose-400 cursor-help"
-                                title={`Rejected: ${device.rejectionReason || device.rejectedBy?.reason}`}
+                                title={`Frozen after rejection: ${device.rejectionReason || device.rejectedBy?.reason}`}
                               >
                                 <AlertTriangle className="w-4 h-4" />
                               </span>
@@ -620,7 +616,8 @@ export function DeviceTable({
                             <Eye className="w-4 h-4" />
                           </Link>
                           {(canEditDevice ||
-                            (device.status === "Rejected" &&
+                            (device.status === "Frozen" &&
+                              Boolean(device.rejectedBy?.reason || device.rejectionReason) &&
                               admin?.role === "editor")) &&
                             (device.deviceType !== "server" ||
                               canManageServer) && (
@@ -629,7 +626,8 @@ export function DeviceTable({
                                 onClick={() => setEditingDevice(device)}
                                 className="p-1.5 rounded-lg text-slate-400 hover:text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-950/40 transition-colors"
                                 title={
-                                  device.status === "Rejected"
+                                  device.status === "Frozen" &&
+                                  Boolean(device.rejectedBy?.reason || device.rejectionReason)
                                     ? "Update & Resubmit"
                                     : "Edit Device"
                                 }

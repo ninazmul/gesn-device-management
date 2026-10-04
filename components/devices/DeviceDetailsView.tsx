@@ -75,7 +75,8 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
   } = usePermissions();
   const canManageServer = isSuperAdmin || isEngineer || can("server_manage");
   const canResubmitRejected =
-    device.status === "Rejected" &&
+    device.status === "Frozen" &&
+    Boolean(device.rejectedBy?.reason || device.rejectionReason) &&
     admin?.role === "editor" &&
     (device.deviceType !== "server" || canManageServer);
 
@@ -96,7 +97,7 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
       setIsToggling(true);
       const res = await toggleDeviceActive(device._id);
       toast.success(
-        `Device ${res.newStatus === "Active" ? "activated" : "set to Pending"}`,
+        `Device ${res.newStatus === "Online" ? "set online" : "set to Pending"}`,
       );
       router.refresh();
     } catch (err) {
@@ -127,7 +128,7 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
     try {
       setIsApproving(true);
       await approveDevice(device._id);
-      toast.success("Device approved and set to Active!");
+      toast.success("Device approved and set to Online!");
       router.refresh();
     } catch (err) {
       toast.error(
@@ -171,15 +172,8 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
                 className="absolute -bottom-1 -right-1 flex h-3.5 w-3.5"
                 title={`Status: ${device.status}`}
               >
-                {(device.status === "Active" ||
-                  device.status === "Available") && (
-                  <span
-                    className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
-                      device.status === "Active"
-                        ? "bg-emerald-400"
-                        : "bg-blue-400"
-                    }`}
-                  />
+                {device.status === "Online" && (
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 bg-emerald-400" />
                 )}
                 {(device.status === "Pending" ||
                   device.status === "Maintenance") && (
@@ -187,18 +181,16 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
                 )}
                 <span
                   className={`relative inline-flex rounded-full h-3.5 w-3.5 ${
-                    device.status === "Active"
+                    device.status === "Online"
                       ? "bg-emerald-500"
-                      : device.status === "Available"
+                      : device.status === "Storage"
                         ? "bg-blue-500"
-                        : device.status === "Offline"
+                        : device.status === "Lost"
                           ? "bg-rose-500"
                           : device.status === "Pending" ||
                               device.status === "Maintenance"
                             ? "bg-amber-500"
-                            : device.status === "Retired"
-                              ? "bg-purple-500"
-                              : "bg-slate-400"
+                            : "bg-slate-400"
                   } ring-2 ring-white dark:ring-slate-900`}
                 />
               </span>
@@ -232,7 +224,7 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
                   ) : (
                     <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />
                   )}
-                  Approve & Activate
+                  Approve & Set Online
                 </Button>
                 <Button
                   type="button"
@@ -252,7 +244,7 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
                 disabled={isToggling}
                 onClick={handleToggleActive}
                 className={`rounded-xl text-xs font-semibold shadow-sm ${
-                  device.status === "Active"
+                  device.status === "Online"
                     ? "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700"
                     : "bg-emerald-600 hover:bg-emerald-700 text-white"
                 }`}
@@ -262,7 +254,7 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
                 ) : (
                   <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />
                 )}
-                {device.status === "Active" ? "Set to Pending" : "Activate"}
+                {device.status === "Online" ? "Set to Pending" : "Set Online"}
               </Button>
             )}
 
@@ -286,7 +278,7 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
                 className="rounded-xl border-slate-200 dark:border-slate-800 text-xs font-semibold"
               >
                 <Pencil className="w-3.5 h-3.5 mr-1.5 text-slate-500" />
-                {device.status === "Rejected"
+                {canResubmitRejected
                   ? "Update & Resubmit"
                   : "Edit Device"}
               </Button>
@@ -326,7 +318,7 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
       </div>
 
       {/* Rejection Alert Banner */}
-      {device.status === "Rejected" &&
+      {device.status === "Frozen" &&
         (device.rejectionReason || device.rejectedBy?.reason) && (
           <div className="rounded-3xl p-5 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/40 shadow-xs flex items-start gap-4">
             <div className="p-2.5 rounded-2xl bg-rose-500/10 text-rose-600 dark:text-rose-400 shrink-0">
@@ -334,7 +326,7 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
             </div>
             <div className="space-y-1">
               <h3 className="font-bold text-sm text-rose-800 dark:text-rose-300">
-                Device Registration Rejected
+                Device Frozen After Registration Rejection
               </h3>
               <p className="text-xs text-rose-700 dark:text-rose-400 leading-relaxed">
                 <span className="font-semibold">Reason:</span>{" "}
@@ -661,7 +653,7 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
 
               <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
                 <span className="text-xs font-semibold text-slate-400 block">
-                  Active / Connected
+                  Online / Connected
                 </span>
                 <span className="text-2xl font-extrabold text-sky-600 dark:text-sky-400 mt-1 block">
                   {device.activePortsCount || 0}

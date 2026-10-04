@@ -138,7 +138,7 @@ export function DeviceSectionHeader({
               {typeName}s
             </h1>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Active inventory:{" "}
+              Device inventory:{" "}
               <span className="font-bold text-slate-800 dark:text-slate-200">
                 {total.toLocaleString()}
               </span>{" "}
