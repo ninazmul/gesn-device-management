@@ -836,14 +836,17 @@ export async function updateDevice(
       date: new Date(),
     };
   } else if (data.status) {
-    const canApprove = isSuperAdmin || isEngineer;
+    const canApprove =
+      isSuperAdmin ||
+      isEngineer ||
+      Boolean(actor.granularPermissions?.device_approve);
     if (
       data.status === "Online" &&
       !canApprove &&
       device.status !== data.status
     ) {
       throw new Error(
-        "Only Super Admins and Engineers can approve devices.",
+        "Forbidden: You do not have permission to set devices Online.",
       );
     }
     if (
@@ -953,7 +956,10 @@ export async function approveDevice(id: string) {
 
   const isSuperAdmin = actor.role === "super_admin";
   const isEngineer = actor.role === "engineer";
-  const canApprove = isSuperAdmin || isEngineer;
+  const canApprove =
+    isSuperAdmin ||
+    isEngineer ||
+    Boolean(actor.granularPermissions?.device_approve);
 
   if (!canApprove) {
     throw new Error(
@@ -1087,11 +1093,14 @@ export async function rejectDevice(id: string, reason: string) {
 
   const isSuperAdmin = actor.role === "super_admin";
   const isEngineer = actor.role === "engineer";
-  const canApprove = isSuperAdmin || isEngineer;
+  const canApprove =
+    isSuperAdmin ||
+    isEngineer ||
+    Boolean(actor.granularPermissions?.device_approve);
 
   if (!canApprove) {
     throw new Error(
-      "Forbidden: Only Super Admins and Engineers can reject devices.",
+      "Forbidden: You do not have permission to reject and freeze devices.",
     );
   }
 
@@ -1390,28 +1399,34 @@ export async function updateDeviceStatus(
   const actor = await requirePermission("devices", "write");
   await connectToDatabase();
 
+  if (!DEVICE_STATUSES.includes(status)) {
+    throw new Error("Invalid device status.");
+  }
+
   const isSuperAdmin = actor.role === "super_admin";
   const isEngineer = actor.role === "engineer";
-  const canApprove = isSuperAdmin || isEngineer;
+  const canApprove =
+    isSuperAdmin ||
+    isEngineer ||
+    Boolean(actor.granularPermissions?.device_approve);
+  const canEditStatus =
+    isSuperAdmin || Boolean(actor.granularPermissions?.device_edit);
+  const canArchiveStatus =
+    isSuperAdmin || Boolean(actor.granularPermissions?.device_archive);
 
   if (status === "Online" && !canApprove) {
     throw new Error(
-      "Only Super Admins and Engineers can approve devices.",
+      "Forbidden: You do not have permission to set devices Online.",
     );
   }
-  if (
-    ["Frozen", "Lost"].includes(status) &&
-    !isSuperAdmin &&
-    !actor.granularPermissions?.device_archive
-  ) {
+  if (["Frozen", "Lost"].includes(status) && !canArchiveStatus) {
     throw new Error(
       "Forbidden: You do not have permission to freeze or archive devices.",
     );
   }
   if (
     !["Online", "Frozen", "Lost"].includes(status) &&
-    !isSuperAdmin &&
-    !actor.granularPermissions?.device_edit
+    !canEditStatus
   ) {
     throw new Error(
       "Forbidden: You do not have permission to change device status.",

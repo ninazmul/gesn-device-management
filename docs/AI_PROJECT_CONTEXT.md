@@ -149,7 +149,7 @@ server_view, server_manage, customer_view, user_manage, report_view, setting_man
 "Pending" | "Online" | "Storage" | "Frozen" | "Lost" | "Maintenance"
 ```
 
-Run `npm run migrate:device-statuses` with `MONGODB_URI` set before deploying to migrate existing device records (`Active` → `Online`, `Available` → `Storage`, and `Offline`, `Inactive`, `Retired`, and `Rejected` → `Frozen`). Rejection details remain on the device record.
+Existing device statuses are migrated automatically on the first database connection after deployment (`Active` → `Online`, `Available` → `Storage`, and `Offline`, `Inactive`, `Retired`, and `Rejected` → `Frozen`). Rejection details remain on the device record. `npm run migrate:device-statuses` is also available for an explicit manual migration.
 
 ---
 
