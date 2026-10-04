@@ -393,17 +393,19 @@ export function DeviceMobileCards({
 
             {/* Network Info Pills */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs pt-1 border-t border-slate-100 dark:border-slate-800/60">
-              <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 dark:bg-slate-800/50">
-                <span className="text-slate-400">IP:</span>
-                <div className="flex items-center gap-1">
-                  <span className="font-mono font-semibold text-slate-800 dark:text-slate-200">
-                    {device.ipAddress || "—"}
-                  </span>
-                  {device.ipAddress && (
-                    <CopyButton text={device.ipAddress} label="IP" />
-                  )}
+              {device.deviceType !== "access-point" && (
+                <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 dark:bg-slate-800/50">
+                  <span className="text-slate-400">IP:</span>
+                  <div className="flex items-center gap-1">
+                    <span className="font-mono font-semibold text-slate-800 dark:text-slate-200">
+                      {device.ipAddress || "—"}
+                    </span>
+                    {device.ipAddress && (
+                      <CopyButton text={device.ipAddress} label="IP" />
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 dark:bg-slate-800/50">
                 <span className="text-slate-400">MAC:</span>
