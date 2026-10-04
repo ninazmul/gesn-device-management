@@ -516,24 +516,22 @@ export async function createDevice(data: {
     throw new Error("Invalid MAC Address format. Example: AA:BB:CC:DD:EE:FF");
   }
 
-  // 2. Prevent duplicate submissions by MAC address
-  const existingDevice = await Device.findOne({ macAddress: normalizedMAC });
-  if (existingDevice) {
-    if (existingDevice.status === "Pending") {
+  // 2. Register devices only when their MAC is already present in Storage.
+  const existingDevice = await Device.findOne({
+    macAddress: normalizedMAC,
+    status: "Storage",
+  });
+  if (!existingDevice) {
+    const conflictingDevice = await Device.findOne({
+      macAddress: normalizedMAC,
+    });
+    if (!conflictingDevice) {
       throw new Error(
-        `A device with MAC address ${normalizedMAC} has already been submitted and is currently Pending Approval (SL: #${existingDevice.sl}, Name: ${existingDevice.deviceName}).`,
-      );
-    }
-    if (
-      existingDevice.status === "Frozen" &&
-      (existingDevice.rejectionReason || existingDevice.rejectedBy?.reason)
-    ) {
-      throw new Error(
-        `A device with MAC address ${normalizedMAC} was previously rejected (SL: #${existingDevice.sl}, Reason: ${existingDevice.rejectionReason || "N/A"}). Please review existing records or consult an administrator.`,
+        `No device with MAC address ${normalizedMAC} is available in Storage. Add it to Storage first.`,
       );
     }
     throw new Error(
-      `A device with MAC address ${normalizedMAC} already exists in the system (SL: #${existingDevice.sl}, Name: ${existingDevice.deviceName}, Status: ${existingDevice.status}).`,
+      `Device with MAC address ${normalizedMAC} is not available in Storage (current status: ${conflictingDevice.status}, SL: #${conflictingDevice.sl}). Only devices currently in Storage can be added.`,
     );
   }
 
@@ -591,16 +589,10 @@ export async function createDevice(data: {
   const deviceName =
     data.deviceName?.trim() ||
     `${data.deviceType.toUpperCase()} ${normalizedMAC.slice(-5)}`;
-  const sl = await getNextSL();
+  // Devices registered from Storage must be approved before becoming Online.
+  const finalStatus: DeviceStatus = "Pending";
 
-  // Non-super-admins and non-engineers cannot activate devices directly; status is forced to "Pending"
-  const canDirectlyActivate = isSuperAdmin || isEngineer;
-  const finalStatus: DeviceStatus = canDirectlyActivate
-    ? data.status || "Online"
-    : "Pending";
-
-  const device = await Device.create({
-    sl,
+  existingDevice.set({
     deviceType: type,
     deviceName,
     totalPorts:
@@ -621,20 +613,7 @@ export async function createDevice(data: {
     customerMobile: data.customerMobile?.trim() || "",
     gpsLink: data.gpsLink?.trim() || "",
     status: finalStatus,
-    rejectionReason:
-      finalStatus === "Frozen" ? data.rejectionReason?.trim() || "" : "",
-    ...(finalStatus === "Frozen" && data.rejectionReason?.trim()
-      ? {
-          rejectedBy: {
-            email: actor.email,
-            name: actor.name || actor.email.split("@")[0],
-            role: actor.role,
-            userId: actor._id,
-            date: new Date(),
-            reason: data.rejectionReason.trim(),
-          },
-        }
-      : {}),
+    rejectionReason: "",
     submittedBy: {
       email: actor.email,
       name: actor.name || actor.email.split("@")[0],
@@ -643,10 +622,12 @@ export async function createDevice(data: {
       date: new Date(),
     },
   });
+  existingDevice.approvedBy = undefined;
+  existingDevice.rejectedBy = undefined;
+  const device = await existingDevice.save();
+  const sl = device.sl;
 
-  const logDetails = canDirectlyActivate
-    ? `Added new ${data.deviceType} device: ${deviceName} (SL: ${sl}, IP: ${rawIp || "N/A"}, Status: ${finalStatus})`
-    : `Added new ${data.deviceType} device: ${deviceName} (SL: ${sl}, MAC: ${normalizedMAC}) - Pending Super Admin / Engineer approval.`;
+  const logDetails = `Registered ${data.deviceType} device from Storage: ${deviceName} (SL: ${sl}, MAC: ${normalizedMAC}) - Pending Super Admin / Engineer approval.`;
 
   await logActivityAndNotify({
     actor,
@@ -674,6 +655,7 @@ export async function createDevice(data: {
 
   safeRevalidatePath("/");
   safeRevalidatePath("/devices");
+  safeRevalidatePath("/devices/storage");
   safeRevalidatePath("/devices/pending");
   safeRevalidatePath(`/devices/${type}`);
   if (data.uplinkSwitch) {

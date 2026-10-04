@@ -16,6 +16,7 @@ export const STORAGE_DEVICE_CATEGORIES = [
   { slug: "router", name: "Router" },
   { slug: "access-point", name: "Access Point" },
   { slug: "switch", name: "Switch" },
+  { slug: "server", name: "Server" },
 ] as const;
 
 export type StorageDeviceCategory =
