@@ -230,15 +230,15 @@ export const GRANULAR_PERMISSIONS_LIST: GranularPermissionMeta[] = [
   },
   {
     key: "device_approve",
-    label: "Approve/Reject Device",
+    label: "Approve/Freeze Device",
     category: "Devices",
-    description: "Review pending devices and approve to Active or reject",
+    description: "Review pending devices and set them Online or Frozen",
   },
   {
     key: "device_archive",
-    label: "Freeze/Archive Device",
+    label: "Freeze/Lose Device",
     category: "Devices",
-    description: "Freeze an active device or archive it from active operations",
+    description: "Set a device to Frozen or Lost",
   },
   {
     key: "server_view",

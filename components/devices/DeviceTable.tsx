@@ -39,7 +39,7 @@ import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import {
   deleteDevice,
   deleteStoredDevice,
-  toggleDeviceActive,
+  toggleDeviceOnline,
   approveDevice,
 } from "@/lib/actions/device.actions";
 import { formatDisplaySL } from "@/lib/utils";
@@ -169,7 +169,7 @@ export function DeviceTable({
     }
     try {
       setTogglingId(deviceId);
-      const res = await toggleDeviceActive(deviceId);
+      const res = await toggleDeviceOnline(deviceId);
       toast.success(
         `Device ${res.newStatus === "Online" ? "set online" : "set to Pending"}`,
       );

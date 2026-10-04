@@ -65,7 +65,7 @@ Track implementation progress for DMS device forms, engineer role, approval syst
   - [x] Add "Pending Approvals" quick button to `AllDevicesHeader.tsx`
   - [x] Add Pending Devices alert banner to `DashboardClient.tsx`
   - [x] Add `getPendingDevices` and `getPendingDevicesCount` to `lib/actions/device.actions.ts`
-  - [x] Exclude Pending and Rejected devices from `getDashboardStats`, `getAvailableSwitches`, `getAvailableServers`, and default `getDevices`
+  - [x] Keep Pending devices out of operational inventory, switch/server options, and dashboard type counts
 - [x] Testing & Verification
   - [x] Form validation and submission for Access Point, Router, Switch, Antenna
   - [x] Duplicate MAC submission prevention

@@ -304,8 +304,8 @@ importDevicesBulk(rows: Record<string, unknown>[], defaultDeviceType?: string)
 
 | Function                         | Auth                      | Description                                                |
 | -------------------------------- | ------------------------- | ---------------------------------------------------------- |
-| `getAvailableSwitches()`         | `devices:read`            | Active switches with port availability                     |
-| `getAvailableServers()`          | `devices:read`            | Active servers for form dropdowns                          |
+| `getAvailableSwitches()`         | `devices:read`            | Online switches with port availability                     |
+| `getAvailableServers()`          | `devices:read`            | Online servers for form dropdowns                          |
 | `getDevices(params?)`            | `devices:read`            | Paginated list with filters, search, sort                  |
 | `getDeviceById(id)`              | `devices:read`            | Single device with populated refs                          |
 | `createDevice(data)`             | `devices:write`           | Create + type validation + submittedBy                     |
@@ -313,7 +313,7 @@ importDevicesBulk(rows: Record<string, unknown>[], defaultDeviceType?: string)
 | `approveDevice(id)`              | `device_approve` granular | Pending → Online, idempotent                                |
 | `rejectDevice(id, reason)`       | `device_approve` granular | Pending → Frozen, reason retained                            |
 | `updateDeviceStatus(id, status)` | `devices:write`           | General status change (approval-gated for Online)           |
-| `toggleDeviceActive(id)`         | `devices:write`           | Toggle Pending ↔ Online                                     |
+| `toggleDeviceOnline(id)`         | `devices:write`           | Toggle Pending ↔ Online                                     |
 | `deleteDevice(id)`               | `device_delete` granular  | Hard delete (blocks if has connected children)             |
 | `searchGlobalDevices(q)`         | `devices:read`            | Global search across all types                             |
 | `getDeviceFilterOptions(type?)`  | `devices:read`            | Filter options (e.g. server list) for dropdowns            |

@@ -18,7 +18,7 @@ const FROZEN_LOST_DEVICE_STATUSES = [
   "Lost",
 ] as const;
 
-interface InactiveDevicesPageProps {
+interface FrozenLostDevicesPageProps {
   searchParams: Promise<{
     search?: string;
     status?: string;
@@ -29,9 +29,9 @@ interface InactiveDevicesPageProps {
   }>;
 }
 
-export default async function InactiveDevicesPage({
+export default async function FrozenLostDevicesPage({
   searchParams,
-}: InactiveDevicesPageProps) {
+}: FrozenLostDevicesPageProps) {
   const params = await searchParams;
   const page = params.page ? parseInt(params.page, 10) : 1;
   const { devices, total, totalPages, limit } = await getDevices({

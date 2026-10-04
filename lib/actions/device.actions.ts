@@ -1503,7 +1503,7 @@ export async function updateDeviceStatus(
 // ==========================================
 // TOGGLE DEVICE ACTIVE (SUPER ADMIN OR ENGINEER QUICK TOGGLE)
 // ==========================================
-export async function toggleDeviceActive(id: string) {
+export async function toggleDeviceOnline(id: string) {
   const actor = await requirePermission("devices", "write");
   await connectToDatabase();
 
@@ -2446,7 +2446,7 @@ export async function addDeviceToStorage(
       };
     }
 
-    // Create device as Available (in storage)
+    // Create device in Storage.
     const sl = await getNextSL();
     const deviceName = `STORAGE ${normalized.slice(-5)}`;
     const device = await Device.create({

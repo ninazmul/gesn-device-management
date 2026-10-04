@@ -30,7 +30,7 @@ import { RejectDeviceDialog } from "./RejectDeviceDialog";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import {
   deleteDevice,
-  toggleDeviceActive,
+  toggleDeviceOnline,
   approveDevice,
 } from "@/lib/actions/device.actions";
 import { formatDate, formatDateTime, formatDisplaySL } from "@/lib/utils";
@@ -95,7 +95,7 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
     }
     try {
       setIsToggling(true);
-      const res = await toggleDeviceActive(device._id);
+      const res = await toggleDeviceOnline(device._id);
       toast.success(
         `Device ${res.newStatus === "Online" ? "set online" : "set to Pending"}`,
       );
@@ -335,7 +335,7 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
               </p>
               {device.rejectedBy && (
                 <p className="text-[11px] text-rose-500/80 dark:text-rose-400/80 pt-0.5">
-                  Rejected by{" "}
+                  Frozen after rejection by{" "}
                   {device.rejectedBy.name || device.rejectedBy.email}
                   {device.rejectedBy.date &&
                     ` on ${formatDateTime(device.rejectedBy.date)}`}
@@ -592,7 +592,7 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
                 {device.rejectedBy && (
                   <div className="space-y-0.5 sm:col-span-2">
                     <span className="text-[10px] text-rose-600 dark:text-rose-400 font-medium block">
-                      Rejected By
+                      Frozen After Rejection By
                     </span>
                     <span className="text-xs font-semibold text-rose-700 dark:text-rose-300 block">
                       {device.rejectedBy.name || device.rejectedBy.email}
