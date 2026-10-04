@@ -522,6 +522,7 @@ export function DeviceTable({
                               onClick={() => setStatusDevice(device)}
                               className="cursor-pointer hover:opacity-85 transition-opacity"
                               title="Click to change status"
+                              aria-label={`Update status for ${device.deviceName}`}
                             >
                               <DeviceStatusBadge status={device.status} />
                             </button>

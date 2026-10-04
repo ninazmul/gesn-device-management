@@ -125,6 +125,7 @@ export function DeviceMobileCards({
     canApproveDevice,
     canDeleteDevice,
     canEditDevice,
+    canArchiveDevice,
     can,
   } = usePermissions();
   const canManageServer = isSuperAdmin || isEngineer || can("server_manage");
@@ -343,13 +344,21 @@ export function DeviceMobileCards({
                       #{displaySerial}
                     </span>
                     <div className="flex items-center gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => setStatusDevice(device)}
-                        className="cursor-pointer"
-                      >
+                      {(canEditDevice ||
+                        canArchiveDevice ||
+                        canApproveDevice) &&
+                      (device.deviceType !== "server" || canManageServer) ? (
+                        <button
+                          type="button"
+                          onClick={() => setStatusDevice(device)}
+                          className="cursor-pointer"
+                          aria-label={`Update status for ${device.deviceName}`}
+                        >
+                          <DeviceStatusBadge status={device.status} size="sm" />
+                        </button>
+                      ) : (
                         <DeviceStatusBadge status={device.status} size="sm" />
-                      </button>
+                      )}
 
                       {isSuperAdmin && (
                         <button

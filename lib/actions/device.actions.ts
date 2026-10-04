@@ -1396,7 +1396,12 @@ export async function updateDeviceStatus(
   id: string,
   status: DeviceStatus,
 ) {
-  const actor = await requirePermission("devices", "write");
+  const actor = await getCurrentAdminProfile();
+  if (!actor) {
+    throw new Error(
+      "Unauthorized: Access is restricted to authorized administrators.",
+    );
+  }
   await connectToDatabase();
 
   if (!DEVICE_STATUSES.includes(status)) {
@@ -1435,6 +1440,16 @@ export async function updateDeviceStatus(
 
   const existing = await Device.findById(id);
   if (!existing) throw new Error("Device not found");
+
+  if (
+    status === "Online" &&
+    existing.status === "Frozen" &&
+    (existing.rejectionReason || existing.rejectedBy?.reason)
+  ) {
+    throw new Error(
+      "Update and resubmit this rejected device before setting it Online.",
+    );
+  }
 
   if (existing.deviceType === "server") {
     const canManageServer =

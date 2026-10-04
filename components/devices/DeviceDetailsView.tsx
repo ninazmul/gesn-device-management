@@ -258,7 +258,8 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
               </Button>
             )}
 
-            {(canEditDevice || canArchiveDevice || canApproveDevice) && (
+            {(canEditDevice || canArchiveDevice || canApproveDevice) &&
+              (device.deviceType !== "server" || canManageServer) && (
               <Button
                 type="button"
                 variant="outline"
