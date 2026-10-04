@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -36,10 +36,17 @@ export function DeviceStatusDialog({
   );
   const [isLoading, setIsLoading] = useState(false);
 
-  // Sync selected status when device changes
-  if (device && selectedStatus !== device.status && !isLoading) {
-    setSelectedStatus(device.status);
-  }
+  const deviceId = device?._id;
+  const deviceStatus = device?.status;
+  const mustResubmitBeforeOnline =
+    deviceStatus === "Frozen" &&
+    Boolean(device?.rejectionReason || device?.rejectedBy?.reason);
+
+  useEffect(() => {
+    if (open && deviceStatus) {
+      setSelectedStatus(deviceStatus);
+    }
+  }, [open, deviceId, deviceStatus]);
 
   const handleUpdate = async () => {
     if (!device) return;
@@ -78,6 +85,7 @@ export function DeviceStatusDialog({
             const isArchiveStatus = status === "Frozen" || status === "Lost";
             const isRestricted =
               (isApprovalStatus && !canApproveDevice) ||
+              (status === "Online" && mustResubmitBeforeOnline) ||
               (isArchiveStatus && !canArchiveDevice) ||
               (!isApprovalStatus && !isArchiveStatus && !canEditDevice);
 
@@ -87,6 +95,12 @@ export function DeviceStatusDialog({
                 type="button"
                 disabled={isRestricted}
                 onClick={() => !isRestricted && setSelectedStatus(status)}
+                aria-pressed={isSelected}
+                title={
+                  status === "Online" && mustResubmitBeforeOnline
+                    ? "Update and resubmit this rejected device before setting it Online."
+                    : undefined
+                }
                 className={`flex items-center justify-between p-3 rounded-xl border text-sm font-semibold transition-all ${
                   isRestricted
                     ? "opacity-45 bg-slate-50 dark:bg-slate-900/40 border-dashed border-slate-200 dark:border-slate-800 cursor-not-allowed text-slate-400"
