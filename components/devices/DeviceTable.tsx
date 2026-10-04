@@ -248,11 +248,6 @@ export function DeviceTable({
                     Type
                   </TableHead>
                 )}
-                {!isAccessPointTable && (
-                  <TableHead className="font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                    IP Address
-                  </TableHead>
-                )}
                 <TableHead className="font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
                   MAC Address
                 </TableHead>
@@ -272,7 +267,7 @@ export function DeviceTable({
               {devices.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={8}
+                    colSpan={isAccessPointTable ? 8 : 7}
                     className="py-16 text-center text-slate-400"
                   >
                     <div className="max-w-sm mx-auto space-y-3">
@@ -449,24 +444,6 @@ export function DeviceTable({
                           <span className="text-xs font-semibold capitalize px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
                             {device.deviceType}
                           </span>
-                        </TableCell>
-                      )}
-
-                      {!isAccessPointTable && (
-                        <TableCell className="whitespace-nowrap">
-                          {device.ipAddress ? (
-                            <div className="inline-flex items-center gap-1.5 font-mono text-xs font-semibold text-slate-800 dark:text-slate-200 bg-slate-100/80 dark:bg-slate-800 px-2.5 py-1 rounded-lg">
-                              <span>{device.ipAddress}</span>
-                              <CopyButton
-                                text={device.ipAddress}
-                                label="IP Address"
-                              />
-                            </div>
-                          ) : (
-                            <span className="text-slate-300 dark:text-slate-600 text-xs">
-                              —
-                            </span>
-                          )}
                         </TableCell>
                       )}
 

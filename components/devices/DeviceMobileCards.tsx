@@ -113,6 +113,7 @@ export function DeviceMobileCards({
   page,
   totalPages,
   limit = 25,
+  currentType,
   storageMode = false,
 }: DeviceMobileCardsProps) {
   const router = useRouter();
@@ -218,7 +219,7 @@ export function DeviceMobileCards({
         return (
           <div
             key={device._id}
-            className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3"
+            className="rounded-xl border border-slate-200/80 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900"
           >
             {/* Header: SL + Name + Status */}
             {(() => {
@@ -243,12 +244,12 @@ export function DeviceMobileCards({
 
               return (
                 <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="flex items-center gap-2 min-w-0">
                     <div className="relative shrink-0">
                       <div
-                        className={`p-2 rounded-xl border shrink-0 ${devTheme.bg} ${devTheme.border} ${devTheme.text}`}
+                        className={`p-1.5 rounded-lg border shrink-0 ${devTheme.bg} ${devTheme.border} ${devTheme.text}`}
                       >
-                        <Icon className="w-4 h-4" />
+                        <Icon className="w-3.5 h-3.5" />
                       </div>
                       <span
                         className="absolute -bottom-0.5 -right-0.5 flex h-2.5 w-2.5"
@@ -279,71 +280,115 @@ export function DeviceMobileCards({
                       >
                         {device.deviceName}
                       </Link>
-                      <div className="flex items-center gap-1.5 flex-wrap text-xs text-slate-400 font-medium">
-                        <span>
-                          <span className="capitalize">
-                            {device.deviceType}
-                          </span>
-                        </span>
-                        {device.deviceType === "switch" &&
-                          device.totalPorts !== undefined && (
-                            <span className="inline-flex items-center px-1.5 py-0.2 rounded bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 font-semibold text-[10px]">
-                              {device.activePortsCount || 0}/{device.totalPorts}{" "}
-                              Ports
-                            </span>
-                          )}
-                        {device.deviceType === "access-point" &&
-                          device.apNumber && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded bg-blue-900 text-white font-bold text-[11px]">
-                              {device.apNumber}
-                            </span>
-                          )}
-                        {device.deviceType !== "server" &&
-                          device.server &&
-                          typeof device.server === "object" && (
-                            <span className="inline-flex items-center px-1.5 py-0.2 rounded bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 font-medium text-[10px]">
-                              Server: #
-                              {formatDisplaySL((device.server as IDevice).sl)}
-                            </span>
-                          )}
-                        {["antenna", "access-point", "router"].includes(
-                          device.deviceType,
-                        ) &&
-                          device.uplinkSwitch &&
-                          typeof device.uplinkSwitch === "object" && (
-                            <span className="inline-flex items-center px-1.5 py-0.2 rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:indigo-400 font-medium text-[10px]">
-                              UpLink: #
-                              {formatDisplaySL(
-                                (device.uplinkSwitch as IDevice).sl,
+                      <div className="mt-1 flex min-w-0 flex-col gap-1 text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                        {device.deviceType === "access-point" ? (
+                          <>
+                            <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                              {device.server &&
+                                typeof device.server === "object" &&
+                                (device.server as IDevice).deviceName && (
+                                  <span className="truncate">
+                                    {(device.server as IDevice).deviceName}
+                                  </span>
+                                )}
+                              {device.apNumber && (
+                                <span className="inline-flex items-center rounded-md bg-blue-900 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                                  {device.apNumber}
+                                </span>
                               )}
-                            </span>
-                          )}
-                        {device.submittedBy?.email &&
-                          (admin?.email &&
-                          device.submittedBy.email.toLowerCase() ===
-                            admin.email.toLowerCase() ? (
-                            <span className="inline-flex items-center px-1.5 py-0.2 rounded-full bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-sky-800 text-[10px] font-semibold">
-                              Submitted by you
-                            </span>
-                          ) : isSuperAdmin || isEngineer ? (
-                            <span
-                              className="text-[10px] text-slate-400"
-                              title={`Submitted by ${device.submittedBy.email}`}
-                            >
-                              By:{" "}
-                              {device.submittedBy.name ||
-                                device.submittedBy.email.split("@")[0]}
-                            </span>
-                          ) : null)}
+                            </div>
+                            <div className="flex min-w-0 flex-wrap items-center gap-1">
+                              {device.uplinkSwitch &&
+                                typeof device.uplinkSwitch === "object" && (
+                                  <span className="inline-flex items-center rounded-md bg-indigo-50 px-1.5 py-0.5 text-[10px] font-medium text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-400">
+                                    UpLink: #
+                                    {formatDisplaySL(
+                                      (device.uplinkSwitch as IDevice).sl,
+                                    )}
+                                  </span>
+                                )}
+                              {device.submittedBy?.email &&
+                                (admin?.email &&
+                                device.submittedBy.email.toLowerCase() ===
+                                  admin.email.toLowerCase() ? (
+                                  <span className="inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700 dark:border-sky-800 dark:bg-sky-950/60 dark:text-sky-400">
+                                    Added by you
+                                  </span>
+                                ) : isSuperAdmin || isEngineer ? (
+                                  <span
+                                    className="text-[10px] text-slate-400"
+                                    title={`Added by ${device.submittedBy.email}`}
+                                  >
+                                    Added by{" "}
+                                    {device.submittedBy.name ||
+                                      device.submittedBy.email.split("@")[0]}
+                                  </span>
+                                ) : null)}
+                            </div>
+                          </>
+                        ) : (
+                          <div className="flex min-w-0 flex-wrap items-center gap-1">
+                            {!currentType && (
+                              <span className="capitalize">
+                                {device.deviceType}
+                              </span>
+                            )}
+                            {device.deviceType === "switch" &&
+                              device.totalPorts !== undefined && (
+                                <span className="inline-flex items-center rounded-md bg-sky-50 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700 dark:bg-sky-950/60 dark:text-sky-400">
+                                  {device.activePortsCount || 0}/
+                                  {device.totalPorts} Ports
+                                </span>
+                              )}
+                            {device.deviceType !== "server" &&
+                              device.server &&
+                              typeof device.server === "object" &&
+                              (device.server as IDevice).deviceName && (
+                                <span className="truncate">
+                                  {(device.server as IDevice).deviceName}
+                                </span>
+                              )}
+                            {["antenna", "access-point", "router"].includes(
+                              device.deviceType,
+                            ) &&
+                              device.uplinkSwitch &&
+                              typeof device.uplinkSwitch === "object" && (
+                                <span className="inline-flex items-center rounded-md bg-indigo-50 px-1.5 py-0.5 text-[10px] font-medium text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-400">
+                                  UpLink: #
+                                  {formatDisplaySL(
+                                    (device.uplinkSwitch as IDevice).sl,
+                                  )}
+                                </span>
+                              )}
+                            {device.deviceType !== "access-point" &&
+                              device.submittedBy?.email &&
+                              (admin?.email &&
+                              device.submittedBy.email.toLowerCase() ===
+                                admin.email.toLowerCase() ? (
+                                <span className="inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700 dark:border-sky-800 dark:bg-sky-950/60 dark:text-sky-400">
+                                  Submitted by you
+                                </span>
+                              ) : isSuperAdmin || isEngineer ? (
+                                <span
+                                  className="text-[10px] text-slate-400"
+                                  title={`Submitted by ${device.submittedBy.email}`}
+                                >
+                                  By:{" "}
+                                  {device.submittedBy.name ||
+                                    device.submittedBy.email.split("@")[0]}
+                                </span>
+                              ) : null)}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex flex-col items-end gap-1.5 shrink-0">
-                    <span className="font-mono text-xs font-bold text-sky-600 dark:text-sky-400">
-                      #{displaySerial}
-                    </span>
-                    <div className="flex items-center gap-1.5">
+                  <div className="flex shrink-0 flex-col items-end gap-1">
+                    <div className="flex items-center gap-1">
+                      <span className="font-mono text-[10px] font-bold text-slate-400 dark:text-slate-500">
+                        #{displaySerial}
+                      </span>
                       {(canEditDevice ||
                         canArchiveDevice ||
                         canApproveDevice) &&
@@ -351,7 +396,7 @@ export function DeviceMobileCards({
                         <button
                           type="button"
                           onClick={() => setStatusDevice(device)}
-                          className="cursor-pointer"
+                          className="inline-flex min-h-8 min-w-8 cursor-pointer items-center justify-center rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
                           aria-label={`Update status for ${device.deviceName}`}
                         >
                           <DeviceStatusBadge status={device.status} size="sm" />
@@ -359,17 +404,21 @@ export function DeviceMobileCards({
                       ) : (
                         <DeviceStatusBadge status={device.status} size="sm" />
                       )}
-
                       {isSuperAdmin && (
                         <button
                           type="button"
                           disabled={togglingId === device._id}
                           onClick={(e) => handleToggleActive(e, device._id)}
-                          className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                          aria-label={
                             device.status === "Online"
-                              ? "bg-emerald-500"
-                              : "bg-slate-200 dark:bg-slate-700"
-                          } ${togglingId === device._id ? "opacity-50 cursor-wait" : ""}`}
+                              ? "Set device to Pending"
+                              : "Set device Online"
+                          }
+                          className={`relative inline-flex h-8 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 ${
+                            togglingId === device._id
+                              ? "opacity-50 cursor-wait"
+                              : ""
+                          }`}
                           title={
                             device.status === "Online"
                               ? "Super Admin: Click to set to Pending"
@@ -377,12 +426,20 @@ export function DeviceMobileCards({
                           }
                         >
                           <span
-                            className={`pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
+                            className={`pointer-events-none relative inline-flex h-4 w-7 rounded-full transition-colors ${
                               device.status === "Online"
-                                ? "translate-x-3"
-                                : "translate-x-0"
+                                ? "bg-emerald-500"
+                                : "bg-slate-300 dark:bg-slate-700"
                             }`}
-                          />
+                          >
+                            <span
+                              className={`absolute top-0.5 inline-block h-3 w-3 transform rounded-full bg-white shadow-sm transition duration-200 ease-in-out ${
+                                device.status === "Online"
+                                  ? "translate-x-3"
+                                  : "translate-x-0.5"
+                              }`}
+                            />
+                          </span>
                         </button>
                       )}
                     </div>
@@ -391,37 +448,22 @@ export function DeviceMobileCards({
               );
             })()}
 
-            {/* Network Info Pills */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs pt-1 border-t border-slate-100 dark:border-slate-800/60">
-              {device.deviceType !== "access-point" && (
-                <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 dark:bg-slate-800/50">
-                  <span className="text-slate-400">IP:</span>
-                  <div className="flex items-center gap-1">
-                    <span className="font-mono font-semibold text-slate-800 dark:text-slate-200">
-                      {device.ipAddress || "—"}
-                    </span>
-                    {device.ipAddress && (
-                      <CopyButton text={device.ipAddress} label="IP" />
-                    )}
-                  </div>
-                </div>
-              )}
-
-              <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 dark:bg-slate-800/50">
-                <span className="text-slate-400">MAC:</span>
-                <div className="flex items-center gap-1">
-                  <span className="font-mono text-slate-600 dark:text-slate-300">
-                    {device.macAddress || "—"}
+            {device.macAddress && (
+              <div className="mt-2 flex min-w-0 items-center gap-2 border-t border-slate-100 pt-2 text-xs dark:border-slate-800/60">
+                <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                  MAC
+                </span>
+                <div className="flex min-w-0 items-center gap-1.5 rounded-md bg-slate-50 px-2 py-1 dark:bg-slate-800/50">
+                  <span className="truncate font-mono text-[11px] text-slate-600 dark:text-slate-300">
+                    {device.macAddress}
                   </span>
-                  {device.macAddress && (
-                    <CopyButton text={device.macAddress} label="MAC" />
-                  )}
+                  <CopyButton text={device.macAddress} label="MAC" />
                 </div>
               </div>
-            </div>
+            )}
 
             {/* Actions Bar */}
-            <div className="flex items-center justify-between pt-1 border-t border-slate-100 dark:border-slate-800/60">
+            <div className="mt-2 flex flex-wrap items-center justify-between gap-1 border-t border-slate-100 pt-2 dark:border-slate-800/60">
               {device.onlineLink ? (
                 <a
                   href={
@@ -431,7 +473,7 @@ export function DeviceMobileCards({
                   }
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-xs font-semibold text-sky-600 dark:text-sky-400 hover:underline"
+                  className="inline-flex min-h-9 items-center gap-1 rounded-lg px-2 text-xs font-semibold text-sky-600 hover:bg-sky-50 dark:text-sky-400 dark:hover:bg-sky-950/40"
                 >
                   <ExternalLink className="w-3.5 h-3.5" /> Portal
                 </a>
@@ -439,7 +481,7 @@ export function DeviceMobileCards({
                 <span />
               )}
 
-              <div className="flex items-center gap-1">
+              <div className="flex flex-wrap items-center justify-end gap-0.5">
                 {/* Quick Approve/Reject for Pending Devices */}
                 {device.status === "Pending" &&
                   canApproveDevice &&
@@ -449,7 +491,7 @@ export function DeviceMobileCards({
                         type="button"
                         disabled={approvingId === device._id}
                         onClick={(e) => handleApproveDevice(e, device._id)}
-                        className="flex items-center gap-1 rounded-lg border border-emerald-700 bg-emerald-700 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-800 disabled:opacity-50"
+                        className="flex min-h-10 items-center gap-1 rounded-lg border border-emerald-700 bg-emerald-700 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-800 disabled:opacity-50"
                         title="Approve Device"
                       >
                         {approvingId === device._id ? (
@@ -462,7 +504,7 @@ export function DeviceMobileCards({
                       <button
                         type="button"
                         onClick={() => setRejectingDevice(device)}
-                        className="flex items-center gap-1 rounded-lg border border-rose-700 bg-rose-700 px-3 py-2 text-xs font-bold text-white hover:bg-rose-800"
+                        className="flex min-h-10 items-center gap-1 rounded-lg border border-rose-700 bg-rose-700 px-3 py-2 text-xs font-bold text-white hover:bg-rose-800"
                         title="Reject Device"
                       >
                         <XCircle className="w-4 h-4" />
@@ -485,7 +527,7 @@ export function DeviceMobileCards({
                   )}
                 <Link
                   href={`/devices/${device.deviceType}/${device._id}`}
-                  className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-sky-600 p-2 rounded-xl hover:bg-sky-50 dark:hover:bg-sky-950/40"
+                  className="flex min-h-10 items-center gap-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-sky-600 px-3 rounded-xl hover:bg-sky-50 dark:hover:bg-sky-950/40"
                 >
                   <Eye className="w-4 h-4" /> Details
                 </Link>
@@ -497,7 +539,7 @@ export function DeviceMobileCards({
                   <button
                     type="button"
                     onClick={() => setEditingDevice(device)}
-                    className="p-2 rounded-xl text-slate-500 dark:text-slate-400 hover:text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-950/40"
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-slate-500 dark:text-slate-400 hover:text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-950/40"
                     title={
                       device.status === "Frozen" &&
                       Boolean(device.rejectedBy?.reason || device.rejectionReason)
@@ -512,7 +554,7 @@ export function DeviceMobileCards({
                   <button
                     type="button"
                     onClick={() => setDeletingDevice(device)}
-                    className="p-2 rounded-xl text-slate-500 dark:text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40"
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-slate-500 dark:text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40"
                     title="Delete"
                   >
                     <Trash2 className="w-4 h-4" />
