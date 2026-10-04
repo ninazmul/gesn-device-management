@@ -1973,7 +1973,13 @@ export async function importDevicesBulk(
   // Build a MAC → existing device map for O(1) duplicate lookups
   const existingByMac = new Map<string, (typeof existingDevices)[number]>();
   for (const d of existingDevices) {
-    if (d.macAddress) existingByMac.set(d.macAddress.toUpperCase(), d);
+    if (!d.macAddress) continue;
+
+    const mac = d.macAddress.toUpperCase();
+    const current = existingByMac.get(mac);
+    if (!current || d.status === "Storage") {
+      existingByMac.set(mac, d);
+    }
   }
 
   let createdCount = 0;
@@ -2062,9 +2068,9 @@ export async function importDevicesBulk(
         continue;
       }
 
-      // 4b. Duplicate check against existing DB records (O(1))
+      // Allow stored devices to be registered; skip other existing MACs.
       const existingDevice = existingByMac.get(macAddress.toUpperCase());
-      if (existingDevice) {
+      if (existingDevice && existingDevice.status !== "Storage") {
         skippedCount++;
         continue;
       }

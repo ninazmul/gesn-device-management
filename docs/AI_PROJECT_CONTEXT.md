@@ -122,7 +122,7 @@ server_view, server_manage, customer_view, user_manage, report_view, setting_man
 
 1. Any authorized user calls `createDevice(data)`.
 2. Backend validates that the normalized MAC belongs to a device currently in Storage, along with type-specific required fields and IP format.
-3. Registering a stored device updates that Storage record in place, preserving its SL and preventing duplicate MAC records. MACs not present in Storage cannot be registered.
+3. Registering a stored device, including through bulk import, updates that Storage record in place, preserving its SL and preventing duplicate MAC records. MACs not present in Storage cannot be registered.
 4. The device is always set to `"Pending"` with `submittedBy` recorded, including submissions by Super Admins and Engineers.
 5. A Super Admin or Engineer must approve the submission before it becomes `"Online"`.
 6. On `Pending` submission, a `Notification` is created targeting Super Admin + Engineer.
