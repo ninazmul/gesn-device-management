@@ -709,7 +709,9 @@ export function DeviceTable({
       <DeviceFormDialog
         open={isCreateOpen}
         onOpenChange={setIsCreateOpen}
-        defaultDeviceType={currentType || "antenna"}
+        defaultDeviceType={
+          currentType && currentType !== "all" ? currentType : "antenna"
+        }
         hideDeviceType={Boolean(currentType && currentType !== "all")}
         onSuccess={() => {
           setIsCreateOpen(false);

@@ -88,11 +88,12 @@ export function DeviceFormDialog({
   const isEditing = !!deviceToEdit;
 
   // Active Device Type (fallback to antenna if server is requested without permission)
+  const requestedType = deviceToEdit?.deviceType || defaultDeviceType;
   const initialType =
-    deviceToEdit?.deviceType ||
-    (defaultDeviceType === "server" && !canManageServer
+    requestedType === "all" ||
+    (requestedType === "server" && !canManageServer)
       ? "antenna"
-      : defaultDeviceType);
+      : requestedType;
   const [deviceType, setDeviceType] = useState(initialType);
 
   // Main Form Fields (Required based on deviceType)
@@ -307,7 +308,7 @@ export function DeviceFormDialog({
       setStatus(deviceToEdit.status || "Pending");
       setShowMore(false); // Collapsed by default
     } else {
-      setDeviceType(defaultDeviceType);
+      setDeviceType(initialType);
       setMacAddress(initialMacAddress || "");
       setApNumber("");
       setServer("");
@@ -318,14 +319,14 @@ export function DeviceFormDialog({
       setDeviceName("");
       setIpAddress("");
       setOnlineLink("");
-      setTotalPorts(defaultDeviceType === "switch" ? "8" : "");
+      setTotalPorts(initialType === "switch" ? "8" : "");
       setUplinkSwitch("");
       setActivationDate(new Date().toISOString().split("T")[0]);
       setFrequency("");
       setStatus("Pending");
       setShowMore(false); // Collapsed by default
     }
-  }, [deviceToEdit, defaultDeviceType, initialMacAddress, open]);
+  }, [deviceToEdit, defaultDeviceType, initialMacAddress, initialType, open]);
 
   // Load available types, servers, and switches on open
   useEffect(() => {
@@ -585,7 +586,6 @@ export function DeviceFormDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 pt-2">
-          {/* Device Type Switcher */}
           {!isEditing && !hideDeviceType && (
             <div className="space-y-1.5 bg-slate-50 dark:bg-slate-950/50 p-2.5 rounded-xl border border-slate-200/70 dark:border-slate-800">
               <div className="flex items-center justify-between">
