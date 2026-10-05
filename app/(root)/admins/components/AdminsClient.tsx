@@ -155,8 +155,9 @@ const ROLE_OPTIONS: RoleDetail[] = [
     border: "border-emerald-500/30",
     bgLight: "bg-emerald-500/10",
     summary: "Device & Billing Operator",
-    desc: "Can add devices, manage billing, and freeze or archive active devices.",
+    desc: "Can add devices, review pending submissions, approve them Online or reject them Frozen, and manage billing.",
     canDo: [
+      "Review pending non-server devices and approve them Online or reject them Frozen",
       "Add new devices and freeze or archive active devices",
       "Manage permitted billing operations",
     ],
@@ -1208,7 +1209,7 @@ export default function AdminsClient({
                           </span>
                         ) : (
                           <div className="flex flex-col gap-1">
-                            {admin.role === "engineer" && (
+                            {["engineer", "editor"].includes(admin.role) && (
                               <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-indigo-600 dark:text-indigo-400">
                                 <Terminal className="w-3 h-3" /> Device
                                 Approvals Authorized

@@ -945,7 +945,7 @@ export async function approveDevice(id: string) {
 
   if (!canApprove) {
     throw new Error(
-      "Forbidden: Only Super Admins and Engineers can approve devices.",
+      "Forbidden: You do not have permission to approve devices.",
     );
   }
 

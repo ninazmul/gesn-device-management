@@ -142,7 +142,7 @@ export const DEFAULT_GRANULAR_PERMISSIONS: Record<
     device_view: true,
     device_edit: false,
     device_delete: false,
-    device_approve: false,
+    device_approve: true,
     device_archive: true,
     server_view: false,
     server_manage: false,

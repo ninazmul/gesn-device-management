@@ -80,7 +80,7 @@ super_admin → engineer → admin → editor → moderator → viewer → custo
 | `super_admin` | Full immutable access; exclusively manages users, roles, permissions, and settings                   |
 | `engineer`    | Full operational access and device approval; no user, role, permission, or critical-settings control |
 | `admin`       | No automatic access; Super Admin configures sections and actions per account                         |
-| `editor`      | Adds devices and customers, manages billing, and can freeze or archive devices                       |
+| `editor`      | Adds devices, reviews pending non-server submissions, manages billing, and can freeze or archive devices |
 | `moderator`   | Adds devices and manages billing; no archive/freeze unless explicitly granted                        |
 | `viewer`      | Super Admin-configured, strictly read-only section access                                            |
 | `custom`      | Fully configurable by Super Admin                                                                    |
@@ -103,6 +103,7 @@ server_view, server_manage, customer_view, user_manage, report_view, setting_man
 - Defaults per role: `lib/rbac-utils.ts → DEFAULT_GRANULAR_PERMISSIONS`
 - Resolver: `resolveEffectiveGranularPermissions(role, customOverrides)`
 - **Engineer role always forces `device_approve: true`** (enforced in resolver).
+- Editor preset grants `device_approve` by default; Super Admin granular overrides remain available.
 - User, role, and permission administration is always reserved for `super_admin`; Viewer granular actions are always disabled.
 - Super Admin overrides are immutable (always all `true`).
 
@@ -124,7 +125,7 @@ server_view, server_manage, customer_view, user_manage, report_view, setting_man
 2. Backend validates that the normalized MAC belongs to a device currently in Storage, along with type-specific required fields and IP format.
 3. Registering a stored device, including through bulk import, updates that Storage record in place, preserving its SL and preventing duplicate MAC records. MACs not present in Storage cannot be registered.
 4. The device is always set to `"Pending"` with `submittedBy` recorded, including submissions by Super Admins and Engineers.
-5. A Super Admin or Engineer must approve the submission before it becomes `"Online"`.
+5. A user with `device_approve` permission must approve the submission before it becomes `"Online"`; the Editor preset includes this permission for non-server devices.
 6. On `Pending` submission, a `Notification` is created targeting Super Admin + Engineer.
 
 ### 4.2 Required Fields by Device Type (Backend Enforced)
