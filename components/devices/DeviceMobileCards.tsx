@@ -124,6 +124,7 @@ export function DeviceMobileCards({
     isEngineer,
     admin,
     canApproveDevice,
+    canApprovePendingDevice,
     canDeleteDevice,
     canEditDevice,
     canArchiveDevice,
@@ -484,7 +485,7 @@ export function DeviceMobileCards({
               <div className="flex flex-wrap items-center justify-end gap-0.5">
                 {/* Quick Approve/Reject for Pending Devices */}
                 {device.status === "Pending" &&
-                  canApproveDevice &&
+                  canApprovePendingDevice &&
                   (device.deviceType !== "server" || canManageServer) && (
                     <>
                       <button

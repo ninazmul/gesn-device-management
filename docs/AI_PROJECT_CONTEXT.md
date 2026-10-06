@@ -80,7 +80,7 @@ super_admin → engineer → admin → editor → moderator → viewer → custo
 | `super_admin` | Full immutable access; exclusively manages users, roles, permissions, and settings                   |
 | `engineer`    | Full operational access and device approval; no user, role, permission, or critical-settings control |
 | `admin`       | No automatic access; Super Admin configures sections and actions per account                         |
-| `editor`      | Adds devices, reviews pending non-server submissions, manages billing, and can freeze or archive devices |
+| `editor`      | Adds devices, manages billing, and can restore previously approved non-server devices from Frozen to Online |
 | `moderator`   | Adds devices and manages billing; no archive/freeze unless explicitly granted                        |
 | `viewer`      | Super Admin-configured, strictly read-only section access                                            |
 | `custom`      | Fully configurable by Super Admin                                                                    |
@@ -103,7 +103,8 @@ server_view, server_manage, customer_view, user_manage, report_view, setting_man
 - Defaults per role: `lib/rbac-utils.ts → DEFAULT_GRANULAR_PERMISSIONS`
 - Resolver: `resolveEffectiveGranularPermissions(role, customOverrides)`
 - **Engineer role always forces `device_approve: true`** (enforced in resolver).
-- Editor preset grants `device_approve` by default; Super Admin granular overrides remain available.
+- Pending-device approval and rejection are reserved for Super Admins and Engineers; `device_approve` grants only non-Pending Online status changes.
+- Editors may restore a previously approved, non-rejected non-server Frozen device to Online, but cannot approve or reject Pending devices.
 - User, role, and permission administration is always reserved for `super_admin`; Viewer granular actions are always disabled.
 - Super Admin overrides are immutable (always all `true`).
 
@@ -113,7 +114,7 @@ server_view, server_manage, customer_view, user_manage, report_view, setting_man
 | -------- | ----------------------------------------------------------- | -------------------------------------------- |
 | Backend  | `requirePermission(module, level)` — module-level guard     | `lib/auth-guard.ts`                          |
 | Backend  | `requireGranularPermission(key)` — granular guard           | `lib/auth-guard.ts`                          |
-| Frontend | `usePermissions()` hook → `can()`, `canApproveDevice`, etc. | `components/providers/PermissionContext.tsx` |
+| Frontend | `usePermissions()` hook → `can()`, `canApprovePendingDevice`, etc. | `components/providers/PermissionContext.tsx` |
 
 ---
 
@@ -125,7 +126,7 @@ server_view, server_manage, customer_view, user_manage, report_view, setting_man
 2. Backend validates that the normalized MAC belongs to a device currently in Storage, along with type-specific required fields and IP format.
 3. Registering a stored device, including through bulk import, updates that Storage record in place, preserving its SL and preventing duplicate MAC records. MACs not present in Storage cannot be registered.
 4. The device is always set to `"Pending"` with `submittedBy` recorded, including submissions by Super Admins and Engineers.
-5. A user with `device_approve` permission must approve the submission before it becomes `"Online"`; the Editor preset includes this permission for non-server devices.
+5. A Super Admin or Engineer must approve the submission before it becomes `"Online"`.
 6. On `Pending` submission, a `Notification` is created targeting Super Admin + Engineer.
 
 ### 4.2 Required Fields by Device Type (Backend Enforced)
@@ -143,7 +144,7 @@ server_view, server_manage, customer_view, user_manage, report_view, setting_man
 - `approveDevice(id)`: Sets status to `"Online"`, records `approvedBy`, clears rejection reason.
 - `rejectDevice(id, reason)`: Sets status to `"Frozen"`, records `rejectedBy` + `rejectionReason`.
 - Both are **idempotent** (no error if already in target state).
-- Authorized for: `super_admin`, `engineer`, or anyone with `device_approve` granular permission.
+- Authorized for: `super_admin` or `engineer` only.
 
 ### 4.4 Device Statuses
 
@@ -186,7 +187,7 @@ Notable fields beyond basic device data:
 
 ### DeviceTable / DeviceMobileCards
 
-- Approve button (✓ green) shown when `device.status === "Pending" && canApproveDevice`.
+- Approve button (✓ green) shown when `device.status === "Pending" && canApprovePendingDevice`.
 - Reject button opens `RejectDeviceDialog` (reason input).
 - "Submitted by you" badge shown when `submittedBy.email === admin.email`.
 - "My Submissions" filter in `DeviceFilters.tsx`.
@@ -312,9 +313,9 @@ importDevicesBulk(rows: Record<string, unknown>[], defaultDeviceType?: string)
 | `getDeviceById(id)`              | `devices:read`            | Single device with populated refs                          |
 | `createDevice(data)`             | `devices:write`           | Create + type validation + submittedBy                     |
 | `updateDevice(id, data)`         | `devices:write`           | Update fields, re-validate MAC/IP                          |
-| `approveDevice(id)`              | `device_approve` granular | Pending → Online, idempotent                                |
-| `rejectDevice(id, reason)`       | `device_approve` granular | Pending → Frozen, reason retained                            |
-| `updateDeviceStatus(id, status)` | `devices:write`           | General status change (approval-gated for Online)           |
+| `approveDevice(id)`              | Super Admin / Engineer only | Pending → Online, idempotent                               |
+| `rejectDevice(id, reason)`       | Super Admin / Engineer only | Pending → Frozen, reason retained                           |
+| `updateDeviceStatus(id, status)` | `devices:write`           | Pending → Online is Super Admin/Engineer only; Editors may restore eligible Frozen devices |
 | `toggleDeviceOnline(id)`         | `devices:write`           | Toggle Pending ↔ Online                                     |
 | `deleteDevice(id)`               | `device_delete` granular  | Hard delete (blocks if has connected children)             |
 | `searchGlobalDevices(q)`         | `devices:read`            | Global search across all types                             |

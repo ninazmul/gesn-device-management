@@ -822,9 +822,22 @@ export async function updateDevice(
       isSuperAdmin ||
       isEngineer ||
       Boolean(actor.granularPermissions?.device_approve);
+    const canRestoreFrozen =
+      actor.role === "editor" && device.status === "Frozen";
+    if (
+      data.status === "Online" &&
+      device.status === "Pending" &&
+      !isSuperAdmin &&
+      !isEngineer
+    ) {
+      throw new Error(
+        "Forbidden: Only Super Admins and Engineers can approve Pending devices.",
+      );
+    }
     if (
       data.status === "Online" &&
       !canApprove &&
+      !canRestoreFrozen &&
       device.status !== data.status
     ) {
       throw new Error(
@@ -938,10 +951,7 @@ export async function approveDevice(id: string) {
 
   const isSuperAdmin = actor.role === "super_admin";
   const isEngineer = actor.role === "engineer";
-  const canApprove =
-    isSuperAdmin ||
-    isEngineer ||
-    Boolean(actor.granularPermissions?.device_approve);
+  const canApprove = isSuperAdmin || isEngineer;
 
   if (!canApprove) {
     throw new Error(
@@ -1075,10 +1085,7 @@ export async function rejectDevice(id: string, reason: string) {
 
   const isSuperAdmin = actor.role === "super_admin";
   const isEngineer = actor.role === "engineer";
-  const canApprove =
-    isSuperAdmin ||
-    isEngineer ||
-    Boolean(actor.granularPermissions?.device_approve);
+  const canApprove = isSuperAdmin || isEngineer;
 
   if (!canApprove) {
     throw new Error(
@@ -1401,11 +1408,6 @@ export async function updateDeviceStatus(
   const canArchiveStatus =
     isSuperAdmin || Boolean(actor.granularPermissions?.device_archive);
 
-  if (status === "Online" && !canApprove) {
-    throw new Error(
-      "Forbidden: You do not have permission to set devices Online.",
-    );
-  }
   if (["Frozen", "Lost"].includes(status) && !canArchiveStatus) {
     throw new Error(
       "Forbidden: You do not have permission to freeze or archive devices.",
@@ -1422,6 +1424,21 @@ export async function updateDeviceStatus(
 
   const existing = await Device.findById(id);
   if (!existing) throw new Error("Device not found");
+
+  if (status === "Online") {
+    if (existing.status === "Pending" && !isSuperAdmin && !isEngineer) {
+      throw new Error(
+        "Forbidden: Only Super Admins and Engineers can approve Pending devices.",
+      );
+    }
+    const canRestoreFrozen =
+      actor.role === "editor" && existing.status === "Frozen";
+    if (!canApprove && !canRestoreFrozen) {
+      throw new Error(
+        "Forbidden: You do not have permission to set devices Online.",
+      );
+    }
+  }
 
   if (
     status === "Online" &&
@@ -1446,7 +1463,9 @@ export async function updateDeviceStatus(
   }
 
   const updateFields: Record<string, unknown> = { status };
-  if (status === "Online") {
+  const isPendingApproval = status === "Online" && existing.status === "Pending";
+  const isFrozenRestore = status === "Online" && existing.status === "Frozen";
+  if (status === "Online" && !isFrozenRestore) {
     updateFields.approvedBy = {
       email: actor.email,
       name: actor.name || actor.email.split("@")[0],
@@ -1454,6 +1473,8 @@ export async function updateDeviceStatus(
       userId: actor._id,
       date: new Date(),
     };
+  }
+  if (isPendingApproval) {
     updateFields.rejectionReason = "";
   }
 
@@ -1464,10 +1485,7 @@ export async function updateDeviceStatus(
 
   await logActivityAndNotify({
     actor,
-    action:
-      status === "Online"
-        ? "DEVICE_APPROVAL"
-        : "STATUS_CHANGE",
+    action: isPendingApproval ? "DEVICE_APPROVAL" : "STATUS_CHANGE",
     module: "devices",
     resourceId: device.sl,
     resourceName: `${device.deviceName} (${device.sl})`,

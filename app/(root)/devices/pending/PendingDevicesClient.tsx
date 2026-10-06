@@ -101,8 +101,9 @@ export function PendingDevicesClient({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { canApproveDevice, isSuperAdmin, isEngineer, can } = usePermissions();
-  const canApprove = canApproveDevice;
+  const { canApprovePendingDevice, isSuperAdmin, isEngineer, can } =
+    usePermissions();
+  const canApprove = canApprovePendingDevice;
   const canViewServer = isSuperAdmin || isEngineer || can("server_view");
 
   const [isPending, startTransition] = useTransition();

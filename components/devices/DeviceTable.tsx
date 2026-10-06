@@ -135,6 +135,7 @@ export function DeviceTable({
     admin,
     can,
     canApproveDevice,
+    canApprovePendingDevice,
     canDeleteDevice,
     canEditDevice,
     canArchiveDevice,
@@ -547,7 +548,7 @@ export function DeviceTable({
                         <div className="flex items-center justify-end gap-1">
                           {/* Quick Approve/Reject for Pending Devices */}
                           {device.status === "Pending" &&
-                            canApproveDevice &&
+                            canApprovePendingDevice &&
                             (device.deviceType !== "server" ||
                               canManageServer) && (
                               <>

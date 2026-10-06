@@ -142,7 +142,7 @@ export const DEFAULT_GRANULAR_PERMISSIONS: Record<
     device_view: true,
     device_edit: false,
     device_delete: false,
-    device_approve: true,
+    device_approve: false,
     device_archive: true,
     server_view: false,
     server_manage: false,
@@ -230,9 +230,10 @@ export const GRANULAR_PERMISSIONS_LIST: GranularPermissionMeta[] = [
   },
   {
     key: "device_approve",
-    label: "Approve/Freeze Device",
+    label: "Set Non-Pending Device Online",
     category: "Devices",
-    description: "Review pending devices and set them Online or Frozen",
+    description:
+      "Restore eligible devices to Online; Pending-device approval is reserved for Super Admins and Engineers",
   },
   {
     key: "device_archive",
@@ -375,7 +376,7 @@ export function resolveEffectiveGranularPermissions(
     }
   }
 
-  // Engineer must have the Approval/Reject permission (Requirement 9)
+  // Engineer must retain the device approval permission.
   if (role === "engineer") {
     base.device_approve = true;
   }

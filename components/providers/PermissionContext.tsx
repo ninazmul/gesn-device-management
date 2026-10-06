@@ -23,6 +23,8 @@ interface PermissionContextValue {
   canWrite: (module: AppModule) => boolean;
   can: (action: GranularPermissionKey) => boolean;
   canApproveDevice: boolean;
+  canApprovePendingDevice: boolean;
+  canRestoreFrozenDevice: boolean;
   canDeleteDevice: boolean;
   canAddDevice: boolean;
   canEditDevice: boolean;
@@ -105,6 +107,8 @@ export function PermissionProvider({
   );
 
   const canApproveDevice = isSuperAdmin || isEngineer || can("device_approve");
+  const canApprovePendingDevice = isSuperAdmin || isEngineer;
+  const canRestoreFrozenDevice = role === "editor";
   const canDeleteDevice = isSuperAdmin || can("device_delete");
   const canAddDevice = isSuperAdmin || can("device_add");
   const canEditDevice = isSuperAdmin || can("device_edit");
@@ -123,6 +127,8 @@ export function PermissionProvider({
       canWrite,
       can,
       canApproveDevice,
+      canApprovePendingDevice,
+      canRestoreFrozenDevice,
       canDeleteDevice,
       canAddDevice,
       canEditDevice,
@@ -140,6 +146,8 @@ export function PermissionProvider({
       canWrite,
       can,
       canApproveDevice,
+      canApprovePendingDevice,
+      canRestoreFrozenDevice,
       canDeleteDevice,
       canAddDevice,
       canEditDevice,

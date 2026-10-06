@@ -69,6 +69,7 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
     admin,
     can,
     canApproveDevice,
+    canApprovePendingDevice,
     canDeleteDevice,
     canEditDevice,
     canArchiveDevice,
@@ -211,7 +212,7 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
           {/* Action Buttons */}
           <div className="flex items-center gap-2.5 flex-wrap">
             {/* Approve & Reject buttons for Pending devices */}
-            {device.status === "Pending" && canApproveDevice && (
+            {device.status === "Pending" && canApprovePendingDevice && (
               <>
                 <Button
                   type="button"

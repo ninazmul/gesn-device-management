@@ -155,13 +155,14 @@ const ROLE_OPTIONS: RoleDetail[] = [
     border: "border-emerald-500/30",
     bgLight: "bg-emerald-500/10",
     summary: "Device & Billing Operator",
-    desc: "Can add devices, review pending submissions, approve them Online or reject them Frozen, and manage billing.",
+    desc: "Can add devices, manage billing, and restore previously approved non-server devices from Frozen to Online.",
     canDo: [
-      "Review pending non-server devices and approve them Online or reject them Frozen",
       "Add new devices and freeze or archive active devices",
+      "Restore previously approved non-server devices from Frozen to Online",
       "Manage permitted billing operations",
     ],
     cannotDo: [
+      "Cannot approve or reject Pending devices",
       "Cannot manage users, roles, permissions, or critical settings",
       "Cannot perform actions not explicitly assigned to the Editor preset",
     ],

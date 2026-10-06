@@ -30,7 +30,13 @@ export function DeviceStatusDialog({
   onOpenChange,
   onSuccess,
 }: DeviceStatusDialogProps) {
-  const { canApproveDevice, canArchiveDevice, canEditDevice } = usePermissions();
+  const {
+    canApproveDevice,
+    canApprovePendingDevice,
+    canRestoreFrozenDevice,
+    canArchiveDevice,
+    canEditDevice,
+  } = usePermissions();
   const [selectedStatus, setSelectedStatus] = useState<DeviceStatus>(
     (device?.status as DeviceStatus) || "Pending"
   );
@@ -82,9 +88,14 @@ export function DeviceStatusDialog({
             const isSelected = selectedStatus === status;
             const config = STATUS_CONFIG[status];
             const isApprovalStatus = status === "Online";
+            const canSetOnline =
+              deviceStatus === "Pending"
+                ? canApprovePendingDevice
+                : canApproveDevice ||
+                  (deviceStatus === "Frozen" && canRestoreFrozenDevice);
             const isArchiveStatus = status === "Frozen" || status === "Lost";
             const isRestricted =
-              (isApprovalStatus && !canApproveDevice) ||
+              (isApprovalStatus && !canSetOnline) ||
               (status === "Online" && mustResubmitBeforeOnline) ||
               (isArchiveStatus && !canArchiveDevice) ||
               (!isApprovalStatus && !isArchiveStatus && !canEditDevice);
