@@ -69,6 +69,7 @@ import {
 import { usePermissions } from "@/components/providers/PermissionContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
+  canManageDeviceStorage,
   DEFAULT_ROLE_PERMISSIONS,
   DEFAULT_GRANULAR_PERMISSIONS,
   GRANULAR_PERMISSIONS_LIST,
@@ -141,6 +142,7 @@ const ROLE_OPTIONS: RoleDetail[] = [
     desc: "No automatic access. The Super Admin assigns each dashboard section and action individually.",
     canDo: [
       "Use only the sections and actions explicitly assigned by the Super Admin",
+      "Change device status to Storage",
     ],
     cannotDo: [
       "Cannot manage users, roles, or permissions",
@@ -159,6 +161,7 @@ const ROLE_OPTIONS: RoleDetail[] = [
     canDo: [
       "Add new devices and freeze or archive active devices",
       "Restore previously approved non-server devices from Frozen to Online",
+      "Change device status to Storage",
       "Manage permitted billing operations",
     ],
     cannotDo: [
@@ -182,6 +185,7 @@ const ROLE_OPTIONS: RoleDetail[] = [
     ],
     cannotDo: [
       "Cannot freeze or archive devices unless the Super Admin grants that action",
+      "Cannot change device status to Storage",
       "Cannot manage users, roles, permissions, or system settings",
     ],
   },
@@ -1217,6 +1221,14 @@ export default function AdminsClient({
                               </span>
                             )}
                             <div className="flex flex-wrap gap-1">
+                              {canManageDeviceStorage(admin.role) && (
+                                <span
+                                  className="text-[10px] px-1.5 py-0.2 rounded border font-medium bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20"
+                                  title="Can change device status to Storage"
+                                >
+                                  Device status: Storage
+                                </span>
+                              )}
                               {ALL_APP_MODULES.map((mod) => {
                                 const lvl =
                                   admin.permissions?.[mod] ||

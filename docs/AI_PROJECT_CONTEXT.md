@@ -79,9 +79,9 @@ super_admin → engineer → admin → editor → moderator → viewer → custo
 | ------------- | ---------------------------------------------------------------------------------------------------- |
 | `super_admin` | Full immutable access; exclusively manages users, roles, permissions, and settings                   |
 | `engineer`    | Full operational access and device approval; no user, role, permission, or critical-settings control |
-| `admin`       | No automatic access; Super Admin configures sections and actions per account                         |
-| `editor`      | Adds devices, manages billing, and can restore previously approved non-server devices from Frozen to Online |
-| `moderator`   | Adds devices and manages billing; no archive/freeze unless explicitly granted                        |
+| `admin`       | Super Admin-configured access; can change device status to Storage                                    |
+| `editor`      | Adds devices, manages billing, restores eligible devices from Frozen to Online, and can change status to Storage |
+| `moderator`   | Adds devices and manages billing; cannot change device status to Storage                              |
 | `viewer`      | Super Admin-configured, strictly read-only section access                                            |
 | `custom`      | Fully configurable by Super Admin                                                                    |
 

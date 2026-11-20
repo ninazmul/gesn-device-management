@@ -8,11 +8,12 @@ import {
 } from "@/types";
 
 export function canManageDeviceStorage(role: AdminRole): boolean {
+  const normalizedRole = role.trim().toLowerCase();
   return (
-    role === "super_admin" ||
-    role === "engineer" ||
-    role === "admin" ||
-    role === "moderator"
+    normalizedRole === "super_admin" ||
+    normalizedRole === "engineer" ||
+    normalizedRole === "admin" ||
+    normalizedRole === "editor"
   );
 }
 
