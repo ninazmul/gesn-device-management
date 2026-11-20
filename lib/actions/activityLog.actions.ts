@@ -4,7 +4,10 @@ import { connectToDatabase } from "@/lib/database";
 import ActivityLog from "@/lib/database/models/activityLog.model";
 import { requireSuperAdmin } from "@/lib/auth-guard";
 import { GetActivityLogsParams, IActivityLog } from "@/types";
-import { FilterQuery } from "mongoose";
+
+type ActivityLogFilter = ReturnType<
+  ReturnType<typeof ActivityLog.find>["getFilter"]
+>;
 
 /**
  * Get paginated, filtered, and searchable activity audit logs. Super Admin only.
@@ -25,7 +28,7 @@ export async function getActivityLogs(params?: GetActivityLogsParams) {
   } = params || {};
 
   const skip = (Math.max(1, page) - 1) * limit;
-  const query: FilterQuery<typeof ActivityLog> = {};
+  const query: ActivityLogFilter = {};
 
   if (module && module !== "all") {
     query.module = module;
@@ -97,7 +100,7 @@ export async function getAllLogsForExport(params?: GetActivityLogsParams) {
     endDate,
   } = params || {};
 
-  const query: FilterQuery<typeof ActivityLog> = {};
+  const query: ActivityLogFilter = {};
 
   if (module && module !== "all") {
     query.module = module;

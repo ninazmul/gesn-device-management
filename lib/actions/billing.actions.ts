@@ -6,9 +6,10 @@ import Customer from "@/lib/database/models/customer.model";
 import Counter from "@/lib/database/models/counter.model";
 import { formatSL } from "@/lib/utils";
 import { revalidatePath } from "next/cache";
-import type { FilterQuery } from "mongoose";
 import type { BillingStatus, GetBillingsParams, IBilling } from "@/types";
 import { requirePermission, logActivityAndNotify } from "@/lib/auth-guard";
+
+type BillingFilter = ReturnType<ReturnType<typeof Billing.find>["getFilter"]>;
 
 const OVERDUE_SYNC_INTERVAL_MS = 5 * 60 * 1000;
 let lastOverdueSyncAt = 0;
@@ -61,7 +62,7 @@ export async function getBillings(params?: GetBillingsParams) {
   } = params || {};
 
   const skip = (Math.max(1, page) - 1) * limit;
-  const query: FilterQuery<typeof Billing> = {};
+  const query: BillingFilter = {};
 
   if (billingMonth && billingMonth !== "all") {
     query.billingMonth = billingMonth.trim();
@@ -633,7 +634,7 @@ export async function getAllBillingsForExport(params?: {
   await requirePermission("billing", "read");
   await connectToDatabase();
 
-  const query: FilterQuery<typeof Billing> = {};
+  const query: BillingFilter = {};
   if (params?.billingMonth && params.billingMonth !== "all") {
     query.billingMonth = params.billingMonth;
   }

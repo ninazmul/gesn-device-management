@@ -22,7 +22,6 @@ import {
   safeParseString,
 } from "@/lib/excel";
 import { revalidatePath } from "next/cache";
-import type { FilterQuery } from "mongoose";
 import type {
   DeviceStatus,
   GetDevicesParams,
@@ -30,12 +29,15 @@ import type {
   ISwitchOption,
   IServerOption,
 } from "@/types";
+
 import {
   getCurrentAdminProfile,
   requirePermission,
   logActivityAndNotify,
 } from "@/lib/auth-guard";
 import { canManageDeviceStorage } from "@/lib/rbac-utils";
+
+type DeviceFilter = ReturnType<ReturnType<typeof Device.find>["getFilter"]>;
 
 function safeRevalidatePath(path: string) {
   try {
@@ -205,7 +207,7 @@ export async function getDevices(params?: GetDevicesParams) {
   const sortBy = requestedSortBy || (isAccessPointQuery ? "sl_desc" : "sl_asc");
 
   const skip = (Math.max(1, page) - 1) * limit;
-  const query: FilterQuery<typeof Device> = {};
+  const query: DeviceFilter = {};
 
   if (deviceType && deviceType !== "all") {
     const requestedType = deviceType.toLowerCase().trim();
@@ -1255,7 +1257,7 @@ export async function getPendingDevices(params?: {
     : "Pending";
 
   const skip = (Math.max(1, page) - 1) * limit;
-  const query: FilterQuery<typeof Device> = { status };
+  const query: DeviceFilter = { status };
 
   if (deviceType && deviceType !== "all") {
     const requestedType = deviceType.toLowerCase().trim();
@@ -1372,7 +1374,7 @@ export async function getPendingDevicesCount(): Promise<number> {
     isEngineer ||
     Boolean(actor.granularPermissions?.server_view);
 
-  const query: FilterQuery<typeof Device> = { status: "Pending" };
+  const query: DeviceFilter = { status: "Pending" };
   if (!canViewServer) {
     query.deviceType = { $ne: "server" };
   }
@@ -1689,7 +1691,7 @@ export async function searchGlobalDevices(searchTerm: string) {
   const term = searchTerm.trim();
   const regex = new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
 
-  const query: FilterQuery<typeof Device> = {
+  const query: DeviceFilter = {
     $or: [
       { sl: regex },
       { deviceName: regex },
@@ -1879,7 +1881,7 @@ export async function getAllDevicesForExport(params?: {
     isEngineer ||
     Boolean(actor.granularPermissions?.server_view);
 
-  const query: FilterQuery<typeof Device> = {};
+  const query: DeviceFilter = {};
   if (params?.deviceType && params.deviceType !== "all") {
     const requestedType = params.deviceType.toLowerCase().trim();
     if (requestedType === "server" && !canViewServer) {

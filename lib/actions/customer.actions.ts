@@ -7,7 +7,6 @@ import Counter from "@/lib/database/models/counter.model";
 import Device from "@/lib/database/models/device.model";
 import { formatSL } from "@/lib/utils";
 import { revalidatePath } from "next/cache";
-import type { FilterQuery } from "mongoose";
 import type {
   CustomerStatus,
   CustomerServiceType,
@@ -15,6 +14,8 @@ import type {
   ICustomer,
 } from "@/types";
 import { requirePermission, logActivityAndNotify } from "@/lib/auth-guard";
+
+type CustomerFilter = ReturnType<ReturnType<typeof Customer.find>["getFilter"]>;
 
 // Helper to generate next sequential Customer ID (e.g. "CUS-000001")
 async function getNextCustomerId(): Promise<string> {
@@ -62,7 +63,7 @@ export async function getCustomers(params?: GetCustomersParams) {
   } = params || {};
 
   const skip = (Math.max(1, page) - 1) * limit;
-  const query: FilterQuery<typeof Customer> = {};
+  const query: CustomerFilter = {};
 
   if (status && status !== "all") {
     query.status = status;
@@ -430,7 +431,7 @@ export async function deleteCustomer(id: string) {
 export async function searchActiveCustomers(query: string = "") {
   await requirePermission("customers", "read");
   await connectToDatabase();
-  const filter: FilterQuery<typeof Customer> = { status: "Active" };
+  const filter: CustomerFilter = { status: "Active" };
 
   if (query.trim()) {
     const regex = new RegExp(
@@ -459,7 +460,7 @@ export async function getAllCustomersForExport(params?: {
   await requirePermission("customers", "read");
   await connectToDatabase();
 
-  const query: FilterQuery<typeof Customer> = {};
+  const query: CustomerFilter = {};
   if (params?.status && params.status !== "all") {
     query.status = params.status;
   }
