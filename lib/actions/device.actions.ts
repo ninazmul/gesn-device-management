@@ -35,6 +35,7 @@ import {
   requirePermission,
   logActivityAndNotify,
 } from "@/lib/auth-guard";
+import { canManageDeviceStorage } from "@/lib/rbac-utils";
 
 function safeRevalidatePath(path: string) {
   try {
@@ -1407,6 +1408,7 @@ export async function updateDeviceStatus(
     isSuperAdmin || Boolean(actor.granularPermissions?.device_edit);
   const canArchiveStatus =
     isSuperAdmin || Boolean(actor.granularPermissions?.device_archive);
+  const canStoreStatus = canManageDeviceStorage(actor.role);
 
   if (["Frozen", "Lost"].includes(status) && !canArchiveStatus) {
     throw new Error(
@@ -1414,7 +1416,15 @@ export async function updateDeviceStatus(
     );
   }
   if (
-    !["Online", "Frozen", "Lost"].includes(status) &&
+    status === "Storage" &&
+    !canStoreStatus
+  ) {
+    throw new Error(
+      "Forbidden: You do not have permission to move devices to Storage.",
+    );
+  }
+  if (
+    !["Online", "Frozen", "Lost", "Storage"].includes(status) &&
     !canEditStatus
   ) {
     throw new Error(
@@ -1450,7 +1460,7 @@ export async function updateDeviceStatus(
     );
   }
 
-  if (existing.deviceType === "server") {
+  if (existing.deviceType === "server" && status !== "Storage") {
     const canManageServer =
       isSuperAdmin ||
       isEngineer ||
@@ -1751,12 +1761,11 @@ export async function returnDeviceToStorage(params: {
   macAddress: string;
   deviceCategory: string;
 }) {
-  const actor = await requirePermission("devices", "write");
+  const actor = await requirePermission("devices", "read");
   await connectToDatabase();
 
-  const isSuperAdmin = actor.role === "super_admin";
   if (
-    !isSuperAdmin &&
+    !canManageDeviceStorage(actor.role) &&
     !actor.granularPermissions?.device_edit &&
     !actor.granularPermissions?.device_add
   ) {

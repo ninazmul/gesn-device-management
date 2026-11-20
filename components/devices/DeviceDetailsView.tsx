@@ -73,6 +73,7 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
     canDeleteDevice,
     canEditDevice,
     canArchiveDevice,
+    canStoreDevice,
   } = usePermissions();
   const canManageServer = isSuperAdmin || isEngineer || can("server_manage");
   const canResubmitRejected =
@@ -259,8 +260,13 @@ export function DeviceDetailsView({ device }: DeviceDetailsViewProps) {
               </Button>
             )}
 
-            {(canEditDevice || canArchiveDevice || canApproveDevice) &&
-              (device.deviceType !== "server" || canManageServer) && (
+            {(canEditDevice ||
+              canArchiveDevice ||
+              canApproveDevice ||
+              (canStoreDevice && device.status !== "Storage")) &&
+              (device.deviceType !== "server" ||
+                canManageServer ||
+                (canStoreDevice && device.status !== "Storage")) && (
               <Button
                 type="button"
                 variant="outline"

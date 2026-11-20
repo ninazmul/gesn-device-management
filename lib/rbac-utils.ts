@@ -7,6 +7,15 @@ import {
   PermissionLevel,
 } from "@/types";
 
+export function canManageDeviceStorage(role: AdminRole): boolean {
+  return (
+    role === "super_admin" ||
+    role === "engineer" ||
+    role === "admin" ||
+    role === "moderator"
+  );
+}
+
 export const ALL_APP_MODULES: AppModule[] = [
   "dashboard",
   "devices",

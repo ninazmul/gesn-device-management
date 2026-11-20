@@ -139,6 +139,7 @@ export function DeviceTable({
     canDeleteDevice,
     canEditDevice,
     canArchiveDevice,
+    canStoreDevice,
   } = usePermissions();
   const canManageServer = isSuperAdmin || isEngineer || can("server_manage");
   const canRemoveDevice = storageMode
@@ -495,9 +496,11 @@ export function DeviceTable({
                         <div className="flex items-center gap-2">
                           {(canEditDevice ||
                             canArchiveDevice ||
-                            canApproveDevice) &&
+                            canApproveDevice ||
+                            (canStoreDevice && device.status !== "Storage")) &&
                           (device.deviceType !== "server" ||
-                            canManageServer) ? (
+                            canManageServer ||
+                            (canStoreDevice && device.status !== "Storage")) ? (
                             <button
                               type="button"
                               onClick={() => setStatusDevice(device)}

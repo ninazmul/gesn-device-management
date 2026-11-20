@@ -36,6 +36,7 @@ export function DeviceStatusDialog({
     canRestoreFrozenDevice,
     canArchiveDevice,
     canEditDevice,
+    canStoreDevice,
   } = usePermissions();
   const [selectedStatus, setSelectedStatus] = useState<DeviceStatus>(
     (device?.status as DeviceStatus) || "Pending"
@@ -98,7 +99,11 @@ export function DeviceStatusDialog({
               (isApprovalStatus && !canSetOnline) ||
               (status === "Online" && mustResubmitBeforeOnline) ||
               (isArchiveStatus && !canArchiveDevice) ||
-              (!isApprovalStatus && !isArchiveStatus && !canEditDevice);
+              (status === "Storage" && !canStoreDevice) ||
+              (!isApprovalStatus &&
+                !isArchiveStatus &&
+                status !== "Storage" &&
+                !canEditDevice);
 
             return (
               <button

@@ -195,8 +195,18 @@ interface DashboardClientProps {
 
 export function DashboardClient({ stats }: DashboardClientProps) {
   const router = useRouter();
-  const { canRead, canWrite, isSuperAdmin, isEngineer, can } = usePermissions();
+  const {
+    canRead,
+    canWrite,
+    isSuperAdmin,
+    isEngineer,
+    can,
+    canStoreDevice,
+  } = usePermissions();
   const canReadDevices = canRead("devices");
+  const canReturnToStorage =
+    canReadDevices &&
+    (canStoreDevice || can("device_edit") || can("device_add"));
   const canViewServerInfra = canReadDevices && (isSuperAdmin || isEngineer);
   const canManageServerInUi =
     canWrite("devices") &&
@@ -643,7 +653,7 @@ export function DashboardClient({ stats }: DashboardClientProps) {
             )}
 
             {/* Return button */}
-            {canWriteDevices && (
+            {canReturnToStorage && (
               <button
                 type="button"
                 id="storage-return-btn"
@@ -917,7 +927,7 @@ export function DashboardClient({ stats }: DashboardClientProps) {
                             </div>
                           )}
                         </div>
-                        {canWriteDevices &&
+                        {canReturnToStorage &&
                           STORAGE_DEVICE_CATEGORIES.some(
                             (category) =>
                               category.slug === checkResult.device?.deviceType,

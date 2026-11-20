@@ -9,7 +9,10 @@ import {
   ModulePermissions,
   PermissionLevel,
 } from "@/types";
-import { resolveEffectiveGranularPermissions } from "@/lib/rbac-utils";
+import {
+  canManageDeviceStorage,
+  resolveEffectiveGranularPermissions,
+} from "@/lib/rbac-utils";
 
 interface PermissionContextValue {
   admin: IAdminUser | null;
@@ -29,6 +32,7 @@ interface PermissionContextValue {
   canAddDevice: boolean;
   canEditDevice: boolean;
   canArchiveDevice: boolean;
+  canStoreDevice: boolean;
 }
 
 const PermissionContext = createContext<PermissionContextValue | undefined>(
@@ -113,6 +117,7 @@ export function PermissionProvider({
   const canAddDevice = isSuperAdmin || can("device_add");
   const canEditDevice = isSuperAdmin || can("device_edit");
   const canArchiveDevice = isSuperAdmin || can("device_archive");
+  const canStoreDevice = canManageDeviceStorage(role);
 
   const value = useMemo(
     () => ({
@@ -133,6 +138,7 @@ export function PermissionProvider({
       canAddDevice,
       canEditDevice,
       canArchiveDevice,
+      canStoreDevice,
     }),
     [
       admin,
@@ -152,6 +158,7 @@ export function PermissionProvider({
       canAddDevice,
       canEditDevice,
       canArchiveDevice,
+      canStoreDevice,
     ]
   );
 

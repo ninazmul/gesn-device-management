@@ -129,6 +129,7 @@ export function DeviceMobileCards({
     canEditDevice,
     canArchiveDevice,
     can,
+    canStoreDevice,
   } = usePermissions();
   const canManageServer = isSuperAdmin || isEngineer || can("server_manage");
   const canRemoveDevice = storageMode
@@ -392,8 +393,11 @@ export function DeviceMobileCards({
                       </span>
                       {(canEditDevice ||
                         canArchiveDevice ||
-                        canApproveDevice) &&
-                      (device.deviceType !== "server" || canManageServer) ? (
+                        canApproveDevice ||
+                        (canStoreDevice && device.status !== "Storage")) &&
+                      (device.deviceType !== "server" ||
+                        canManageServer ||
+                        (canStoreDevice && device.status !== "Storage")) ? (
                         <button
                           type="button"
                           onClick={() => setStatusDevice(device)}
